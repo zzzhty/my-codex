@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Personal Skills",
     "shortDescription": "Use personal Codex skills maintained in my-codex.",
-    "longDescription": "Personal Skills packages reusable personal Codex skills so they can be installed from the my-codex marketplace instead of being maintained directly under ~/.codex/skills.",
+    "longDescription": "Personal Skills packages reusable personal Codex skills so they can be installed from the my-codex marketplace instead of being maintained directly under $CODEX_HOME/skills.",
     "developerName": "Max",
     "category": "Productivity",
     "capabilities": [

@@ -45,8 +45,8 @@
 
 - `python3 -m py_compile scripts/*.py` 通过。
 - `python3 scripts/doctor.py --config config/repos.example.json` 通过。
-- `python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex --name my-codex --print-report` 生成 report。
-- plugin validator 通过；使用 `cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher`，因为 validator 需要 PyYAML。
+- `python3 scripts/audit_repo.py --repo ../.. --name my-codex --print-report` 生成 report。
+- plugin validator 通过；使用 `PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}" && (cd backend && uv run python "$PLUGIN_VALIDATOR" ..)`，因为 validator 需要 PyYAML。
 
 ## Risks
 

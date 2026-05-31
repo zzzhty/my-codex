@@ -13,7 +13,7 @@ hooks/codex/
 scripts/
 ```
 
-Runtime state is written under `~/.codex/skill-watcher/`:
+Runtime state is written under `$CODEX_HOME/skill-watcher/`:
 
 ```text
 logs/events.jsonl
@@ -27,40 +27,46 @@ backups/
 ## Setup
 
 ```bash
-cd /Users/max/Projects/my-codex
+export MY_CODEX_ROOT="${MY_CODEX_ROOT:-$(git rev-parse --show-toplevel)}"
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export MY_CODEX_PYTHON="${MY_CODEX_PYTHON:-$CODEX_HOME/venvs/my-codex/bin/python}"
+export PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py}"
+
+cd "$MY_CODEX_ROOT"
 python3 scripts/bootstrap_tooling_env.py
+cd plugins/skill-watcher
 ```
 
 Skill Watcher uses the shared my-codex tooling interpreter:
 
 ```text
-/Users/max/.codex/venvs/my-codex/bin/python
+$MY_CODEX_PYTHON
 ```
 
 ## Smoke Test
 
 ```bash
 printf '%s\n' '{"event_type":"skill_stop","skill_name":"demo","outcome":"failure","failure_type":"tool_error","notes":"token sk-1234567890 should redact","metadata":{"api_key":"secret"}}' \
-  | /Users/max/.codex/venvs/my-codex/bin/python scripts/collect_event.py
+  | "$MY_CODEX_PYTHON" scripts/collect_event.py
 
-/Users/max/.codex/venvs/my-codex/bin/python scripts/summarize_logs.py --skill demo --since 1d
-/Users/max/.codex/venvs/my-codex/bin/python scripts/propose_skill_patch.py --skill-dir skills/skill-maintainer --skill skill-maintainer --since 1d
-/Users/max/.codex/venvs/my-codex/bin/python scripts/validate_candidate.py --candidate-skill skills/skill-maintainer/SKILL.md
+"$MY_CODEX_PYTHON" scripts/summarize_logs.py --skill demo --since 1d
+"$MY_CODEX_PYTHON" scripts/propose_skill_patch.py --skill-dir skills/skill-maintainer --skill skill-maintainer --since 1d
+"$MY_CODEX_PYTHON" scripts/validate_candidate.py --candidate-skill skills/skill-maintainer/SKILL.md
 ```
 
 Validate the plugin:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/skill-watcher
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/skill-watcher"
 ```
 
 ## Codex Hook Install
 
-Skill Watcher installs user-level hooks at `~/.codex/hooks.json` and preserves unrelated hook entries. The generated handlers observe `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
+Skill Watcher installs user-level hooks at `$CODEX_HOME/hooks.json` and preserves unrelated hook entries. The generated handlers observe `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/install_codex_hook.py --dry-run
-/Users/max/.codex/venvs/my-codex/bin/python scripts/install_codex_hook.py --apply
+"$MY_CODEX_PYTHON" scripts/install_codex_hook.py --dry-run
+"$MY_CODEX_PYTHON" scripts/install_codex_hook.py --apply
 ```
 
 After applying, open `/hooks` in Codex and review/trust the new command hook definitions. Codex requires this for non-managed command hooks before they run.
@@ -68,8 +74,8 @@ After applying, open `/hooks` in Codex and review/trust the new command hook def
 Uninstall only Skill Watcher handlers:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/uninstall_codex_hook.py --dry-run
-/Users/max/.codex/venvs/my-codex/bin/python scripts/uninstall_codex_hook.py --apply
+"$MY_CODEX_PYTHON" scripts/uninstall_codex_hook.py --dry-run
+"$MY_CODEX_PYTHON" scripts/uninstall_codex_hook.py --apply
 ```
 
 ## Runtime Reports
@@ -77,8 +83,8 @@ Uninstall only Skill Watcher handlers:
 Generate a report-only daily report:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/daily_report.py --since 1d
-/Users/max/.codex/venvs/my-codex/bin/python scripts/daily_report.py --skill skill-maintainer --since 1d
+"$MY_CODEX_PYTHON" scripts/daily_report.py --since 1d
+"$MY_CODEX_PYTHON" scripts/daily_report.py --skill skill-maintainer --since 1d
 ```
 
 The Codex automation named `Skill Watcher Daily Report` runs this report workflow daily at 22:30 Asia/Shanghai and returns the report path plus summary counts. It does not generate proposals or modify skills.
@@ -94,16 +100,16 @@ Codex hook payloads do not provide a stable native skill identifier. If a hook p
 Generated proposal files include YAML frontmatter with `status: "draft"`. Update status explicitly:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/update_proposal_status.py --proposal ~/.codex/skill-watcher/proposals/<proposal>.md --status needs-validation
-/Users/max/.codex/venvs/my-codex/bin/python scripts/update_proposal_status.py --proposal ~/.codex/skill-watcher/proposals/<proposal>.md --status rejected --reason "insufficient evidence"
+"$MY_CODEX_PYTHON" scripts/update_proposal_status.py --proposal "$CODEX_HOME/skill-watcher/proposals/<proposal>.md" --status needs-validation
+"$MY_CODEX_PYTHON" scripts/update_proposal_status.py --proposal "$CODEX_HOME/skill-watcher/proposals/<proposal>.md" --status rejected --reason "insufficient evidence"
 ```
 
-Rejected proposals write a small buffer record under `~/.codex/skill-watcher/rejected/`.
+Rejected proposals write a small buffer record under `$CODEX_HOME/skill-watcher/rejected/`.
 
 ## Diagnostics
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/doctor.py
-/Users/max/.codex/venvs/my-codex/bin/python -m py_compile scripts/*.py
-/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s tests
+"$MY_CODEX_PYTHON" scripts/doctor.py
+"$MY_CODEX_PYTHON" -m py_compile scripts/*.py
+"$MY_CODEX_PYTHON" -m unittest discover -s tests
 ```

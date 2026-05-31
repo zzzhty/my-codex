@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from audit_repo import AuditFailure, audit_repository, render_report, resolve_state_dir, safe_slug
+from audit_repo import AuditFailure, audit_repository, expand_path, render_report, resolve_state_dir, safe_slug
 from commit_counter import load_config, load_state, mark_current, repo_status, state_path
 
 DEFAULT_CONFIG = Path("config/repos.json")
@@ -32,7 +32,7 @@ def audit_repo_from_config(repo_config: dict[str, Any]) -> dict[str, Any]:
     path_raw = repo_config.get("path")
     if not path_raw:
         raise AuditFailure(f"configured repo is missing required path: {repo_config}")
-    path = Path(str(path_raw)).expanduser()
+    path = expand_path(str(path_raw))
     name = str(repo_config.get("name") or path.name)
     return audit_repository(
         repo=path,
@@ -84,7 +84,7 @@ def render_daily_report(
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Write a report-only DocWatcher daily audit under state reports/.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Repo config JSON path.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/doc-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/doc-watcher.")
     parser.add_argument(
         "--mode",
         choices=("daily", "commit-dependent"),
@@ -99,7 +99,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
-    config_path = Path(args.config).expanduser()
+    config_path = expand_path(args.config)
     config = load_config(config_path)
     state_dir = resolve_state_dir(args.state_dir)
     state = load_state(state_dir)
@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         skipped=skipped,
         failures=failures,
     )
-    output = Path(args.output).expanduser() if args.output else default_report_path(state_dir)
+    output = expand_path(args.output) if args.output else default_report_path(state_dir)
     write_report(output, report)
     print(f"report: {output}")
     print(f"audited: {len(reports)}")

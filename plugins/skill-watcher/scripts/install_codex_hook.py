@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from codex_hook_config import (
     DEFAULT_STATE_DIR,
@@ -12,6 +11,7 @@ from codex_hook_config import (
     adapter_path,
     backup_existing_file,
     default_python,
+    expand_path,
     install_skill_watcher_hooks,
     load_config,
     render_diff,
@@ -20,8 +20,8 @@ from codex_hook_config import (
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Install Skill Watcher handlers into ~/.codex/hooks.json.")
-    parser.add_argument("--target", default=str(DEFAULT_TARGET), help="Hook config path. Defaults to ~/.codex/hooks.json.")
+    parser = argparse.ArgumentParser(description="Install Skill Watcher handlers into $CODEX_HOME/hooks.json.")
+    parser.add_argument("--target", default=str(DEFAULT_TARGET), help="Hook config path. Defaults to $CODEX_HOME/hooks.json.")
     parser.add_argument("--python", dest="python_path", default=str(default_python()), help="Python interpreter for the hook command.")
     parser.add_argument("--dry-run", action="store_true", help="Show the diff without writing.")
     parser.add_argument("--apply", action="store_true", help="Write the hook config.")
@@ -30,8 +30,8 @@ def main() -> None:
     if args.dry_run and args.apply:
         raise SystemExit("choose only one of --dry-run or --apply")
 
-    target = Path(args.target).expanduser()
-    python_path = Path(args.python_path).expanduser()
+    target = expand_path(args.target)
+    python_path = expand_path(args.python_path)
     adapter = adapter_path()
 
     if args.apply:

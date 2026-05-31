@@ -21,4 +21,4 @@ Upstream: https://github.com/mattpocock/skills
 - `write-a-skill`
 - `zoom-out`
 
-This plugin is the source of truth for these third-party skills in this Codex setup. Do not maintain separate copies under `~/.codex/skills`.
+This plugin is the source of truth for these third-party skills in this Codex setup. Do not maintain separate copies under `$CODEX_HOME/skills`.

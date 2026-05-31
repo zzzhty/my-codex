@@ -34,7 +34,7 @@
 
 - Dashboard future inputs：report path、repo name、finding severity、generated_at、status。
 - Webhook future inputs：repo identity、event type、revision range、received_at。
-- Runtime state remains under `~/.codex/doc-watcher/`.
+- Runtime state remains under `$CODEX_HOME/doc-watcher/`.
 
 ## Acceptance Criteria
 

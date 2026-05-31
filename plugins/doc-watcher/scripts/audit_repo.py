@@ -13,7 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "doc-watcher"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_STATE_DIR = CODEX_HOME / "doc-watcher"
 ENTRY_FILES = ("README.md", "AGENTS.md", "CONTEXT.md", "CHANGELOG.md", "TODO.md", "todo.md")
 DOC_DIRS = ("docs", "wiki", ".codex")
 DOC_EXTENSIONS = {".md", ".mdx", ".rst", ".txt", ".yml", ".yaml", ".json", ".toml"}
@@ -54,7 +55,11 @@ class AuditFailure(RuntimeError):
 
 
 def resolve_state_dir(raw: str | None = None) -> Path:
-    return Path(raw or os.environ.get("DOC_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+    return expand_path(raw or os.environ.get("DOC_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
+
+
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
 
 
 def now_local() -> dt.datetime:
@@ -432,7 +437,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--watch-term", action="append", default=[], help="Term to flag when found in active docs.")
     parser.add_argument("--recent", type=int, default=5, help="Recent commit window for changed-file evidence.")
     parser.add_argument("--since-ref", help="Git ref to diff against HEAD.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/doc-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/doc-watcher.")
     parser.add_argument("--output", help="Audit report output path. Defaults to state audits/.")
     parser.add_argument("--print-report", action="store_true", help="Print the report to stdout.")
     return parser.parse_args(argv)
@@ -440,7 +445,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
-    repo = Path(args.repo).expanduser()
+    repo = expand_path(args.repo)
     name = args.name or repo.name
     result = audit_repository(
         repo=repo,
@@ -452,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
         since_ref=args.since_ref,
     )
     report = render_report(result)
-    output = Path(args.output).expanduser() if args.output else default_audit_path(resolve_state_dir(args.state_dir), name)
+    output = expand_path(args.output) if args.output else default_audit_path(resolve_state_dir(args.state_dir), name)
     write_report(output, report)
     print(f"audit: {output}")
     print(f"findings: {len(result['findings'])}")

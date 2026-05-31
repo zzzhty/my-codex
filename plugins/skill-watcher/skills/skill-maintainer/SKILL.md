@@ -9,7 +9,7 @@ Use this skill when asked to maintain or improve a Codex skill from Skill Watche
 
 ## Workflow
 
-1. Locate Skill Watcher state under `~/.codex/skill-watcher/`.
+1. Locate Skill Watcher state under `$CODEX_HOME/skill-watcher/`.
 2. Read the target skill's current `SKILL.md`.
 3. Summarize relevant usage evidence with `scripts/summarize_logs.py`.
 4. Generate a proposal with `scripts/propose_skill_patch.py`.

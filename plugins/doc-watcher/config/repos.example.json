@@ -2,7 +2,7 @@
   "repos": [
     {
       "name": "my-codex",
-      "path": "/Users/max/Projects/my-codex",
+      "path": "../../..",
       "docs": [
         "README.md",
         "AGENTS.md",

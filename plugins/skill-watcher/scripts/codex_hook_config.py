@@ -14,10 +14,15 @@ from pathlib import Path
 from typing import Any
 
 
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
+
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TOOLING_VENV = Path.home() / ".codex" / "venvs" / "my-codex"
-DEFAULT_TARGET = Path.home() / ".codex" / "hooks.json"
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+CODEX_HOME = expand_path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+DEFAULT_TOOLING_VENV = CODEX_HOME / "venvs" / "my-codex"
+DEFAULT_TARGET = CODEX_HOME / "hooks.json"
+DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
 STATUS_PREFIX = "Skill Watcher:"
 ADAPTER_NAME = "codex_hook_adapter.py"
@@ -26,7 +31,7 @@ ADAPTER_NAME = "codex_hook_adapter.py"
 def default_python() -> Path:
     override = os.environ.get("MY_CODEX_TOOLING_PYTHON")
     if override:
-        return Path(override).expanduser()
+        return expand_path(override)
     return DEFAULT_TOOLING_VENV / "bin" / "python"
 
 

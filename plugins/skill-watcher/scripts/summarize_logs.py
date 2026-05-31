@@ -13,11 +13,16 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
+
+
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
 
 
 def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return Path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
 
 
 def parse_timestamp(raw: str) -> datetime | None:
@@ -176,21 +181,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize Skill Watcher JSONL logs.")
     parser.add_argument("--skill", help="Filter by skill_name.")
     parser.add_argument("--since", help="Filter by relative time such as 1d or ISO timestamp.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
     parser.add_argument("--output", help="Write Markdown report to this path.")
     parser.add_argument("--write-report", action="store_true", help="Also write a timestamped report under state reports/.")
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = Path(args.log_file).expanduser() if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     since = parse_since(args.since)
     events = filter_events(read_events(log_file), skill=args.skill, since=since)
     report = build_report(events, skill=args.skill, since_raw=args.since, log_file=log_file)
 
     output_path: Path | None = None
     if args.output:
-        output_path = Path(args.output).expanduser()
+        output_path = expand_path(args.output)
     elif args.write_report:
         output_path = default_report_path(state_dir, args.skill)
     if output_path is not None:

@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | 有有效的 Codex plugin manifest | M0 | 已完成 | plugin validator |
 | 2 | 有 audit skill 入口 | M0 | 已完成 | `skills/doc-alignment/SKILL.md` 存在且 validator 可读 |
-| 3 | 可以对单个本地 repo 做只读 audit | M1 | 已完成 | `python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex --name my-codex --print-report` |
+| 3 | 可以对单个本地 repo 做只读 audit | M1 | 已完成 | `python3 scripts/audit_repo.py --repo ../.. --name my-codex --print-report` |
 | 4 | 可以按配置生成 daily report | M3/M4 | 已完成 | `python3 scripts/daily_report.py --config config/repos.example.json --print-report` |
 | 5 | 可以检查 commit-dependent due 状态 | M4 | 已完成 | `python3 scripts/commit_counter.py --config config/repos.example.json` |
 | 6 | 可以建立 last audited baseline | M4 | 已完成 | `python3 scripts/commit_counter.py --config config/repos.example.json --mark-current` |

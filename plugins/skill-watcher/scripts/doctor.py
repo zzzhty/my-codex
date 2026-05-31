@@ -4,16 +4,30 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
 from codex_hook_adapter import write_hook_event
-from codex_hook_config import DEFAULT_TARGET, HOOK_EVENTS, PLUGIN_ROOT, default_python, is_skill_watcher_handler, load_config
+from codex_hook_config import (
+    CODEX_HOME,
+    DEFAULT_TARGET,
+    HOOK_EVENTS,
+    PLUGIN_ROOT,
+    default_python,
+    expand_path,
+    is_skill_watcher_handler,
+    load_config,
+)
 from collect_event import DEFAULT_STATE_DIR, ensure_runtime_dirs
 
 
-VALIDATOR = Path("/Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py")
+def validator_path() -> Path:
+    override = os.environ.get("PLUGIN_VALIDATOR") or os.environ.get("CODEX_PLUGIN_VALIDATOR")
+    if override:
+        return expand_path(override)
+    return CODEX_HOME / "skills" / ".system" / "plugin-creator" / "scripts" / "validate_plugin.py"
 
 
 class Doctor:
@@ -62,10 +76,11 @@ class Doctor:
             self.fail(f"PyYAML import failed: {result.stderr.strip() or result.stdout.strip()}")
 
     def check_plugin_validation(self, python_path: Path) -> None:
-        if not VALIDATOR.is_file():
-            self.fail(f"plugin validator missing: {VALIDATOR}")
+        validator = validator_path()
+        if not validator.is_file():
+            self.fail(f"plugin validator missing: {validator}")
             return
-        result = subprocess.run([str(python_path), str(VALIDATOR), str(PLUGIN_ROOT)], text=True, capture_output=True)
+        result = subprocess.run([str(python_path), str(validator), str(PLUGIN_ROOT)], text=True, capture_output=True)
         if result.returncode == 0:
             self.ok("plugin validation passed")
         else:

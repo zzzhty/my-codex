@@ -1,6 +1,6 @@
 # Skill Watcher Log Schema
 
-Skill Watcher writes one redacted JSON object per line to `~/.codex/skill-watcher/logs/events.jsonl`.
+Skill Watcher writes one redacted JSON object per line to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
 
 Core fields:
 

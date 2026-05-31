@@ -4,11 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 from pathlib import Path
 
 
 TODO_MARKER = "[TODO:"
+
+
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
 
 
 def load_yaml_module():
@@ -17,7 +22,7 @@ def load_yaml_module():
     except ModuleNotFoundError as exc:
         raise SystemExit(
             "PyYAML is required for candidate validation. "
-            "Run `python3 /Users/max/Projects/my-codex/scripts/bootstrap_tooling_env.py`."
+            "Run `python3 scripts/bootstrap_tooling_env.py` from the my-codex repo root."
         ) from exc
     return yaml
 
@@ -75,8 +80,8 @@ def main() -> None:
     parser.add_argument("--cwd", help="Working directory for validation commands.")
     args = parser.parse_args()
 
-    candidate_path = Path(args.candidate_skill).expanduser().resolve()
-    cwd = Path(args.cwd).expanduser().resolve() if args.cwd else None
+    candidate_path = expand_path(args.candidate_skill).resolve()
+    cwd = expand_path(args.cwd).resolve() if args.cwd else None
     validate_skill(candidate_path)
     for command in args.validation_command or []:
         run_validation_command(command, cwd)

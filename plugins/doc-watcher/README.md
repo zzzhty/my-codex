@@ -27,7 +27,7 @@ MVP 优先跑通这条轻量闭环：
   -> 收集 README、AGENTS、docs、scripts、配置和 recent commits
   -> 生成 deterministic audit pack
   -> Codex 按 doc-alignment 语义审查
-  -> 写入 ~/.codex/doc-watcher/reports/
+  -> 写入 $CODEX_HOME/doc-watcher/reports/
   -> 操作者判断是否需要修改
 ```
 
@@ -52,7 +52,7 @@ scripts/doctor.py
 Runtime state 写入用户目录，不写目标 repo：
 
 ```text
-~/.codex/doc-watcher/
+$CODEX_HOME/doc-watcher/
 ├── reports/
 ├── audits/
 └── repo-state.json
@@ -79,7 +79,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
   "repos": [
     {
       "name": "my-codex",
-      "path": "/Users/max/Projects/my-codex",
+      "path": "../../..",
       "docs": [
         "README.md",
         "AGENTS.md",
@@ -102,6 +102,8 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 ```
 
 将 `config/repos.example.json` 复制为本地私有配置后再改路径。不要把包含私人路径或内部仓库列表的配置提交到共享仓库。
+
+Repo `path` supports environment variables and relative paths. Relative paths are resolved from the config file directory.
 
 ## Current MVP Status
 
@@ -129,7 +131,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 直接审计单个 repo：
 
 ```bash
-python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex --name my-codex --print-report
+python3 scripts/audit_repo.py --repo ../.. --name my-codex --print-report
 ```
 
 按配置生成日报：
@@ -148,7 +150,8 @@ python3 scripts/commit_counter.py --config config/repos.example.json
 
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
-cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
+PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}"
+(cd backend && uv run python "$PLUGIN_VALIDATOR" ..)
 ```
 
 旧 Web app 仍可本地运行，用于查看可复用界面和服务代码：

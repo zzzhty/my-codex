@@ -11,14 +11,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from summarize_logs import build_report, filter_events, parse_since, read_events
+from summarize_logs import build_report, expand_path, filter_events, parse_since, read_events
 
 
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 
 
 def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return Path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
 
 
 def safe_slug(value: str) -> str:
@@ -43,19 +44,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Write a Skill Watcher daily report under state reports/.")
     parser.add_argument("--skill", help="Filter by skill_name. Defaults to all skills.")
     parser.add_argument("--since", default="1d", help="Evidence window such as 1d, 24h, or ISO timestamp.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
     parser.add_argument("--output", help="Explicit report output path.")
     parser.add_argument("--print-report", action="store_true", help="Also print the full report to stdout.")
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = Path(args.log_file).expanduser() if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     since = parse_since(args.since)
     events = filter_events(read_events(log_file), skill=args.skill, since=since)
     report = build_report(events, skill=args.skill, since_raw=args.since, log_file=log_file)
 
-    output = Path(args.output).expanduser() if args.output else default_daily_report_path(state_dir, args.skill)
+    output = expand_path(args.output) if args.output else default_daily_report_path(state_dir, args.skill)
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         output.write_text(report + "\n", encoding="utf-8")

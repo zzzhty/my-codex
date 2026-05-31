@@ -17,7 +17,8 @@ from redact_event import redact_event
 
 SCHEMA_VERSION = 1
 DEFAULT_AGENT = "codex"
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 EVENT_FIELDS = [
     "schema_version",
     "event_id",
@@ -43,8 +44,12 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
+
+
 def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return Path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
 
 
 def ensure_runtime_dirs(state_dir: Path) -> None:
@@ -55,7 +60,7 @@ def ensure_runtime_dirs(state_dir: Path) -> None:
 def read_event(path: str | None) -> dict[str, Any]:
     if path:
         try:
-            raw = Path(path).read_text(encoding="utf-8")
+            raw = expand_path(path).read_text(encoding="utf-8")
         except OSError as exc:
             raise SystemExit(f"failed to read input path {path}: {exc}") from exc
     else:
@@ -145,7 +150,7 @@ def append_event(event: dict[str, Any], log_file: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Append a redacted Skill Watcher event.")
     parser.add_argument("--input", help="Path to event JSON. Defaults to stdin.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
     parser.add_argument("--agent")
     parser.add_argument("--event-type")
@@ -165,7 +170,7 @@ def main() -> None:
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = Path(args.log_file).expanduser() if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     event = normalize_event(read_event(args.input), args)
     event = redact_event(event)
 

@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 ALLOWED_STATUSES = {"draft", "needs-validation", "accepted", "rejected"}
 
 
@@ -19,8 +20,12 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def expand_path(raw: str | Path) -> Path:
+    return Path(os.path.expandvars(str(raw))).expanduser()
+
+
 def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return Path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
 
 
 def load_yaml_module():
@@ -29,7 +34,7 @@ def load_yaml_module():
     except ModuleNotFoundError as exc:
         raise SystemExit(
             "PyYAML is required for proposal status updates. "
-            "Run `python3 /Users/max/Projects/my-codex/scripts/bootstrap_tooling_env.py`."
+            "Run `python3 scripts/bootstrap_tooling_env.py` from the my-codex repo root."
         ) from exc
     return yaml
 
@@ -113,10 +118,10 @@ def main() -> None:
     parser.add_argument("--proposal", required=True, help="Proposal Markdown path.")
     parser.add_argument("--status", required=True, choices=sorted(ALLOWED_STATUSES))
     parser.add_argument("--reason", default="", help="Short reason to record in frontmatter and rejected buffer.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     args = parser.parse_args()
 
-    proposal = Path(args.proposal).expanduser().resolve()
+    proposal = expand_path(args.proposal).resolve()
     state_dir = state_dir_from_env_or_arg(args.state_dir)
     previous_status, rejected_path = update_status(proposal, args.status, state_dir=state_dir, reason=args.reason)
     print(f"updated {proposal}: {previous_status or 'unset'} -> {args.status}")

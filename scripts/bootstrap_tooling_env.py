@@ -4,13 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import venv
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_VENV = Path.home() / ".codex" / "venvs" / "my-codex"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
 DEFAULT_REQUIREMENTS = REPO_ROOT / "requirements-tools.txt"
 
 
@@ -21,7 +23,11 @@ def run(command: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create or refresh the shared my-codex tooling venv.")
-    parser.add_argument("--venv", default=str(DEFAULT_VENV), help="Target venv path. Defaults to ~/.codex/venvs/my-codex.")
+    parser.add_argument(
+        "--venv",
+        default=str(DEFAULT_VENV),
+        help="Target venv path. Defaults to ${CODEX_HOME:-$HOME/.codex}/venvs/my-codex.",
+    )
     parser.add_argument(
         "--requirements",
         default=str(DEFAULT_REQUIREMENTS),

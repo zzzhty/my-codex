@@ -16,7 +16,7 @@ This is the DocWatcher version of the alignment workflow. Do not defer semantic 
 3. Normalize names around user-facing semantics, not legacy implementation names. Preserve real code identifiers when required, but label them as compatibility surfaces, field names, migrations, or historical terms.
 4. Update references wherever people or tools will follow them, including hidden/config directories such as `.devcontainer`, `.github`, `.codex`, package scripts, READMEs, runbooks, and skill folders.
 5. Treat broken links, stale paths, failed validation commands, inconsistent naming, and failed audit commands as first-class failures. Fix the root cause before claiming alignment.
-6. In scheduled DocWatcher audits, keep target repositories read-only and write reports only under `~/.codex/doc-watcher/` or an explicit output path.
+6. In scheduled DocWatcher audits, keep target repositories read-only and write reports only under `$CODEX_HOME/doc-watcher/` or an explicit output path.
 
 ## Mode Selection
 
@@ -82,7 +82,7 @@ rg --hidden -n "<old-term>|<old-path>|<disputed-term>" <target> . --glob '!**/.g
 - current checklist, TODO index, or goal plan
 - package commands, devcontainer config, CI/workflow files, runbook references
 - subdirectory indexes, active planning files, and skill metadata
-- DocWatcher reports under `~/.codex/doc-watcher/reports/` or `~/.codex/doc-watcher/audits/`
+- DocWatcher reports under `$CODEX_HOME/doc-watcher/reports/` or `$CODEX_HOME/doc-watcher/audits/`
 
 3. Decide each file's role:
 
@@ -246,7 +246,8 @@ For DocWatcher plugin validation:
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
 python3 -m py_compile scripts/*.py
-cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
+PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}"
+(cd backend && uv run python "$PLUGIN_VALIDATOR" ..)
 ```
 
 If the validator cannot run because a dependency is missing, install the missing dependency when the user allowed dependency installation. Otherwise report the exact missing module and do not claim validator success. A manual frontmatter or link check may be reported only as a separate partial check, not as a substitute validator pass.

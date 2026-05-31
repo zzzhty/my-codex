@@ -20,7 +20,7 @@
 - Report-only audit summary。
 - Daily scan。
 - Commit-dependent scan。
-- Runtime state：`~/.codex/doc-watcher/reports/`、`audits/`、`repo-state.json`。
+- Runtime state：`$CODEX_HOME/doc-watcher/reports/`、`audits/`、`repo-state.json`。
 - Dashboard 和 webhook 的复用设计边界。
 
 ## Out Of Scope
@@ -39,7 +39,7 @@
 - 触发路线：daily 和 commit-dependent 并行支持。
 - 状态路线：`never_audited -> due -> audited -> needs_operator_decision`。
 - 修改路线：只有用户明确要求 implementation 时才进入 `doc-alignment` 修改流程。
-- Runtime 目录：默认 `~/.codex/doc-watcher/`。
+- Runtime 目录：默认 `$CODEX_HOME/doc-watcher/`。
 - 可复用旧资产：dashboard、webhook。
 
 ## Shared Acceptance Criteria

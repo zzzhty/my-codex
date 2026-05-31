@@ -10,7 +10,7 @@
 
 ## Deliverables
 
-- Report 写入 `~/.codex/doc-watcher/reports/` 或 `audits/`。
+- Report 写入 `$CODEX_HOME/doc-watcher/reports/` 或 `audits/`。
 - Summary 包含 reviewed repos、source-of-truth、recent commits、changed files、findings 和 review focus。
 - Daily report 汇总 audited/skipped/failed repos。
 - Failure 不隐藏：至少一个 repo 失败时 daily command 退出非零。
@@ -34,8 +34,8 @@
 
 ## Interfaces
 
-- `audit_repo.py` 默认写 `~/.codex/doc-watcher/audits/`。
-- `daily_report.py` 默认写 `~/.codex/doc-watcher/reports/`。
+- `audit_repo.py` 默认写 `$CODEX_HOME/doc-watcher/audits/`。
+- `daily_report.py` 默认写 `$CODEX_HOME/doc-watcher/reports/`。
 - `DOC_WATCHER_STATE_DIR` 可覆盖 runtime state。
 
 ## Acceptance Criteria

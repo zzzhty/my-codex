@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from audit_repo import AuditFailure, require_git_repo, resolve_state_dir
+from audit_repo import AuditFailure, expand_path, require_git_repo, resolve_state_dir
 from commit_counter import load_config
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -97,7 +97,7 @@ class Doctor:
                 self.fail(f"repo {name} missing path")
                 continue
             try:
-                root = require_git_repo(Path(str(path)).expanduser())
+                root = require_git_repo(expand_path(str(path)))
             except AuditFailure as exc:
                 self.fail(f"repo {name} invalid: {exc}")
                 continue
@@ -107,7 +107,7 @@ class Doctor:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check DocWatcher plugin, config, and runtime basics.")
     parser.add_argument("--config", help="Repo config JSON path. Defaults to config/repos.json, then example config.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/doc-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/doc-watcher.")
     return parser.parse_args(argv)
 
 
@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor.check_plugin()
     doctor.check_layout()
     doctor.check_state_dir(resolve_state_dir(args.state_dir))
-    doctor.check_config(Path(args.config).expanduser() if args.config else None)
+    doctor.check_config(expand_path(args.config) if args.config else None)
     if doctor.failures:
         print()
         print(f"doctor failed: {len(doctor.failures)} failure(s), {len(doctor.warnings)} warning(s)")

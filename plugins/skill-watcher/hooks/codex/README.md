@@ -1,19 +1,23 @@
 # Codex Hook Integration
 
-Skill Watcher V1 installs user-level Codex command hooks in `~/.codex/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
+Skill Watcher V1 installs user-level Codex command hooks in `$CODEX_HOME/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
 
 Install:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/install_codex_hook.py --dry-run
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/install_codex_hook.py --apply
+export MY_CODEX_ROOT="${MY_CODEX_ROOT:-$(git rev-parse --show-toplevel)}"
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export MY_CODEX_PYTHON="${MY_CODEX_PYTHON:-$CODEX_HOME/venvs/my-codex/bin/python}"
+
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --dry-run
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --apply
 ```
 
 Uninstall:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/uninstall_codex_hook.py --dry-run
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/uninstall_codex_hook.py --apply
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/uninstall_codex_hook.py" --dry-run
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/uninstall_codex_hook.py" --apply
 ```
 
 After install, open `/hooks` in Codex and review/trust the Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
@@ -23,7 +27,7 @@ After install, open `/hooks` in Codex and review/trust the Skill Watcher command
 The installed command is:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/codex_hook_adapter.py
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/codex_hook_adapter.py"
 ```
 
 It observes these Codex lifecycle events:
@@ -33,7 +37,7 @@ It observes these Codex lifecycle events:
 - `PostToolUse`
 - `Stop`
 
-The adapter reads one Codex hook JSON object from stdin and appends a normalized, redacted Skill Watcher event to `~/.codex/skill-watcher/logs/events.jsonl`.
+The adapter reads one Codex hook JSON object from stdin and appends a normalized, redacted Skill Watcher event to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
 
 ## Mapping
 

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from audit_repo import AuditFailure, require_git_repo, resolve_state_dir, run_git
+from audit_repo import AuditFailure, expand_path, require_git_repo, resolve_state_dir, run_git
 
 DEFAULT_CONFIG = Path("config/repos.json")
 
@@ -24,6 +24,16 @@ def load_config(path: Path) -> dict[str, Any]:
         raise AuditFailure(f"invalid JSON config {path}: line {exc.lineno}, column {exc.colno}") from exc
     if not isinstance(data, dict) or not isinstance(data.get("repos"), list):
         raise AuditFailure(f"config {path} must contain a top-level repos array")
+    config_dir = path.parent.resolve()
+    for repo in data["repos"]:
+        if not isinstance(repo, dict):
+            raise AuditFailure(f"config {path} repos entries must be objects")
+        raw_path = repo.get("path")
+        if isinstance(raw_path, str):
+            repo_path = expand_path(raw_path)
+            if not repo_path.is_absolute():
+                repo_path = (config_dir / repo_path).resolve()
+            repo["path"] = str(repo_path)
     return data
 
 
@@ -70,7 +80,7 @@ def repo_status(repo_config: dict[str, Any], state: dict[str, Any]) -> dict[str,
     path_raw = repo_config.get("path")
     if not path_raw:
         raise AuditFailure(f"repo {name} is missing required path")
-    repo = require_git_repo(Path(str(path_raw)).expanduser())
+    repo = require_git_repo(expand_path(str(path_raw)))
     head = run_git(repo, ["rev-parse", "HEAD"])
     threshold = int(repo_config.get("commit_threshold") or 0)
     repo_state = state.get("repos", {}).get(name, {})
@@ -103,14 +113,14 @@ def mark_current(state_dir: Path, state: dict[str, Any], statuses: list[dict[str
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Show commit-threshold trigger status for configured repos.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Repo config JSON path.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/doc-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/doc-watcher.")
     parser.add_argument("--mark-current", action="store_true", help="Mark current HEAD as audited for all configured repos.")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
-    config = load_config(Path(args.config).expanduser())
+    config = load_config(expand_path(args.config))
     state_dir = resolve_state_dir(args.state_dir)
     state = load_state(state_dir)
     statuses = [repo_status(repo, state) for repo in config["repos"]]

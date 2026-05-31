@@ -28,7 +28,7 @@
 
 - MVP 不修改目标 repo，不生成默认补丁。
 - MVP 不引入远端代码托管写入流程。
-- Runtime state 只写入 `~/.codex/doc-watcher/` 或显式输出路径。
+- Runtime state 只写入 `$CODEX_HOME/doc-watcher/` 或显式输出路径。
 - 配置默认使用 JSON，避免增加个人工作流依赖。
 - 每个 report 必须包含证据路径、失败原因、推荐动作和未解决 blocker。
 - 每个 milestone 完成后更新 `acceptance-checklist.md` 对应项。

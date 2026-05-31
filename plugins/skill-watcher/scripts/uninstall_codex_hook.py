@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from codex_hook_config import (
     DEFAULT_STATE_DIR,
     DEFAULT_TARGET,
     backup_existing_file,
+    expand_path,
     load_config,
     remove_skill_watcher_hooks,
     render_diff,
@@ -18,8 +18,8 @@ from codex_hook_config import (
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Uninstall Skill Watcher handlers from ~/.codex/hooks.json.")
-    parser.add_argument("--target", default=str(DEFAULT_TARGET), help="Hook config path. Defaults to ~/.codex/hooks.json.")
+    parser = argparse.ArgumentParser(description="Uninstall Skill Watcher handlers from $CODEX_HOME/hooks.json.")
+    parser.add_argument("--target", default=str(DEFAULT_TARGET), help="Hook config path. Defaults to $CODEX_HOME/hooks.json.")
     parser.add_argument("--dry-run", action="store_true", help="Show the diff without writing.")
     parser.add_argument("--apply", action="store_true", help="Write the hook config.")
     args = parser.parse_args()
@@ -27,7 +27,7 @@ def main() -> None:
     if args.dry_run and args.apply:
         raise SystemExit("choose only one of --dry-run or --apply")
 
-    target = Path(args.target).expanduser()
+    target = expand_path(args.target)
     before = load_config(target)
     after, removed = remove_skill_watcher_hooks(before)
 

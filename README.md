@@ -4,9 +4,7 @@ Local Codex marketplace for personal development plugins, reusable skills, and g
 
 This repository is the development mainline for the plugins and personal Codex configuration listed below. Edit the source copies here, then reinstall or refresh the Codex plugin cache when a change should be available to new Codex sessions.
 
-`AGENTS.md` is also maintained here and linked into `~/.codex/AGENTS.md`.
-
-The old standalone project checkouts at `/Users/max/Projects/skill-watcher` and `/Users/max/Projects/doc-watcher` have been retired. The canonical source for both plugins is now under `plugins/` in this repository.
+`AGENTS.md` is also maintained here and linked into `$CODEX_HOME/AGENTS.md`.
 
 ## Plugins
 
@@ -18,7 +16,12 @@ The old standalone project checkouts at `/Users/max/Projects/skill-watcher` and 
 ## Local Install
 
 ```bash
-codex plugin marketplace add /Users/max/Projects/my-codex
+export MY_CODEX_ROOT="${MY_CODEX_ROOT:-$PWD}"
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export MY_CODEX_PYTHON="${MY_CODEX_PYTHON:-$CODEX_HOME/venvs/my-codex/bin/python}"
+export PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py}"
+
+codex plugin marketplace add "$MY_CODEX_ROOT"
 codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add personal-skills@my-codex
@@ -28,7 +31,7 @@ codex plugin add mattpocock-skills@my-codex
 Global instructions are linked with:
 
 ```bash
-ln -sfn /Users/max/Projects/my-codex/AGENTS.md /Users/max/.codex/AGENTS.md
+ln -sfn "$MY_CODEX_ROOT/AGENTS.md" "$CODEX_HOME/AGENTS.md"
 ```
 
 ## Tooling Runtime
@@ -42,7 +45,7 @@ python3 scripts/bootstrap_tooling_env.py
 The shared interpreter is:
 
 ```text
-/Users/max/.codex/venvs/my-codex/bin/python
+$MY_CODEX_PYTHON
 ```
 
 Use this interpreter for Codex hooks, Skill Watcher maintenance scripts, and skill/plugin validation that needs my-codex tooling dependencies.
@@ -51,10 +54,10 @@ Use this interpreter for Codex hooks, Skill Watcher maintenance scripts, and ski
 
 ```bash
 python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/skill-watcher
-cd plugins/doc-watcher/backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/personal-skills
-/Users/max/.codex/venvs/my-codex/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/mattpocock-skills
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/skill-watcher"
+(cd plugins/doc-watcher/backend && uv run python "$PLUGIN_VALIDATOR" ..)
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/personal-skills"
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
 ```
 
 ## Layout

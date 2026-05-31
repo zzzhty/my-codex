@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from collect_event import append_event, ensure_runtime_dirs, normalize_event, state_dir_from_env_or_arg
+from collect_event import append_event, ensure_runtime_dirs, expand_path, normalize_event, state_dir_from_env_or_arg
 from redact_event import redact_event, redact_string
 
 
@@ -212,7 +212,7 @@ def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect a Codex hook event for Skill Watcher.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
     parser.add_argument("--dry-run", action="store_true", help="Normalize and print the event without appending.")
     parser.add_argument("--print-event", action="store_true", help="Print the normalized event JSON. Not for hook config use.")
@@ -220,7 +220,7 @@ def main() -> None:
 
     payload = read_payload()
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = Path(args.log_file).expanduser() if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     event = normalize_hook_payload(payload)
 
     if args.dry_run:

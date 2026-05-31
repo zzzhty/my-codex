@@ -16,7 +16,7 @@ Frontend code lives in `frontend/src`: shared API clients in `api`, reusable UI 
 - `python3 scripts/daily_report.py --config config/repos.example.json --print-report`: generate a report from configured repos.
 - `python3 scripts/commit_counter.py --config config/repos.example.json`: inspect commit-threshold trigger state.
 - `python3 scripts/doctor.py --config config/repos.example.json`: check plugin/runtime/config basics.
-- `cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher`: validate plugin metadata with a Python environment that includes PyYAML.
+- `PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}" && cd backend && uv run python "$PLUGIN_VALIDATOR" ..`: validate plugin metadata with a Python environment that includes PyYAML.
 - `cd backend && uv sync`: install backend dependencies.
 - `cd backend && uv run python -m uvicorn app.main:app --reload`: run the legacy FastAPI API on port `8000`.
 - `cd backend && uv run --all-groups python -m pytest`: run backend tests.
@@ -30,7 +30,7 @@ Frontend code lives in `frontend/src`: shared API clients in `api`, reusable UI 
 
 Use 4-space indentation, type hints, `snake_case` modules/functions, and `PascalCase` classes for Python. Prefer Pydantic models for backend contracts and keep route handlers thin by moving workflow logic into `services`.
 
-Plugin scripts should use only the Python standard library unless a dependency is explicitly added and documented. Keep target repo operations read-only by default, and write runtime artifacts only under `~/.codex/doc-watcher/` unless the user passes an explicit output path.
+Plugin scripts should use only the Python standard library unless a dependency is explicitly added and documented. Keep target repo operations read-only by default, and write runtime artifacts only under `$CODEX_HOME/doc-watcher/` unless the user passes an explicit output path.
 
 Use TypeScript and React function components in the frontend. Name components and page files in `PascalCase`, hooks as `useSomething`, and API helpers with clear verb-based names. Keep styling consistent with the Tailwind CSS setup.
 
