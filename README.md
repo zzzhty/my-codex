@@ -10,7 +10,8 @@ This repository is the development mainline for the plugins and personal Codex c
 
 - `skill-watcher`: observes Codex skill usage and produces report/proposal artifacts.
 - `doc-watcher`: audits configured local repositories for documentation semantic drift.
-- `personal-skills`: packages reusable personal skills currently migrated from `~/.codex/skills`.
+- `personal-skills`: packages original personal skills maintained in this repository.
+- `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
 
 ## Local Install
 
@@ -19,6 +20,7 @@ codex plugin marketplace add /Users/max/Projects/my-codex
 codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add personal-skills@my-codex
+codex plugin add mattpocock-skills@my-codex
 ```
 
 Global instructions are linked with:
@@ -34,6 +36,7 @@ python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 cd plugins/skill-watcher && .venv/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py "$PWD"
 cd plugins/doc-watcher/backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
 cd plugins/personal-skills && /Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py "$PWD"
+cd plugins/mattpocock-skills && /Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py "$PWD"
 ```
 
 ## Layout
@@ -44,4 +47,5 @@ plugins/
   skill-watcher/
   doc-watcher/
   personal-skills/
+  mattpocock-skills/
 ```

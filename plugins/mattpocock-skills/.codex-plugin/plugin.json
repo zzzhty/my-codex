@@ -1,0 +1,20 @@
+{
+  "name": "mattpocock-skills",
+  "version": "0.1.0",
+  "description": "Codex-adapted local copy of Matt Pocock's engineering skills.",
+  "author": {
+    "name": "Matt Pocock"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Matt Pocock Skills",
+    "shortDescription": "Use Matt Pocock's engineering skills in Codex.",
+    "longDescription": "Matt Pocock Skills packages a local Codex-adapted copy of mattpocock/skills, including engineering, planning, triage, diagnosis, TDD, architecture, and productivity workflows.",
+    "developerName": "Matt Pocock",
+    "category": "Productivity",
+    "capabilities": [
+      "skills"
+    ],
+    "defaultPrompt": "Help me use Matt Pocock's engineering skills."
+  }
+}
