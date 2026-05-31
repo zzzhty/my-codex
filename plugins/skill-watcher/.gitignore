@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Runtime state belongs outside the plugin source tree.
+.skill-watcher/
+logs/
+reports/
+proposals/
+snapshots/
+rejected/
+backups/

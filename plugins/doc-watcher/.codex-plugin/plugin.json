@@ -1,0 +1,23 @@
+{
+  "name": "doc-watcher",
+  "version": "0.2.0",
+  "description": "Audit configured local repositories for documentation semantic drift and produce operator-reviewed summaries.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DocWatcher",
+    "shortDescription": "Audit docs for semantic drift",
+    "longDescription": "DocWatcher monitors configured local repositories, collects read-only evidence about documentation, commits, links, and terminology drift, and produces audit summaries for operator review without automatically modifying target repositories.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Audit configured repositories for documentation semantic drift"
+    ]
+  }
+}

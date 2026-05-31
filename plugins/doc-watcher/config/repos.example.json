@@ -1,0 +1,19 @@
+{
+  "repos": [
+    {
+      "name": "doc-watcher",
+      "path": "/Users/max/Projects/codex-marketplace/plugins/doc-watcher",
+      "docs": [
+        "plugins/doc-watcher/README.md",
+        "plugins/doc-watcher/AGENTS.md",
+        "plugins/doc-watcher/.codex/mvp-execution"
+      ],
+      "source_of_truth": [
+        "plugins/doc-watcher/README.md",
+        "plugins/doc-watcher/AGENTS.md"
+      ],
+      "watch_terms": [],
+      "commit_threshold": 5
+    }
+  ]
+}

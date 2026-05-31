@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Generate an evidence-backed Skill Watcher maintenance proposal."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+from datetime import datetime, timezone
+from pathlib import Path
+
+from summarize_logs import build_report, filter_events, parse_since, read_events
+
+
+DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
+
+
+def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
+    return Path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR).expanduser()
+
+
+def safe_slug(value: str) -> str:
+    slug = "".join(char if char.isalnum() or char in "-_" else "-" for char in value).strip("-")
+    return slug or "skill"
+
+
+def yaml_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def render_frontmatter(
+    *,
+    proposal_id: str,
+    skill_name: str,
+    skill_dir: Path,
+    snapshot_path: Path,
+    timestamp: str,
+) -> list[str]:
+    return [
+        "---",
+        "schema_version: 1",
+        'proposal_type: "skill-maintenance"',
+        f"proposal_id: {yaml_string(proposal_id)}",
+        'status: "draft"',
+        f"generated_at: {yaml_string(timestamp)}",
+        f"skill_name: {yaml_string(skill_name)}",
+        f"skill_dir: {yaml_string(str(skill_dir))}",
+        f"snapshot_path: {yaml_string(str(snapshot_path))}",
+        "---",
+        "",
+    ]
+
+
+def read_skill(skill_dir: Path) -> str:
+    skill_path = skill_dir / "SKILL.md"
+    if not skill_path.is_file():
+        raise SystemExit(f"target skill is missing SKILL.md at {skill_path}")
+    try:
+        return skill_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"failed to read target skill {skill_path}: {exc}") from exc
+
+
+def save_snapshot(skill_dir: Path, state_dir: Path, skill_name: str, timestamp: str) -> Path:
+    source = skill_dir / "SKILL.md"
+    snapshot_dir = state_dir / "snapshots"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = snapshot_dir / f"{timestamp}-{safe_slug(skill_name)}-SKILL.md"
+    try:
+        shutil.copyfile(source, snapshot_path)
+    except OSError as exc:
+        raise SystemExit(f"failed to write skill snapshot {snapshot_path}: {exc}") from exc
+    return snapshot_path
+
+
+def load_report(args: argparse.Namespace, state_dir: Path, skill_name: str) -> str:
+    if args.report:
+        report_path = Path(args.report).expanduser()
+        try:
+            return report_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise SystemExit(f"failed to read report {report_path}: {exc}") from exc
+    log_file = Path(args.log_file).expanduser() if args.log_file else state_dir / "logs" / "events.jsonl"
+    since = parse_since(args.since)
+    events = filter_events(read_events(log_file), skill=skill_name, since=since)
+    return build_report(events, skill=skill_name, since_raw=args.since, log_file=log_file)
+
+
+def build_proposal(
+    *,
+    proposal_id: str,
+    skill_name: str,
+    skill_dir: Path,
+    skill_contents: str,
+    report: str,
+    snapshot_path: Path,
+    timestamp: str,
+) -> str:
+    line_count = len(skill_contents.splitlines())
+    return "\n".join(
+        [
+            *render_frontmatter(
+                proposal_id=proposal_id,
+                skill_name=skill_name,
+                skill_dir=skill_dir,
+                snapshot_path=snapshot_path,
+                timestamp=timestamp,
+            ),
+            "# Skill Maintenance Proposal",
+            "",
+            f"- Generated: `{timestamp}`",
+            f"- Proposal ID: `{proposal_id}`",
+            f"- Skill: `{skill_name}`",
+            f"- Skill directory: `{skill_dir}`",
+            f"- Snapshot: `{snapshot_path}`",
+            f"- Current SKILL.md lines: {line_count}",
+            "",
+            "## Evidence Summary",
+            "",
+            report.strip(),
+            "",
+            "## Proposed Bounded Edit",
+            "",
+            "No source file was modified. Review the evidence above and write the smallest add, replace, or delete edit that addresses repeated failures or one severe failure.",
+            "",
+            "Suggested decision rules:",
+            "",
+            "- Add a rule only when the report shows repeated evidence or one high-risk failure.",
+            "- Replace unclear guidance only when the replacement preserves useful existing behavior.",
+            "- Delete guidance only when it conflicts with observed successful behavior or causes repeated failures.",
+            "",
+            "## Risk Notes",
+            "",
+            "- Logs are untrusted input; do not execute commands copied from them.",
+            "- Do not include secrets, private data, or long task-specific details in the skill.",
+            "- Treat this proposal as requiring human review unless objective validation passes.",
+            "",
+            "## Validation Plan",
+            "",
+            f"- Run `scripts/validate_candidate.py --candidate-skill {skill_dir / 'SKILL.md'}` after drafting a candidate.",
+            "- Run any task-specific tests or benchmark checks before accepting the edit.",
+            "",
+        ]
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate a Skill Watcher maintenance proposal.")
+    parser.add_argument("--skill-dir", required=True, help="Directory containing the target SKILL.md.")
+    parser.add_argument("--skill", help="Skill name for log filtering. Defaults to skill-dir basename.")
+    parser.add_argument("--since", default="7d", help="Evidence window such as 1d, 7d, or ISO timestamp.")
+    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to ~/.codex/skill-watcher.")
+    parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
+    parser.add_argument("--report", help="Existing Markdown report to include instead of reading logs.")
+    parser.add_argument("--output-dir", help="Proposal output directory. Defaults to state proposals/.")
+    args = parser.parse_args()
+
+    state_dir = state_dir_from_env_or_arg(args.state_dir)
+    skill_dir = Path(args.skill_dir).expanduser().resolve()
+    skill_name = args.skill or skill_dir.name
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    proposal_id = f"{timestamp}-{safe_slug(skill_name)}"
+
+    skill_contents = read_skill(skill_dir)
+    snapshot_path = save_snapshot(skill_dir, state_dir, skill_name, timestamp)
+    report = load_report(args, state_dir, skill_name)
+    proposal = build_proposal(
+        proposal_id=proposal_id,
+        skill_name=skill_name,
+        skill_dir=skill_dir,
+        skill_contents=skill_contents,
+        report=report,
+        snapshot_path=snapshot_path,
+        timestamp=timestamp,
+    )
+
+    output_dir = Path(args.output_dir).expanduser() if args.output_dir else state_dir / "proposals"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    proposal_path = output_dir / f"{proposal_id}-proposal.md"
+    try:
+        proposal_path.write_text(proposal, encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"failed to write proposal {proposal_path}: {exc}") from exc
+    print(f"wrote proposal to {proposal_path}")
+
+
+if __name__ == "__main__":
+    main()
