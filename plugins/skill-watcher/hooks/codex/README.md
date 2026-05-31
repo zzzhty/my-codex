@@ -5,15 +5,15 @@ Skill Watcher V1 installs user-level Codex command hooks in `~/.codex/hooks.json
 Install:
 
 ```bash
-/Users/max/Projects/codex-marketplace/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/codex-marketplace/plugins/skill-watcher/scripts/install_codex_hook.py --dry-run
-/Users/max/Projects/codex-marketplace/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/codex-marketplace/plugins/skill-watcher/scripts/install_codex_hook.py --apply
+/Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/install_codex_hook.py --dry-run
+/Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/install_codex_hook.py --apply
 ```
 
 Uninstall:
 
 ```bash
-/Users/max/Projects/codex-marketplace/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/codex-marketplace/plugins/skill-watcher/scripts/uninstall_codex_hook.py --dry-run
-/Users/max/Projects/codex-marketplace/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/codex-marketplace/plugins/skill-watcher/scripts/uninstall_codex_hook.py --apply
+/Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/uninstall_codex_hook.py --dry-run
+/Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/uninstall_codex_hook.py --apply
 ```
 
 After install, open `/hooks` in Codex and review/trust the Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
@@ -23,7 +23,7 @@ After install, open `/hooks` in Codex and review/trust the Skill Watcher command
 The installed command is:
 
 ```bash
-/Users/max/Projects/codex-marketplace/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/codex-marketplace/plugins/skill-watcher/scripts/codex_hook_adapter.py
+/Users/max/Projects/my-codex/plugins/skill-watcher/.venv/bin/python /Users/max/Projects/my-codex/plugins/skill-watcher/scripts/codex_hook_adapter.py
 ```
 
 It observes these Codex lifecycle events:

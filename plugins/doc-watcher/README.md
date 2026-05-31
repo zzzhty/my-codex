@@ -79,7 +79,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
   "repos": [
     {
       "name": "doc-watcher",
-      "path": "/Users/max/Projects/codex-marketplace/plugins/doc-watcher",
+      "path": "/Users/max/Projects/my-codex/plugins/doc-watcher",
       "docs": [
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",
@@ -124,7 +124,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 直接审计单个 repo：
 
 ```bash
-python3 scripts/audit_repo.py --repo /Users/max/Projects/codex-marketplace/plugins/doc-watcher --name doc-watcher --print-report
+python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex/plugins/doc-watcher --name doc-watcher --print-report
 ```
 
 按配置生成日报：
@@ -143,7 +143,7 @@ python3 scripts/commit_counter.py --config config/repos.example.json
 
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
-cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/codex-marketplace/plugins/doc-watcher
+cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
 ```
 
 旧 Web app 仍可本地运行，用于查看可复用界面和服务代码：

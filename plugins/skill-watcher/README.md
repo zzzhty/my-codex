@@ -45,7 +45,7 @@ printf '%s\n' '{"event_type":"skill_stop","skill_name":"demo","outcome":"failure
 Validate the plugin:
 
 ```bash
-.venv/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/codex-marketplace/plugins/skill-watcher
+.venv/bin/python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/skill-watcher
 ```
 
 ## Codex Hook Install

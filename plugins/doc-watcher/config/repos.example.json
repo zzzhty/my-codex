@@ -2,7 +2,7 @@
   "repos": [
     {
       "name": "doc-watcher",
-      "path": "/Users/max/Projects/codex-marketplace/plugins/doc-watcher",
+      "path": "/Users/max/Projects/my-codex/plugins/doc-watcher",
       "docs": [
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",

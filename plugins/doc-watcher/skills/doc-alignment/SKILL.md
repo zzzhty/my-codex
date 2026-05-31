@@ -246,7 +246,7 @@ For DocWatcher plugin validation:
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
 python3 -m py_compile scripts/*.py
-cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/codex-marketplace/plugins/doc-watcher
+cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher
 ```
 
 If the validator cannot run because a dependency is missing, install the missing dependency when the user allowed dependency installation. Otherwise report the exact missing module and do not claim validator success. A manual frontmatter or link check may be reported only as a separate partial check, not as a substitute validator pass.
