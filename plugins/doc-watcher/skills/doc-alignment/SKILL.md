@@ -162,8 +162,6 @@ Use the bundled helper when it fits the tree:
 python <skill-folder>/scripts/check_planning_tree.py <planning-root>
 ```
 
-If this helper is not bundled in DocWatcher, state that it is unavailable and continue with direct inspection.
-
 ## Skill Alignment
 
 When the target area contains Codex skills:
