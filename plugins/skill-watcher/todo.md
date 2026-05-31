@@ -4,8 +4,8 @@ This document tracks what is still unclosed after the MVP and V1 implementation.
 
 ## Closed
 
-- MVP source-only plugin scaffold and local JSONL workflow are implemented.
-- V1 source implementation is committed in `e6a19dc`.
+- MVP plugin scaffold and local JSONL workflow are implemented.
+- V1 source implementation has been migrated into `my-codex/plugins/skill-watcher`.
 - User-level Codex hook path is confirmed as `~/.codex/hooks.json`.
 - Skill Watcher hook handlers are installed for `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
 - Daily report automation is configured as `Skill Watcher Daily Report`.

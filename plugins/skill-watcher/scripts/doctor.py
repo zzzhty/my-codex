@@ -35,9 +35,9 @@ class Doctor:
     def run(self) -> None:
         python_path = default_python()
         if python_path.is_file():
-            self.ok(f"venv python exists: {python_path}")
+            self.ok(f"tooling python exists: {python_path}")
         else:
-            self.fail(f"venv python missing: {python_path}")
+            self.fail(f"tooling python missing: {python_path}")
             return
 
         self.check_pyyaml(python_path)
@@ -94,18 +94,30 @@ class Doctor:
             self.fail(f"hook config field `hooks` is not an object: {DEFAULT_TARGET}")
             return
         matched_events = []
+        stale_commands = []
+        expected_python = str(default_python())
         for event in HOOK_EVENTS:
             for group in hooks.get(event, []):
                 if not isinstance(group, dict):
                     continue
-                if any(is_skill_watcher_handler(handler) for handler in group.get("hooks", [])):
+                matching_handlers = [handler for handler in group.get("hooks", []) if is_skill_watcher_handler(handler)]
+                if matching_handlers:
                     matched_events.append(event)
+                    for handler in matching_handlers:
+                        command = str(handler.get("command") or "")
+                        if expected_python not in command:
+                            stale_commands.append(command)
                     break
         if set(matched_events) == set(HOOK_EVENTS):
             self.ok(f"Skill Watcher hook handlers installed: {DEFAULT_TARGET}")
         else:
             missing = sorted(set(HOOK_EVENTS) - set(matched_events))
             self.warn(f"Skill Watcher hook config incomplete at {DEFAULT_TARGET}; missing: {', '.join(missing)}")
+        if stale_commands:
+            self.fail(
+                "Skill Watcher hook config uses a non-default Python interpreter; "
+                f"expected {expected_python}; stale commands: {stale_commands}"
+            )
 
     def check_sample_event(self) -> None:
         sample = {

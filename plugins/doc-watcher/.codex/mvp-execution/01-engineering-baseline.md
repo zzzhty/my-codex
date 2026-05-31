@@ -16,7 +16,7 @@
 - 插件 manifest 可被 plugin validator 接受。
 - 所有 plugin scripts 可 `py_compile`。
 - `doctor.py` 能检查 manifest、skill、scripts、state dir 和 repo config。
-- 示例配置可用于本 repo 的 smoke audit。
+- 示例配置可用于 `my-codex` monorepo 的 smoke audit。
 
 ## Task Breakdown
 
@@ -45,8 +45,8 @@
 
 - `python3 -m py_compile scripts/*.py` 通过。
 - `python3 scripts/doctor.py --config config/repos.example.json` 通过。
-- `python3 scripts/audit_repo.py --repo /Users/max/Projects/doc-watcher --name doc-watcher --print-report` 生成 report。
-- plugin validator 通过；使用 `cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/doc-watcher`，因为 validator 需要 PyYAML。
+- `python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex --name my-codex --print-report` 生成 report。
+- plugin validator 通过；使用 `cd backend && uv run python /Users/max/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py /Users/max/Projects/my-codex/plugins/doc-watcher`，因为 validator 需要 PyYAML。
 
 ## Risks
 

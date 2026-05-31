@@ -29,7 +29,7 @@ def load_yaml_module():
     except ModuleNotFoundError as exc:
         raise SystemExit(
             "PyYAML is required for proposal status updates. "
-            "Run `.venv/bin/pip install -r requirements-dev.txt` from the plugin root."
+            "Run `python3 /Users/max/Projects/my-codex/scripts/bootstrap_tooling_env.py`."
         ) from exc
     return yaml
 

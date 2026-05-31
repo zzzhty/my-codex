@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import difflib
 import json
+import os
 import shlex
 import shutil
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ from typing import Any
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_TOOLING_VENV = Path.home() / ".codex" / "venvs" / "my-codex"
 DEFAULT_TARGET = Path.home() / ".codex" / "hooks.json"
 DEFAULT_STATE_DIR = Path.home() / ".codex" / "skill-watcher"
 HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
@@ -22,7 +24,10 @@ ADAPTER_NAME = "codex_hook_adapter.py"
 
 
 def default_python() -> Path:
-    return PLUGIN_ROOT / ".venv" / "bin" / "python"
+    override = os.environ.get("MY_CODEX_TOOLING_PYTHON")
+    if override:
+        return Path(override).expanduser()
+    return DEFAULT_TOOLING_VENV / "bin" / "python"
 
 
 def adapter_path() -> Path:

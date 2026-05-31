@@ -1,1 +1,2 @@
-PyYAML>=6.0.3,<7
+# Compatibility wrapper for the shared my-codex tooling dependencies.
+-r ../../requirements-tools.txt

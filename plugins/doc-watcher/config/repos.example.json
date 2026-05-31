@@ -1,16 +1,21 @@
 {
   "repos": [
     {
-      "name": "doc-watcher",
-      "path": "/Users/max/Projects/my-codex/plugins/doc-watcher",
+      "name": "my-codex",
+      "path": "/Users/max/Projects/my-codex",
       "docs": [
+        "README.md",
+        "AGENTS.md",
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",
-        "plugins/doc-watcher/.codex/mvp-execution"
+        "plugins/doc-watcher/.codex/mvp-execution",
+        "plugins/skill-watcher/README.md",
+        "plugins/skill-watcher/hooks/codex/README.md",
+        "plugins/skill-watcher/todo.md"
       ],
       "source_of_truth": [
-        "plugins/doc-watcher/README.md",
-        "plugins/doc-watcher/AGENTS.md"
+        "README.md",
+        "AGENTS.md"
       ],
       "watch_terms": [],
       "commit_threshold": 5

@@ -78,16 +78,21 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 {
   "repos": [
     {
-      "name": "doc-watcher",
-      "path": "/Users/max/Projects/my-codex/plugins/doc-watcher",
+      "name": "my-codex",
+      "path": "/Users/max/Projects/my-codex",
       "docs": [
+        "README.md",
+        "AGENTS.md",
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",
-        "plugins/doc-watcher/.codex/mvp-execution"
+        "plugins/doc-watcher/.codex/mvp-execution",
+        "plugins/skill-watcher/README.md",
+        "plugins/skill-watcher/hooks/codex/README.md",
+        "plugins/skill-watcher/todo.md"
       ],
       "source_of_truth": [
-        "plugins/doc-watcher/README.md",
-        "plugins/doc-watcher/AGENTS.md"
+        "README.md",
+        "AGENTS.md"
       ],
       "watch_terms": [],
       "commit_threshold": 5
@@ -102,7 +107,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 
 当前已完成 MVP pivot 的源头改造：
 
-- 新增 source-only Codex plugin manifest。
+- 新增 Codex plugin manifest。
 - 新增 `doc-alignment` skill，定义只读语义 audit 工作流。
 - 新增 repo audit、daily report、commit counter 和 doctor 脚本。
 - active roadmap 已改为 audit-first，不再以远端分支评审作为未来路线。
@@ -124,7 +129,7 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
 直接审计单个 repo：
 
 ```bash
-python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex/plugins/doc-watcher --name doc-watcher --print-report
+python3 scripts/audit_repo.py --repo /Users/max/Projects/my-codex --name my-codex --print-report
 ```
 
 按配置生成日报：
