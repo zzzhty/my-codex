@@ -22,7 +22,8 @@ def load_yaml_module():
     except ModuleNotFoundError as exc:
         raise SystemExit(
             "PyYAML is required for candidate validation. "
-            "Run `python3 scripts/bootstrap_tooling_env.py` from the my-codex repo root."
+            "Run `python3 scripts/bootstrap_tooling_env.py` on Unix or "
+            "`py scripts\\bootstrap_tooling_env.py` on Windows from the my-codex repo root."
         ) from exc
     return yaml
 

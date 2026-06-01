@@ -70,7 +70,8 @@ class CodexHookAdapterTests(unittest.TestCase):
                     "hook_event_name": "UserPromptSubmit",
                     "cwd": "/tmp/workspace",
                     "session_id": "session-2",
-                    "prompt": "short prompt with sk-testsecret123456789",
+                    "turn_id": "turn-2",
+                    "prompt": "Use diagnose on this short prompt with sk-testsecret123456789",
                 },
                 state_dir=state_dir,
             )
@@ -80,7 +81,79 @@ class CodexHookAdapterTests(unittest.TestCase):
 
         self.assertEqual(len(lines), 1)
         self.assertEqual(event["event_type"], "user_prompt_submit")
+        self.assertEqual(event["skill_name"], "mattpocock-skills:diagnose")
+        self.assertEqual(event["codex"]["skill_attribution"], "prompt_mention")
+        self.assertTrue(event["codex"]["persisted"])
+        self.assertIn("user_skill_context", event["codex"])
         self.assertNotIn("sk-testsecret123456789", lines[0])
+
+    def test_suppresses_unmonitored_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            event = write_hook_event(
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "cwd": "/tmp/workspace",
+                    "session_id": "session-unknown",
+                    "turn_id": "turn-unknown",
+                    "prompt": "ordinary task without a monitored skill",
+                },
+                state_dir=state_dir,
+            )
+
+            log_file = state_dir / "logs" / "events.jsonl"
+            lines = log_file.read_text(encoding="utf-8").splitlines() if log_file.exists() else []
+
+        self.assertEqual(lines, [])
+        self.assertEqual(event["skill_name"], "unknown")
+        self.assertFalse(event["codex"]["persisted"])
+
+    def test_filters_success_tools_and_writes_turn_summary_for_monitored_skill(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            base = {
+                "cwd": "/tmp/workspace",
+                "session_id": "session-3",
+                "turn_id": "turn-3",
+            }
+            write_hook_event(
+                {
+                    **base,
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": "Use diagnose on the flaky pytest failure path",
+                },
+                state_dir=state_dir,
+            )
+            success = write_hook_event(
+                {
+                    **base,
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "Bash",
+                    "tool_response": {"exit_code": 0, "stdout": "ok"},
+                },
+                state_dir=state_dir,
+            )
+            failure = write_hook_event(
+                {
+                    **base,
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "Bash",
+                    "tool_response": {"exit_code": 1, "stderr": "error"},
+                },
+                state_dir=state_dir,
+            )
+            summary = write_hook_event({**base, "hook_event_name": "Stop"}, state_dir=state_dir)
+
+            log_file = state_dir / "logs" / "events.jsonl"
+            lines = log_file.read_text(encoding="utf-8").splitlines()
+
+        self.assertFalse(success["codex"]["persisted"])
+        self.assertTrue(failure["codex"]["persisted"])
+        self.assertEqual(summary["event_type"], "turn_summary")
+        self.assertEqual(summary["codex"]["turn_summary"]["tool_count"], 2)
+        self.assertEqual(summary["codex"]["turn_summary"]["tool_failures"], 1)
+        self.assertIn("user_skill_context", summary["codex"]["turn_summary"])
+        self.assertEqual(len(lines), 3)
 
 
 class HookConfigTests(unittest.TestCase):
@@ -114,11 +187,19 @@ class HookConfigTests(unittest.TestCase):
         )
 
         self.assertEqual(installed, installed_again)
-        self.assertEqual(removed, 4)
+        self.assertEqual(removed, 3)
         self.assertEqual(installed["hooks"]["PostToolUse"][0]["hooks"][0]["command"], "/usr/bin/true")
-        for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):
+        self.assertNotIn("SessionStart", installed["hooks"])
+        for event in ("UserPromptSubmit", "PostToolUse", "Stop"):
             handlers = [handler for group in installed["hooks"][event] for handler in group["hooks"]]
-            self.assertTrue(any("codex_hook_adapter.py" in handler["command"] for handler in handlers))
+            skill_watcher_handlers = [
+                handler for handler in handlers if "codex_hook_adapter.py" in handler["command"]
+            ]
+            self.assertTrue(skill_watcher_handlers)
+            for handler in skill_watcher_handlers:
+                self.assertIs(handler["async"], False)
+                self.assertEqual(handler["timeoutSec"], 10)
+                self.assertNotIn("timeout", handler)
 
     def test_uninstall_removes_only_skill_watcher_handlers(self) -> None:
         installed, _ = install_skill_watcher_hooks(
@@ -129,7 +210,7 @@ class HookConfigTests(unittest.TestCase):
 
         uninstalled, removed = remove_skill_watcher_hooks(installed)
 
-        self.assertEqual(removed, 4)
+        self.assertEqual(removed, 3)
         self.assertEqual(uninstalled["hooks"], {"Stop": [{"hooks": [{"type": "command", "command": "/usr/bin/true"}]}]})
 
 

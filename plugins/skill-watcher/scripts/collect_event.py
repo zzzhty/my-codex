@@ -53,7 +53,7 @@ def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
 
 
 def ensure_runtime_dirs(state_dir: Path) -> None:
-    for name in ("logs", "reports", "proposals", "snapshots", "rejected", "backups"):
+    for name in ("logs", "reports", "proposals", "snapshots", "rejected", "backups", "turns"):
         (state_dir / name).mkdir(parents=True, exist_ok=True)
 
 

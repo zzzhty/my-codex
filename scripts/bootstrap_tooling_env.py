@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import subprocess
+import sys
 import venv
 from pathlib import Path
 
@@ -19,6 +20,12 @@ DEFAULT_REQUIREMENTS = REPO_ROOT / "requirements-tools.txt"
 def run(command: list[str]) -> None:
     print("+ " + " ".join(command), flush=True)
     subprocess.run(command, check=True)
+
+
+def venv_python(venv_path: Path) -> Path:
+    if sys.platform == "win32":
+        return venv_path / "Scripts" / "python.exe"
+    return venv_path / "bin" / "python"
 
 
 def main() -> None:
@@ -43,7 +50,7 @@ def main() -> None:
     venv_path.parent.mkdir(parents=True, exist_ok=True)
     venv.EnvBuilder(with_pip=True, clear=False).create(venv_path)
 
-    python = venv_path / "bin" / "python"
+    python = venv_python(venv_path)
     if not python.is_file():
         raise SystemExit(f"venv Python was not created: {python}")
 

@@ -113,6 +113,20 @@ def count_values(events: list[dict[str, Any]], key: str) -> Counter[str]:
     return counter
 
 
+def count_codex_values(events: list[dict[str, Any]], key: str) -> Counter[str]:
+    counter: Counter[str] = Counter()
+    for event in events:
+        codex = event.get("codex")
+        if not isinstance(codex, dict):
+            continue
+        value = codex.get(key)
+        if isinstance(value, str) and value:
+            counter[value] += 1
+        elif value:
+            counter[str(value)] += 1
+    return counter
+
+
 def render_counter(counter: Counter[str]) -> list[str]:
     if not counter:
         return ["- none"]
@@ -130,6 +144,28 @@ def render_samples(events: list[dict[str, Any]], key: str, *, limit: int = 5) ->
     return samples or ["- none"]
 
 
+def render_skill_context_samples(events: list[dict[str, Any]], *, limit: int = 5) -> list[str]:
+    samples: list[str] = []
+    for event in events:
+        codex = event.get("codex")
+        if not isinstance(codex, dict):
+            continue
+        contexts = []
+        if isinstance(codex.get("user_skill_context"), dict):
+            contexts.append(codex["user_skill_context"])
+        turn_summary = codex.get("turn_summary")
+        if isinstance(turn_summary, dict) and isinstance(turn_summary.get("user_skill_context"), dict):
+            contexts.append(turn_summary["user_skill_context"])
+        for context in contexts:
+            summary = context.get("summary")
+            if isinstance(summary, str) and summary.strip():
+                samples.append(f"- {summary.strip()}")
+                break
+        if len(samples) >= limit:
+            break
+    return samples or ["- none"]
+
+
 def build_report(
     events: list[dict[str, Any]],
     *,
@@ -140,6 +176,7 @@ def build_report(
     outcome_counts = count_values(events, "outcome")
     failure_counts = count_values(events, "failure_type")
     event_type_counts = count_values(events, "event_type")
+    attribution_counts = count_codex_values(events, "skill_attribution")
     failed_events = [event for event in events if event.get("outcome") == "failure" or event.get("failure_type")]
     feedback_events = [event for event in events if event.get("user_feedback")]
 
@@ -160,11 +197,17 @@ def build_report(
         "## Failure Summary",
         *render_counter(failure_counts),
         "",
+        "## Skill Attribution",
+        *render_counter(attribution_counts),
+        "",
         "## Failure Notes",
         *render_samples(failed_events, "notes"),
         "",
         "## User Feedback",
         *render_samples(feedback_events, "user_feedback"),
+        "",
+        "## User Skill Context",
+        *render_skill_context_samples(events),
         "",
     ]
     return "\n".join(lines)

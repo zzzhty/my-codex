@@ -4,6 +4,8 @@ Skill Watcher V1 installs user-level Codex command hooks in `$CODEX_HOME/hooks.j
 
 Install:
 
+Unix:
+
 ```bash
 export MY_CODEX_ROOT="${MY_CODEX_ROOT:-$(git rev-parse --show-toplevel)}"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
@@ -11,6 +13,21 @@ export MY_CODEX_PYTHON="${MY_CODEX_PYTHON:-$CODEX_HOME/venvs/my-codex/bin/python
 
 "$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --dry-run
 "$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --apply
+```
+
+Windows PowerShell:
+
+```powershell
+# Run from the my-codex checkout.
+$env:CODEX_HOME = "$env:USERPROFILE\.codex"
+$env:MY_CODEX_ROOT = (Get-Location).Path
+$python = "$env:CODEX_HOME\venvs\my-codex\Scripts\python.exe"
+
+uv venv "$env:CODEX_HOME\venvs\my-codex"
+uv pip install --python $python -r "$env:MY_CODEX_ROOT\requirements-tools.txt"
+
+& $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --dry-run --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --apply --python $python
 ```
 
 Uninstall:
@@ -30,14 +47,17 @@ The installed command is:
 "$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/codex_hook_adapter.py"
 ```
 
-It observes these Codex lifecycle events:
+On Windows, the installed command is rendered as a Windows command line with `Scripts\python.exe`; on Unix, it is rendered with POSIX shell quoting. Command hook handlers use `async: false` and `timeoutSec` to match the current Codex hook schema.
 
-- `SessionStart`
+It observes these Codex lifecycle events by default:
+
 - `UserPromptSubmit`
 - `PostToolUse`
 - `Stop`
 
-The adapter reads one Codex hook JSON object from stdin and appends a normalized, redacted Skill Watcher event to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
+`SessionStart` is supported by the adapter but is not installed by default because it does not provide useful skill attribution.
+
+The adapter reads one Codex hook JSON object from stdin, infers monitored-skill attribution when possible, and appends only useful normalized events to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
 
 ## Mapping
 
@@ -49,10 +69,23 @@ The adapter reads one Codex hook JSON object from stdin and appends a normalized
 
 For `PostToolUse`, responses with explicit non-zero exit status or error markers become `outcome: "failure"` and `failure_type: "tool_error"`. Empty or missing responses become `outcome: "unknown"`; other responses become `outcome: "success"`.
 
+By default, successful `PostToolUse` events are counted in transient turn state but are not persisted as individual log records. Failed `PostToolUse` events are persisted only when a monitored skill is active. `Stop` writes one monitored `turn_summary` event and clears transient state.
+
+## Monitored Skill Attribution
+
+Codex hook payloads do not include a stable native skill identifier. Skill Watcher therefore records only explainable monitored-skill attribution:
+
+- `provided`: hook payload explicitly supplied a monitored `skill_name`
+- `prompt_mention`: the user prompt explicitly mentioned a monitored skill name or alias
+- `assistant_announcement`: the assistant message explicitly mentioned a monitored skill name or alias
+- `unknown`: no reliable monitored-skill signal
+
+The default monitored skill allowlist is every skill packaged by the `my-codex` marketplace. Override it with the comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable when a narrower run is needed.
+
+For monitored prompts, the adapter stores a redacted `user_skill_context` summary, length, hash, and matched alias. This captures the extra information users mention while invoking a skill as improvement evidence without storing raw prompts.
+
 ## Privacy Defaults
 
 The adapter records summaries, lengths, hashes, tool names, outcomes, and redacted metadata. It does not persist full prompts, full assistant messages, full shell commands, full tool responses, file contents, secrets, or private business data.
-
-Codex hook payloads do not include a stable native skill identifier. If `skill_name` is absent, Skill Watcher writes `skill_name: "unknown"` and does not parse transcripts to guess.
 
 For `Stop`, the adapter prints minimal JSON output that lets Codex continue. Other observed events print nothing in hook mode, so they do not inject context or block the turn.

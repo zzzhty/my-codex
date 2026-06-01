@@ -9,6 +9,7 @@ import json
 import os
 import shlex
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,7 @@ CODEX_HOME = expand_path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
 DEFAULT_TOOLING_VENV = CODEX_HOME / "venvs" / "my-codex"
 DEFAULT_TARGET = CODEX_HOME / "hooks.json"
 DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
-HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
+HOOK_EVENTS = ("UserPromptSubmit", "PostToolUse", "Stop")
 STATUS_PREFIX = "Skill Watcher:"
 ADAPTER_NAME = "codex_hook_adapter.py"
 
@@ -32,6 +33,9 @@ def default_python() -> Path:
     override = os.environ.get("MY_CODEX_TOOLING_PYTHON")
     if override:
         return expand_path(override)
+    windows_python = DEFAULT_TOOLING_VENV / "Scripts" / "python.exe"
+    if os.name == "nt" and windows_python.is_file():
+        return windows_python
     return DEFAULT_TOOLING_VENV / "bin" / "python"
 
 
@@ -40,14 +44,18 @@ def adapter_path() -> Path:
 
 
 def skill_watcher_command(python_path: Path | None = None, adapter: Path | None = None) -> str:
-    return f"{shlex.quote(str(python_path or default_python()))} {shlex.quote(str(adapter or adapter_path()))}"
+    args = [str(python_path or default_python()), str(adapter or adapter_path())]
+    if os.name == "nt":
+        return subprocess.list2cmdline(args)
+    return " ".join(shlex.quote(arg) for arg in args)
 
 
 def desired_handler(event: str, *, python_path: Path | None = None, adapter: Path | None = None) -> dict[str, Any]:
     return {
         "type": "command",
+        "async": False,
         "command": skill_watcher_command(python_path, adapter),
-        "timeout": 10,
+        "timeoutSec": 10,
         "statusMessage": f"{STATUS_PREFIX} observe {event}",
     }
 

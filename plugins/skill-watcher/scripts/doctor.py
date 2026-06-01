@@ -141,7 +141,7 @@ class Doctor:
             "session_id": "doctor-session",
             "turn_id": "doctor-turn",
             "model": "doctor-model",
-            "prompt": "sample prompt containing token sk-doctorsecret1234567890",
+            "prompt": "Use diagnose on this sample prompt containing token sk-doctorsecret1234567890",
         }
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
@@ -151,8 +151,8 @@ class Doctor:
         if "sk-doctorsecret" in raw:
             self.fail("sample event leaked a secret-like token")
             return
-        if event.get("skill_name") != "unknown":
-            self.fail("sample event did not default missing skill_name to unknown")
+        if event.get("skill_name") != "mattpocock-skills:diagnose":
+            self.fail("sample event did not infer the monitored diagnose skill")
             return
         parsed = json.loads(raw.strip())
         if parsed.get("codex", {}).get("prompt_summary"):

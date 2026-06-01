@@ -22,9 +22,12 @@ proposals/
 snapshots/
 rejected/
 backups/
+turns/
 ```
 
 ## Setup
+
+Unix:
 
 ```bash
 export MY_CODEX_ROOT="${MY_CODEX_ROOT:-$(git rev-parse --show-toplevel)}"
@@ -35,6 +38,20 @@ export PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-$CODEX_HOME/skills/.system/plugin-c
 cd "$MY_CODEX_ROOT"
 python3 scripts/bootstrap_tooling_env.py
 cd plugins/skill-watcher
+```
+
+Windows PowerShell:
+
+```powershell
+# Run from the my-codex checkout.
+$env:MY_CODEX_ROOT = (Get-Location).Path
+$env:CODEX_HOME = "$env:USERPROFILE\.codex"
+$env:MY_CODEX_PYTHON = "$env:CODEX_HOME\venvs\my-codex\Scripts\python.exe"
+$env:PLUGIN_VALIDATOR = "$env:CODEX_HOME\skills\.system\plugin-creator\scripts\validate_plugin.py"
+
+uv venv "$env:CODEX_HOME\venvs\my-codex"
+uv pip install --python $env:MY_CODEX_PYTHON -r requirements-tools.txt
+Set-Location plugins\skill-watcher
 ```
 
 Skill Watcher uses the shared my-codex tooling interpreter:
@@ -62,11 +79,26 @@ Validate the plugin:
 
 ## Codex Hook Install
 
-Skill Watcher installs user-level hooks at `$CODEX_HOME/hooks.json` and preserves unrelated hook entries. The generated handlers observe `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
+Skill Watcher installs user-level hooks at `$CODEX_HOME/hooks.json` and preserves unrelated hook entries. The default generated handlers observe `UserPromptSubmit`, `PostToolUse`, and `Stop`. `SessionStart` is not installed by default because it does not provide skill attribution and produces low-value noise.
+
+The hook config uses the current Codex command-hook schema:
+
+- command handlers include `type: "command"`, `async: false`, `command`, `timeoutSec`, and `statusMessage`
+- Unix commands are shell-quoted with POSIX quoting
+- Windows commands are rendered with Windows command-line quoting and use `Scripts\python.exe`
+- non-managed command hooks remain `untrusted` until reviewed in Codex `/hooks`
 
 ```bash
 "$MY_CODEX_PYTHON" scripts/install_codex_hook.py --dry-run
 "$MY_CODEX_PYTHON" scripts/install_codex_hook.py --apply
+```
+
+On Windows, pass the Windows venv interpreter explicitly if `MY_CODEX_TOOLING_PYTHON` is not set:
+
+```powershell
+$python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
+& $python scripts\install_codex_hook.py --dry-run --python $python
+& $python scripts\install_codex_hook.py --apply --python $python
 ```
 
 After applying, open `/hooks` in Codex and review/trust the new command hook definitions. Codex requires this for non-managed command hooks before they run.
@@ -93,7 +125,46 @@ The Codex automation named `Skill Watcher Daily Report` runs this report workflo
 
 The Codex hook adapter stores summaries, lengths, hashes, tool names, outcomes, and redacted metadata. It does not store full prompts, full assistant messages, full shell commands, or full tool responses.
 
-Codex hook payloads do not provide a stable native skill identifier. If a hook payload does not include `skill_name`, Skill Watcher records `skill_name: "unknown"` and does not parse transcripts to guess.
+Codex hook payloads do not provide a stable native skill identifier. Skill Watcher now monitors an allowlist of high-value skills and records only explainable attribution:
+
+- `provided`: hook payload explicitly supplied a monitored `skill_name`
+- `prompt_mention`: the user prompt explicitly mentioned a monitored skill name or alias
+- `assistant_announcement`: the assistant message explicitly mentioned a monitored skill name or alias
+- `unknown`: no reliable monitored-skill signal
+
+Default monitored skills are every skill packaged by the `my-codex` marketplace:
+
+```text
+skill-watcher:skill-maintainer
+doc-watcher:doc-alignment
+personal-skills:long-run-goal
+mattpocock-skills:caveman
+mattpocock-skills:diagnose
+mattpocock-skills:grill-me
+mattpocock-skills:grill-with-docs
+mattpocock-skills:handoff
+mattpocock-skills:improve-codebase-architecture
+mattpocock-skills:prototype
+mattpocock-skills:setup-matt-pocock-skills
+mattpocock-skills:tdd
+mattpocock-skills:to-issues
+mattpocock-skills:to-prd
+mattpocock-skills:triage
+mattpocock-skills:write-a-skill
+mattpocock-skills:zoom-out
+```
+
+Override the allowlist with a comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable.
+
+For monitored prompts, Skill Watcher records a redacted `user_skill_context` summary, length, and hash. This captures the extra information the user mentioned while invoking the skill as potential future improvement evidence, without storing the raw prompt.
+
+Noise filtering:
+
+- `UserPromptSubmit` is persisted only when it identifies a monitored skill.
+- `PostToolUse` updates per-turn tool counts for the active monitored skill, but successful tool calls are not persisted by default.
+- failed `PostToolUse` events are persisted for the active monitored skill.
+- `Stop` writes one `turn_summary` event for the active monitored skill, then clears transient turn state.
+- set `SKILL_WATCHER_DEBUG_ALL_EVENTS=1` to persist all normalized events for hook debugging.
 
 ## Proposal Status
 
