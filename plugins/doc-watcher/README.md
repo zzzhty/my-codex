@@ -4,7 +4,7 @@ DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 a
 
 产品定位：**a local audit runner for drifting docs**。DocWatcher 先报告，不自动改目标仓库，不创建远端评审流程，不把个人工作流升级成公司级治理平台。
 
-本文是项目定位、当前 MVP 和执行方向的 source of truth。更细的执行包放在 `.codex/mvp-execution/`。
+本文是项目定位、当前 MVP 和执行方向的 source of truth。
 
 命名约定：`DocWatcher` 是产品展示名，用于 README、插件界面、audit 报告标题和运行状态；`doc-watcher` 是机器可读 slug，用于仓库名、脚本路径、runtime state 和插件 manifest。
 
@@ -85,7 +85,6 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
         "AGENTS.md",
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",
-        "plugins/doc-watcher/.codex/mvp-execution",
         "plugins/skill-watcher/README.md",
         "plugins/skill-watcher/hooks/codex/README.md",
         "plugins/skill-watcher/todo.md"
@@ -188,5 +187,4 @@ pnpm lint
 
 - `README.md`：当前产品定位、MVP 路线和维护入口。
 - `AGENTS.md`：贡献者和 agent 工作约束。
-- `.codex/mvp-execution/`：audit-first MVP 执行包和验收清单。
 - `skills/doc-alignment/SKILL.md`：可由 Codex 调用的语义 audit 工作流。

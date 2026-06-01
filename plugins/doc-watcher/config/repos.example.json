@@ -8,7 +8,6 @@
         "AGENTS.md",
         "plugins/doc-watcher/README.md",
         "plugins/doc-watcher/AGENTS.md",
-        "plugins/doc-watcher/.codex/mvp-execution",
         "plugins/skill-watcher/README.md",
         "plugins/skill-watcher/hooks/codex/README.md",
         "plugins/skill-watcher/todo.md"
