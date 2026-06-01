@@ -39,6 +39,18 @@ Uninstall:
 
 After install, open `/hooks` in Codex and review/trust the Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
+Plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`. After changing hook logic, rerun the hook installer above or refresh the whole `my-codex` marketplace from the repository root:
+
+```bash
+python3 scripts/refresh_my_codex.py
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\refresh_my_codex.py
+```
+
 ## Handler
 
 The installed command is:

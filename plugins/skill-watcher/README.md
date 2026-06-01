@@ -93,7 +93,7 @@ The hook config uses the current Codex command-hook schema:
 "$MY_CODEX_PYTHON" scripts/install_codex_hook.py --apply
 ```
 
-On Windows, pass the Windows venv interpreter explicitly if `MY_CODEX_TOOLING_PYTHON` is not set:
+On Windows, pass the Windows venv interpreter explicitly if neither `MY_CODEX_TOOLING_PYTHON` nor `MY_CODEX_PYTHON` is set:
 
 ```powershell
 $python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
@@ -102,6 +102,32 @@ $python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
 ```
 
 After applying, open `/hooks` in Codex and review/trust the new command hook definitions. Codex requires this for non-managed command hooks before they run.
+
+When refreshing the whole `my-codex` marketplace, use the repository-level helper from the checkout root:
+
+```bash
+python3 scripts/refresh_my_codex.py
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\refresh_my_codex.py
+```
+
+That helper reruns `codex plugin add` for every `my-codex` plugin and then reruns this hook installer. This is required after hook schema changes because plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`.
+
+After refresh, run the repository-level closure check from the checkout root:
+
+```bash
+python3 scripts/check_my_codex.py
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\check_my_codex.py
+```
 
 Uninstall only Skill Watcher handlers:
 

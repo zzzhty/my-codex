@@ -124,7 +124,53 @@ py scripts\bootstrap_tooling_env.py
 
 Use the current checkout directly as the marketplace source. Do not clone or copy this repository to a second path just to install the local marketplace; doing that makes cache and source-path debugging harder.
 
-Windows PowerShell marketplace reinstall checklist:
+Refresh the marketplace plugin cache and Skill Watcher hooks with the cross-platform helper:
+
+Unix:
+
+```bash
+python3 scripts/refresh_my_codex.py
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\refresh_my_codex.py
+```
+
+The refresh helper runs the shared tooling bootstrap, registers this checkout as the `my-codex` marketplace, runs `codex plugin add` for every plugin packaged here, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print the commands without changing local Codex state.
+
+Run the final closure check after refresh:
+
+Unix:
+
+```bash
+python3 scripts/check_my_codex.py
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\check_my_codex.py
+```
+
+The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Skill Watcher hook schema, plugin validation, and Skill Watcher doctor. It does not modify plugin installs or `$CODEX_HOME/hooks.json`.
+
+If this marketplace was configured from a Git source instead of the current local checkout, use:
+
+```bash
+python3 scripts/refresh_my_codex.py --marketplace-upgrade
+```
+
+Windows PowerShell:
+
+```powershell
+py scripts\refresh_my_codex.py --marketplace-upgrade
+```
+
+After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
+
+Manual Windows PowerShell marketplace reinstall checklist:
 
 ```powershell
 $env:MY_CODEX_ROOT = (Get-Location).Path
@@ -234,4 +280,6 @@ plugins/
   mattpocock-skills/
 requirements-tools.txt
 scripts/bootstrap_tooling_env.py
+scripts/check_my_codex.py
+scripts/refresh_my_codex.py
 ```

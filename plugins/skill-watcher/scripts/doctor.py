@@ -15,12 +15,63 @@ from codex_hook_config import (
     DEFAULT_TARGET,
     HOOK_EVENTS,
     PLUGIN_ROOT,
+    adapter_path,
     default_python,
+    desired_handler,
     expand_path,
     is_skill_watcher_handler,
     load_config,
+    validate_hook_shape,
 )
 from collect_event import DEFAULT_STATE_DIR, ensure_runtime_dirs
+
+
+def describe_handler_mismatch(handler: dict[str, object], expected: dict[str, object]) -> list[str]:
+    mismatches = []
+    for key, expected_value in expected.items():
+        if handler.get(key) != expected_value:
+            mismatches.append(f"{key} expected {expected_value!r}, found {handler.get(key)!r}")
+    extra_keys = sorted(set(handler) - set(expected))
+    if extra_keys:
+        mismatches.append(f"unexpected keys: {', '.join(extra_keys)}")
+    return mismatches
+
+
+def find_managed_hook_issues(
+    config: dict[str, object],
+    *,
+    python_path: Path,
+    adapter: Path,
+) -> tuple[set[str], list[str]]:
+    hooks = config.get("hooks", {})
+    if not isinstance(hooks, dict):
+        return set(), ["hook config field `hooks` is not an object"]
+
+    matched_events: set[str] = set()
+    issues: list[str] = []
+    expected_events = set(HOOK_EVENTS)
+    for event, groups in hooks.items():
+        if not isinstance(groups, list):
+            continue
+        for group_index, group in enumerate(groups):
+            if not isinstance(group, dict):
+                continue
+            handlers = group.get("hooks", [])
+            if not isinstance(handlers, list):
+                continue
+            for handler_index, handler in enumerate(handlers):
+                if not is_skill_watcher_handler(handler):
+                    continue
+                location = f"{event}[{group_index}].hooks[{handler_index}]"
+                if event not in expected_events:
+                    issues.append(f"{location} is a stale Skill Watcher event; default install no longer uses {event}")
+                    continue
+                matched_events.add(str(event))
+                expected = desired_handler(str(event), python_path=python_path, adapter=adapter)
+                mismatches = describe_handler_mismatch(handler, expected)
+                if mismatches:
+                    issues.append(f"{location} does not match desired handler schema: {'; '.join(mismatches)}")
+    return matched_events, issues
 
 
 def validator_path() -> Path:
@@ -104,34 +155,24 @@ class Doctor:
         except SystemExit as exc:
             self.fail(str(exc))
             return
-        hooks = config.get("hooks", {})
-        if not isinstance(hooks, dict):
-            self.fail(f"hook config field `hooks` is not an object: {DEFAULT_TARGET}")
+        try:
+            validate_hook_shape(config)
+        except SystemExit as exc:
+            self.fail(str(exc))
             return
-        matched_events = []
-        stale_commands = []
-        expected_python = str(default_python())
-        for event in HOOK_EVENTS:
-            for group in hooks.get(event, []):
-                if not isinstance(group, dict):
-                    continue
-                matching_handlers = [handler for handler in group.get("hooks", []) if is_skill_watcher_handler(handler)]
-                if matching_handlers:
-                    matched_events.append(event)
-                    for handler in matching_handlers:
-                        command = str(handler.get("command") or "")
-                        if expected_python not in command:
-                            stale_commands.append(command)
-                    break
+
+        python_path = default_python()
+        matched_events, issues = find_managed_hook_issues(config, python_path=python_path, adapter=adapter_path())
         if set(matched_events) == set(HOOK_EVENTS):
             self.ok(f"Skill Watcher hook handlers installed: {DEFAULT_TARGET}")
         else:
             missing = sorted(set(HOOK_EVENTS) - set(matched_events))
             self.warn(f"Skill Watcher hook config incomplete at {DEFAULT_TARGET}; missing: {', '.join(missing)}")
-        if stale_commands:
+
+        if issues:
             self.fail(
-                "Skill Watcher hook config uses a non-default Python interpreter; "
-                f"expected {expected_python}; stale commands: {stale_commands}"
+                "Skill Watcher hook config has stale managed handlers at "
+                f"{DEFAULT_TARGET}. Run install_codex_hook.py --apply to refresh. Issues: {issues}"
             )
 
     def check_sample_event(self) -> None:
