@@ -32,26 +32,56 @@ from codex_hook_config import adapter_path, load_config  # noqa: E402
 from doctor import find_managed_hook_issues  # noqa: E402
 
 
+def configure_output_streams() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+def decode_subprocess_output(raw: bytes | str | None) -> str:
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    return raw.decode("utf-8", errors="replace")
+
+
+def print_text(message: str) -> None:
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        encoding = sys.stdout.encoding or "utf-8"
+        safe = message.encode(encoding, errors="backslashreplace").decode(encoding, errors="replace")
+        print(safe)
+
+
 class CheckRunner:
     def __init__(self) -> None:
         self.failures = 0
         self.warnings = 0
 
     def ok(self, message: str) -> None:
-        print(f"OK   {message}")
+        print_text(f"OK   {message}")
 
     def warn(self, message: str) -> None:
         self.warnings += 1
-        print(f"WARN {message}")
+        print_text(f"WARN {message}")
 
     def fail(self, message: str) -> None:
         self.failures += 1
-        print(f"FAIL {message}")
+        print_text(f"FAIL {message}")
 
     def run_command(self, command: list[str], *, env: dict[str, str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
         print("+ " + command_text(command), flush=True)
         try:
-            return subprocess.run(command, cwd=str(cwd) if cwd else None, env=env, text=True, capture_output=True)
+            result = subprocess.run(command, cwd=str(cwd) if cwd else None, env=env, capture_output=True)
+            return subprocess.CompletedProcess(
+                command,
+                result.returncode,
+                decode_subprocess_output(result.stdout),
+                decode_subprocess_output(result.stderr),
+            )
         except FileNotFoundError as exc:
             return subprocess.CompletedProcess(command, 127, "", f"command not found: {exc.filename}")
 
@@ -167,10 +197,7 @@ class CheckRunner:
         for selector in plugins:
             plugin_name = selector.split("@", 1)[0]
             plugin_dir = REPO_ROOT / "plugins" / plugin_name
-            if plugin_name == "doc-watcher":
-                result = self.run_command(["uv", "run", "python", str(validator), ".."], env=env, cwd=plugin_dir / "backend")
-            else:
-                result = self.run_command([str(tooling_python), str(validator), str(plugin_dir)], env=env)
+            result = self.run_command([str(tooling_python), str(validator), str(plugin_dir)], env=env)
             if result.returncode == 0:
                 self.ok(f"plugin validation passed: {plugin_name}")
             else:
@@ -195,6 +222,8 @@ class CheckRunner:
 
 
 def main() -> None:
+    configure_output_streams()
+
     parser = argparse.ArgumentParser(description="Final checks for my-codex plugin and hook state.")
     parser.add_argument("--codex", default=os.environ.get("CODEX_BIN", "codex"), help="Codex CLI executable.")
     parser.add_argument("--codex-home", default=str(CODEX_HOME), help="Codex home directory.")

@@ -7,6 +7,7 @@ import argparse
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -67,16 +68,17 @@ def marketplace_source_arg(raw: str) -> str:
     return raw
 
 
-def run(command: list[str], *, env: dict[str, str], dry_run: bool) -> None:
+def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool = True) -> int:
     print("+ " + command_text(command), flush=True)
     if dry_run:
-        return
+        return 0
     try:
-        subprocess.run(command, check=True, env=env)
+        result = subprocess.run(command, check=check, env=env)
     except FileNotFoundError as exc:
         raise SystemExit(f"command not found: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"command failed with exit code {exc.returncode}: {command_text(command)}") from exc
+    return result.returncode
 
 
 def selected_plugins(raw_plugins: list[str] | None, marketplace_name: str) -> list[str]:
@@ -104,6 +106,234 @@ def build_env(*, codex_home: Path, tooling_python: Path) -> dict[str, str]:
     return env
 
 
+def decode_text(raw: bytes | str | None) -> str:
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    return raw.decode("utf-8", errors="replace")
+
+
+def git_remote_source(repo_root: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "config", "--get", "remote.origin.url"],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    source = decode_text(result.stdout).strip()
+    return source or None
+
+
+def toml_string_value(raw: str) -> str:
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def configured_marketplace(codex_home: Path, marketplace_name: str) -> dict[str, str] | None:
+    config_path = codex_home / "config.toml"
+    if not config_path.is_file():
+        return None
+
+    section = f"[marketplaces.{marketplace_name}]"
+    in_section = False
+    values: dict[str, str] = {}
+    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped == section:
+            in_section = True
+            continue
+        if in_section and stripped.startswith("[") and stripped.endswith("]"):
+            break
+        if not in_section or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key in {"source_type", "source", "ref"}:
+            values[key] = toml_string_value(value)
+
+    return values or None
+
+
+def clear_readonly_attributes(root: Path) -> None:
+    if not root.exists():
+        return
+    items = [root, *root.rglob("*")]
+    for item in items:
+        try:
+            mode = item.stat().st_mode
+            item.chmod(mode | stat.S_IWRITE | stat.S_IREAD)
+        except OSError:
+            continue
+
+
+def remove_marketplace_source(
+    codex: str,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    config = configured_marketplace(codex_home, marketplace_name)
+    if config is None:
+        return
+
+    if dry_run:
+        print(f"Would clear read-only attributes before removing marketplace `{marketplace_name}`.")
+    else:
+        source = config.get("source")
+        if config.get("source_type") == "local" and source:
+            clear_readonly_attributes(expand_path(source))
+        clear_readonly_attributes(codex_home / ".tmp" / "marketplaces" / marketplace_name)
+
+    run([codex, "plugin", "marketplace", "remove", marketplace_name], env=env, dry_run=dry_run)
+
+
+def same_path(left: str | Path, right: str | Path) -> bool:
+    try:
+        return expand_path(left).resolve() == expand_path(right).resolve()
+    except OSError:
+        return str(expand_path(left)).rstrip("/\\").lower() == str(expand_path(right)).rstrip("/\\").lower()
+
+
+def source_is_path_like(raw: str) -> bool:
+    if "://" in raw or raw.startswith("git@"):
+        return False
+    expanded = os.path.expandvars(os.path.expanduser(raw))
+    return (
+        raw.startswith((".", "~", "/", "\\"))
+        or (len(raw) >= 3 and raw[1] == ":" and raw[2] in {"\\", "/"})
+        or Path(expanded).exists()
+    )
+
+
+def same_marketplace_source(left: str, right: str) -> bool:
+    if source_is_path_like(left) and source_is_path_like(right):
+        return same_path(left, right)
+    left_source = marketplace_source_arg(left).strip().rstrip("/\\")
+    right_source = marketplace_source_arg(right).strip().rstrip("/\\")
+    return left_source == right_source
+
+
+def same_marketplace_ref(left: str | None, right: str) -> bool:
+    return (left or "").strip() == (right or "").strip()
+
+
+def ensure_git_marketplace_source(
+    codex: str,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    source: str,
+    ref: str,
+    env: dict[str, str],
+    dry_run: bool,
+) -> int:
+    config = configured_marketplace(codex_home, marketplace_name)
+    if config and config.get("source_type") == "git":
+        configured_source = config.get("source")
+        if (
+            configured_source
+            and same_marketplace_source(configured_source, source)
+            and same_marketplace_ref(config.get("ref"), ref)
+        ):
+            return run(
+                [codex, "plugin", "marketplace", "upgrade", marketplace_name],
+                env=env,
+                dry_run=dry_run,
+                check=False,
+            )
+
+        print("Configured Git marketplace differs from requested source/ref; re-adding marketplace.")
+        print(f"ConfiguredSource={configured_source or '<missing>'}")
+        print(f"RequestedSource={source}")
+        print(f"ConfiguredRef={config.get('ref') or '<missing>'}")
+        print(f"RequestedRef={ref or '<none>'}")
+
+    if config:
+        remove_marketplace_source(
+            codex,
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            env=env,
+            dry_run=dry_run,
+        )
+
+    command = [codex, "plugin", "marketplace", "add", marketplace_source_arg(source)]
+    if ref:
+        command += ["--ref", ref]
+    return run(command, env=env, dry_run=dry_run, check=False)
+
+
+def ensure_local_marketplace_source(
+    codex: str,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    source: str,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    config = configured_marketplace(codex_home, marketplace_name)
+    if config and config.get("source_type") == "local" and config.get("source"):
+        if same_path(config["source"], source):
+            return
+
+    if config:
+        remove_marketplace_source(
+            codex,
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            env=env,
+            dry_run=dry_run,
+        )
+
+    run([codex, "plugin", "marketplace", "add", marketplace_source_arg(source)], env=env, dry_run=dry_run)
+
+
+def ensure_marketplace_source(
+    codex: str,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    git_source: str | None,
+    git_ref: str,
+    local_source: str,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    if git_source:
+        print(f"Trying Git marketplace source first: {git_source}")
+        git_exit = ensure_git_marketplace_source(
+            codex,
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            source=git_source,
+            ref=git_ref,
+            env=env,
+            dry_run=dry_run,
+        )
+        if git_exit == 0:
+            print("Marketplace source mode: git")
+            return
+        print(f"Git marketplace source failed with exit code {git_exit}; falling back to local source.")
+    else:
+        print("Git marketplace source was not found; falling back to local source.")
+
+    ensure_local_marketplace_source(
+        codex,
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+        source=local_source,
+        env=env,
+        dry_run=dry_run,
+    )
+    print("Marketplace source mode: local")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Refresh my-codex plugin installs and user-level Skill Watcher hooks."
@@ -117,13 +347,13 @@ def main() -> None:
     parser.add_argument(
         "--marketplace-source",
         default=str(REPO_ROOT),
-        help="Marketplace source for `codex plugin marketplace add`.",
+        help="Local marketplace source used when Git marketplace update is unavailable.",
     )
     parser.add_argument(
-        "--marketplace-upgrade",
-        action="store_true",
-        help="Run `codex plugin marketplace upgrade <name>` instead of adding the local checkout source.",
+        "--git-marketplace-source",
+        help="Git marketplace source to try first. Defaults to this checkout's remote.origin.url.",
     )
+    parser.add_argument("--git-ref", default="main", help="Git ref for first-time Git marketplace add.")
     parser.add_argument(
         "--plugin",
         action="append",
@@ -153,14 +383,16 @@ def main() -> None:
         )
 
     if not args.skip_marketplace:
-        if args.marketplace_upgrade:
-            run([codex, "plugin", "marketplace", "upgrade", args.marketplace_name], env=env, dry_run=args.dry_run)
-        else:
-            run(
-                [codex, "plugin", "marketplace", "add", marketplace_source_arg(args.marketplace_source)],
-                env=env,
-                dry_run=args.dry_run,
-            )
+        ensure_marketplace_source(
+            codex,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            git_source=args.git_marketplace_source or git_remote_source(REPO_ROOT),
+            git_ref=args.git_ref,
+            local_source=args.marketplace_source,
+            env=env,
+            dry_run=args.dry_run,
+        )
 
     if not args.skip_plugins:
         for plugin in selected_plugins(args.plugin, args.marketplace_name):

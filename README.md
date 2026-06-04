@@ -122,11 +122,25 @@ py scripts\bootstrap_tooling_env.py
 
 ## Marketplace And Hook Debugging
 
-Use the current checkout directly as the marketplace source. Do not clone or copy this repository to a second path just to install the local marketplace; doing that makes cache and source-path debugging harder.
-
-Refresh the marketplace plugin cache and Skill Watcher hooks with the cross-platform helper:
+Refresh the marketplace plugin cache and Skill Watcher hooks with the platform wrapper:
 
 Unix:
+
+```bash
+scripts/upgrade_my_codex.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\upgrade_my_codex.ps1
+```
+
+The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Unix wrapper fails before refresh when the Codex CLI does not expose `codex plugin add` and `codex plugin list`; non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
+
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, tries the checkout's `remote.origin.url` as the Git marketplace source first, falls back to the current checkout as a local marketplace source when the Git source is unavailable or fails, runs `codex plugin add` for every plugin packaged here, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print the commands without changing local Codex state.
+
+Direct helper usage remains supported:
 
 ```bash
 python3 scripts/refresh_my_codex.py
@@ -137,8 +151,6 @@ Windows PowerShell:
 ```powershell
 py scripts\refresh_my_codex.py
 ```
-
-The refresh helper runs the shared tooling bootstrap, registers this checkout as the `my-codex` marketplace, runs `codex plugin add` for every plugin packaged here, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print the commands without changing local Codex state.
 
 Run the final closure check after refresh:
 
@@ -156,19 +168,9 @@ py scripts\check_my_codex.py
 
 The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Skill Watcher hook schema, plugin validation, and Skill Watcher doctor. It does not modify plugin installs or `$CODEX_HOME/hooks.json`.
 
-If this marketplace was configured from a Git source instead of the current local checkout, use:
-
-```bash
-python3 scripts/refresh_my_codex.py --marketplace-upgrade
-```
-
-Windows PowerShell:
-
-```powershell
-py scripts\refresh_my_codex.py --marketplace-upgrade
-```
-
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
+
+The platform wrappers sync global instructions after validation. Windows compares SHA256 hashes and copies `AGENTS.md` after confirmation when `$CODEX_HOME\AGENTS.md` differs or is missing. Unix checks whether `$CODEX_HOME/AGENTS.md` is already a symlink to this checkout's `AGENTS.md`; if it points elsewhere or is missing, it asks before replacing it with `ln -sfn`.
 
 Manual Windows PowerShell marketplace reinstall checklist:
 
@@ -254,7 +256,7 @@ Unix:
 ```bash
 python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/skill-watcher"
-(cd plugins/doc-watcher/backend && uv run python "$PLUGIN_VALIDATOR" ..)
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/doc-watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/personal-skills"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
 ```
@@ -264,7 +266,7 @@ Windows PowerShell:
 ```powershell
 & $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\marketplace.json | Out-Null
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\skill-watcher"
-Push-Location plugins\doc-watcher\backend; uv run python $env:PLUGIN_VALIDATOR ..; Pop-Location
+& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\doc-watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\personal-skills"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
 ```
@@ -282,4 +284,6 @@ requirements-tools.txt
 scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py
 scripts/refresh_my_codex.py
+scripts/upgrade_my_codex.ps1
+scripts/upgrade_my_codex.sh
 ```

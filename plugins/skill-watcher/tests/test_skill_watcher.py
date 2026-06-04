@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,6 +23,7 @@ from codex_hook_config import (  # noqa: E402
     remove_skill_watcher_hooks,
     skill_watcher_command,
 )
+from check_my_codex import CheckRunner, decode_subprocess_output  # noqa: E402
 from doctor import find_managed_hook_issues  # noqa: E402
 from propose_skill_patch import build_proposal  # noqa: E402
 from redact_event import REDACTION, redact_event  # noqa: E402
@@ -29,7 +31,81 @@ from refresh_my_codex import marketplace_source_arg  # noqa: E402
 from update_proposal_status import update_status  # noqa: E402
 
 
-class SkillWatcherV1Tests(unittest.TestCase):
+WINDOWS_PWSH_ENCODING_TEST = unittest.skipUnless(
+    sys.platform == "win32",
+    "Windows PowerShell encoding regression",
+)
+
+
+class SkillWatcherTests(unittest.TestCase):
+    class StrictAsciiStdout:
+        encoding = "ascii"
+
+        def __init__(self) -> None:
+            self.writes: list[str] = []
+
+        def write(self, text: str) -> int:
+            text.encode("ascii")
+            self.writes.append(text)
+            return len(text)
+
+        def flush(self) -> None:
+            return None
+
+    @WINDOWS_PWSH_ENCODING_TEST
+    def test_check_runner_tolerates_non_utf8_subprocess_output(self) -> None:
+        runner = CheckRunner()
+
+        result = runner.run_command(
+            [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'\\x82')"],
+            env={},
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue(result.stdout)
+
+    @WINDOWS_PWSH_ENCODING_TEST
+    def test_subprocess_output_prefers_utf8_with_replacement(self) -> None:
+        raw = "▶ 系统找不到指定的文件。".encode("utf-8") + b"\x82"
+
+        decoded = decode_subprocess_output(raw)
+
+        self.assertIn("▶ 系统找不到指定的文件。", decoded)
+        self.assertIn("\ufffd", decoded)
+
+    @WINDOWS_PWSH_ENCODING_TEST
+    def test_check_runner_prints_unencodable_failures_safely(self) -> None:
+        runner = CheckRunner()
+        stdout = self.StrictAsciiStdout()
+
+        with mock.patch("sys.stdout", stdout):
+            runner.fail("plugin output contains ▶")
+
+        self.assertIn(r"\u25b6", "".join(stdout.writes))
+
+    def test_doc_watcher_plugin_validation_uses_tooling_python(self) -> None:
+        runner = CheckRunner()
+        calls = []
+
+        def fake_run_command(command, *, env, cwd=None):  # type: ignore[no-untyped-def]
+            calls.append((command, cwd))
+            return subprocess.CompletedProcess(command, 0, "ok", "")
+
+        runner.run_command = fake_run_command  # type: ignore[method-assign]
+        tooling_python = Path("C:/tooling/python.exe")
+        validator = Path(__file__)
+
+        runner.check_plugin_validation(
+            tooling_python,
+            ["doc-watcher@my-codex"],
+            env={},
+            validator=validator,
+        )
+
+        self.assertEqual(calls[0][0][0], str(tooling_python))
+        self.assertEqual(calls[0][0][1], str(validator))
+        self.assertIsNone(calls[0][1])
+
     def test_redacts_secret_keys_and_values(self) -> None:
         payload = {
             "api_key": "plain-secret",

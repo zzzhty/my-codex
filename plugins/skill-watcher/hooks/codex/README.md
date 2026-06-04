@@ -51,6 +51,8 @@ Windows PowerShell:
 py scripts\refresh_my_codex.py
 ```
 
+The repository-level helper refreshes the marketplace with Git first and local checkout fallback before reinstalling plugin cache entries and hooks.
+
 ## Handler
 
 The installed command is:

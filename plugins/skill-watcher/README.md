@@ -115,7 +115,7 @@ Windows PowerShell:
 py scripts\refresh_my_codex.py
 ```
 
-That helper reruns `codex plugin add` for every `my-codex` plugin and then reruns this hook installer. This is required after hook schema changes because plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`.
+That helper refreshes the marketplace with Git first and local checkout fallback, reruns `codex plugin add` for every `my-codex` plugin, and then reruns this hook installer. This is required after hook schema changes because plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`.
 
 After refresh, run the repository-level closure check from the checkout root:
 
