@@ -1,6 +1,8 @@
 # Orchestration Plugin Long Run Goal Plan
 
-整体状态：`Ready`
+整体状态：`In Progress`
+
+Status: `In Progress`
 
 ## Goal 摘要
 
@@ -12,7 +14,7 @@
 2. MVP 交付一个显式调用的 `$orchestrate-subagents` skill，让复杂 review、debugging、migration planning、impact analysis、test discovery 和 multi-file planning 能稳定地拆分、派发、等待并汇总 subagent 结果。
 3. 本 goal 不引入外部 orchestration runtime，不把 `zzzhty/orchestration` 仓库作为依赖，不实现 control-plane、worker registry、durable assignment state、hooks、MCP server 或自动修改用户级 Codex 配置。
 
-目标状态：`Ready`
+目标状态：`In Progress`
 
 目标 owner：`my-codex / local Codex configuration owner`
 
@@ -238,7 +240,7 @@ Future gate 必须先证明：
 
 ### M0 - Contract review / design freeze
 
-状态：`Ready`
+状态：`Done`
 
 范围：
 
@@ -259,13 +261,18 @@ Review gate：
 执行证据：
 
 1. 代码证据：
-   - 完成后填写计划文件和索引文件改动。
+   - `docs/todo/orchestration_plugin_long_run_goal_plan.md`：冻结 `orchestration` plugin MVP 合同、MVP/Future 边界、验证 gate 和执行顺序。
+   - `docs/todo/README.md`：将 active goal plan 纳入 TODO index。
 2. 行为证据：
-   - 本阶段无运行时行为变化。
+   - 本阶段无运行时行为变化；只确认 active goal contract 可执行。
 3. 测试证据：
-   - 完成后填写实际命令和结果。
+   - `python3 plugins/personal-skills/skills/long-run-goal/scripts/check_goal_ready.py docs/todo/orchestration_plugin_long_run_goal_plan.md` 通过，输出 `goal readiness checks OK`。
+   - `python3 plugins/doc-watcher/skills/doc-alignment/scripts/check_planning_tree.py docs/todo` 通过，输出 `planning tree OK (2 active md, 0 archive md, 1 index md)`。
+   - `python3 plugins/personal-skills/skills/long-run-goal/scripts/check_md_links.py docs/todo` 通过，输出 `markdown relative links OK`。
+   - `python3 plugins/personal-skills/skills/long-run-goal/scripts/check_todo_index.py docs/todo/orchestration_plugin_long_run_goal_plan.md docs/todo/README.md` 通过，输出 `referenced by 1 index file(s)`。
+   - `git diff --check -- docs/todo` 通过，无输出。
 4. 文档证据：
-   - 本文件成为 active goal contract。
+   - 本文件成为 active goal contract；`docs/todo/README.md` 是 active TODO index。
 5. 回滚证据：
    - 还原本文件和 `docs/todo/README.md` 即可回滚 M0。
 6. 剩余风险：
@@ -629,7 +636,7 @@ orchestration M4: validation and Codex acceptance completed
 
 | 阶段 | 状态 | Review | Checkpoint |
 |---|---|---|---|
-| M0 Contract review / design freeze | Ready | Pending | Pending |
+| M0 Contract review / design freeze | Done | Passed | Done |
 | M1 Plugin skeleton and marketplace entry | Not Started | Pending | Pending |
 | M2 `$orchestrate-subagents` MVP skill | Not Started | Pending | Pending |
 | M3 Current docs and checker integration | Not Started | Pending | Pending |
