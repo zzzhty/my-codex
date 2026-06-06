@@ -24,6 +24,7 @@
 ## Delegation policy
 
 - For heavy, parallelizable, or noisy work, prefer bounded subagent tasks; decide and start them before broad exploration when parallel work is useful.
+- When a task explicitly invokes `$orchestrate-subagents` or asks for subagent orchestration, use that skill as the short entry point; keep the full orchestration workflow in the skill, not in this file.
 - Delegate only tasks with clear inputs, expected outputs, stopping conditions, and low risk of racing on the same files.
 - Do not delegate tiny tasks, tightly coupled edits, sequential debugging steps, or changes where multiple agents may race on the same files.
 - Good candidates include codebase exploration, impact analysis, test discovery, failure triage, log review, API/schema inspection, and independent implementation options.

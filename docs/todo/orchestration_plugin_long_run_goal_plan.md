@@ -507,7 +507,7 @@ orchestration M2: orchestrate-subagents MVP skill implemented
 
 ### M3 - Integrate current docs and check scripts
 
-状态：`Not Started`
+状态：`Done`
 
 范围：
 
@@ -533,17 +533,31 @@ Review gate：
 执行证据：
 
 1. 代码证据：
-   - 完成后填写 changed docs and scripts.
+   - 更新 `README.md`，新增 `Orchestration Workflow` 入口、canonical `$orchestrate-subagents` prompt 和 custom-agent Future note。
+   - 更新 `AGENTS.md`，在 delegation policy 中增加 `$orchestrate-subagents` 短入口。
+   - 未修改 `scripts/check_my_codex.py`；验证证明它通过 `refresh_my_codex.PLUGIN_NAMES` 覆盖 `orchestration`。
+   - 更新本 goal 文件的 M3 状态和证据。
 2. 行为证据：
    - Future sessions see the plugin in install/check docs and the short global delegation pointer.
+   - README points users to `plugins/orchestration/skills/orchestrate-subagents/SKILL.md` for the full workflow instead of duplicating it in root docs.
+   - AGENTS keeps only a concise pointer and does not duplicate the parent consolidation format.
 3. 测试证据：
-   - 完成后填写实际命令和结果。
+   - `python3 -m json.tool .agents/plugins/marketplace.json >/dev/null` 通过，输出 `marketplace-json-ok`。
+   - Old-name audit command found only rejected-name context in this goal plan; a follow-up assertion passed with `old orchestration-codex terms are confined to rejected-name goal-plan context`.
+   - `python3 - <<'PY' ... import check_my_codex ...` assertion passed, output `check_my_codex covers orchestration through PLUGIN_NAMES`。
+   - README/AGENTS assertion passed, output `README and AGENTS orchestration docs OK`。
+   - `git diff --check -- AGENTS.md README.md scripts docs plugins .agents/plugins/marketplace.json` 通过，无输出。
+   - Artifact guard passed, output `no custom agent sync artifacts`。
+   - Goal and link checks passed: `goal readiness checks OK`, `planning tree OK`, `markdown relative links OK` for `docs/todo` and `plugins/orchestration`。
+   - Plugin validator still passed for `/Users/max/Projects/my-codex/plugins/orchestration`。
 4. 文档证据：
-   - README, AGENTS and plugin README synchronized.
+   - README, AGENTS, plugin README and skill docs are synchronized around `orchestration`.
+   - Active docs do not instruct users to install `orchestration-codex`; remaining old-name hits are rejected-name audit context in this goal file.
 5. 回滚证据：
    - Revert README, AGENTS and script edits from this milestone.
 6. 剩余风险：
    - Skill list truncation can still hide the skill in very large installations; explicit `$orchestrate-subagents` prompt remains the reliable path.
+   - `check_my_codex.py --plugin orchestration` still requires local installed plugin state and is reserved for M4 after refresh/install validation.
 
 推荐验证：
 
@@ -667,7 +681,7 @@ orchestration M4: validation and Codex acceptance completed
 | M0 Contract review / design freeze | Done | Passed | Done |
 | M1 Plugin skeleton and marketplace entry | Done | Passed | Done |
 | M2 `$orchestrate-subagents` MVP skill | Done | Passed | Done |
-| M3 Current docs and checker integration | Not Started | Pending | Pending |
+| M3 Current docs and checker integration | Done | Passed | Done |
 | M4 End-to-end refresh/check and Codex acceptance | Not Started | Pending | Pending |
 | Close | Not Started | Pending | Pending |
 

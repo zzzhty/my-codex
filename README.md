@@ -14,6 +14,25 @@ This repository is the development mainline for the plugins and personal Codex c
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
 - `orchestration`: packages explicit Codex subagent orchestration workflows.
 
+## Orchestration Workflow
+
+Use the `orchestration` plugin when a task explicitly needs bounded Codex
+subagents. Invoke the workflow directly instead of relying on implicit
+auto-delegation:
+
+```text
+Use $orchestrate-subagents to review this branch against main.
+```
+
+The full workflow lives in
+`plugins/orchestration/skills/orchestrate-subagents/SKILL.md`. Keep root docs
+limited to install, validation, and entry-point guidance.
+
+Custom agent TOML source, `$CODEX_HOME/agents/` sync, and `[agents]` config
+snippets are future work. Do not add `codex-home/agents/` or
+`scripts/sync_codex_agents.py` unless the future gate in the active goal plan
+has first verified the current Codex custom-agent surface.
+
 ## Local Install
 
 Unix:
