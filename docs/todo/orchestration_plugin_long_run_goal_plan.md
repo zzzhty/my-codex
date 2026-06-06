@@ -294,7 +294,7 @@ orchestration M0: goal contract frozen
 
 ### M1 - Add orchestration plugin skeleton and marketplace entry
 
-状态：`Not Started`
+状态：`Done`
 
 范围：
 
@@ -365,17 +365,30 @@ Review gate：
 执行证据：
 
 1. 代码证据：
-   - 完成后填写 `plugins/orchestration/.codex-plugin/plugin.json`、`plugins/orchestration/README.md`、`.agents/plugins/marketplace.json`、`README.md`、`scripts/refresh_my_codex.py`。
+   - 新增 `plugins/orchestration/.codex-plugin/plugin.json`。
+   - 新增 `plugins/orchestration/README.md`。
+   - 更新 `.agents/plugins/marketplace.json`，新增 `orchestration` local plugin entry。
+   - 更新 `scripts/refresh_my_codex.py`，将 `orchestration` 加入 `PLUGIN_NAMES`。
+   - 更新 `README.md` plugin list、Unix install、Windows install、manual reinstall、validation 和 layout。
 2. 行为证据：
    - `orchestration` becomes installable through the existing `my-codex` marketplace flow after refresh.
+   - `python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration` prints `plugin add orchestration@my-codex`.
+   - No runtime skill behavior is claimed before M2; `plugins/orchestration/README.md` states the skeleton is installable metadata only until M2 adds skill files.
 3. 测试证据：
-   - 完成后填写实际命令和结果。
+   - `python3 -m json.tool plugins/orchestration/.codex-plugin/plugin.json >/dev/null` 通过，输出 `plugin-json-ok`。
+   - `python3 -m json.tool .agents/plugins/marketplace.json >/dev/null` 通过，输出 `marketplace-json-ok`。
+   - Marketplace entry assertion passed, output `marketplace orchestration entry OK`.
+   - README install assertion passed, output `README orchestration install docs OK`.
+   - `python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration` 通过，输出 `plugin add orchestration@my-codex` and `dry-run only; no changes written`.
+   - Plugin validator passed for `/Users/max/Projects/my-codex/plugins/orchestration`.
 4. 文档证据：
-   - README plugin list and install snippets synchronized.
+   - README plugin list, install snippets, validation examples and layout include `orchestration`.
+   - `plugins/orchestration/README.md` documents M1 skeleton scope and M2 skill boundary.
 5. 回滚证据：
    - Remove plugin entry from marketplace and `PLUGIN_NAMES`, delete `plugins/orchestration/`, revert README edits.
 6. 剩余风险：
-   - Plugin validator may require real skill content, so full plugin validation belongs to M2.
+   - Runtime skill behavior remains absent until M2 adds `$orchestrate-subagents`.
+   - Plugin validator validates the skeleton shape but does not prove future skill behavior.
 
 推荐验证：
 
@@ -637,7 +650,7 @@ orchestration M4: validation and Codex acceptance completed
 | 阶段 | 状态 | Review | Checkpoint |
 |---|---|---|---|
 | M0 Contract review / design freeze | Done | Passed | Done |
-| M1 Plugin skeleton and marketplace entry | Not Started | Pending | Pending |
+| M1 Plugin skeleton and marketplace entry | Done | Passed | Done |
 | M2 `$orchestrate-subagents` MVP skill | Not Started | Pending | Pending |
 | M3 Current docs and checker integration | Not Started | Pending | Pending |
 | M4 End-to-end refresh/check and Codex acceptance | Not Started | Pending | Pending |

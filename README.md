@@ -12,6 +12,7 @@ This repository is the development mainline for the plugins and personal Codex c
 - `doc-watcher`: audits configured local repositories for documentation semantic drift.
 - `personal-skills`: packages original personal skills maintained in this repository.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
+- `orchestration`: packages explicit Codex subagent orchestration workflows.
 
 ## Local Install
 
@@ -28,6 +29,7 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add personal-skills@my-codex
 codex plugin add mattpocock-skills@my-codex
+codex plugin add orchestration@my-codex
 ```
 
 Windows PowerShell:
@@ -44,6 +46,7 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add personal-skills@my-codex
 codex plugin add mattpocock-skills@my-codex
+codex plugin add orchestration@my-codex
 ```
 
 Install directly from this repository checkout. Do not clone or copy the repo to an extra local path just to install the marketplace.
@@ -186,6 +189,7 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add personal-skills@my-codex
 codex plugin add mattpocock-skills@my-codex
+codex plugin add orchestration@my-codex
 ```
 
 Skill Watcher installs user-level Codex command hooks in `$CODEX_HOME/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
@@ -259,6 +263,7 @@ python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/doc-watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/personal-skills"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 ```
 
 Windows PowerShell:
@@ -269,6 +274,7 @@ Windows PowerShell:
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\doc-watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\personal-skills"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
+& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\orchestration"
 ```
 
 ## Layout
@@ -280,6 +286,7 @@ plugins/
   doc-watcher/
   personal-skills/
   mattpocock-skills/
+  orchestration/
 requirements-tools.txt
 scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py

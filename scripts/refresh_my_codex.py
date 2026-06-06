@@ -22,6 +22,7 @@ PLUGIN_NAMES = (
     "doc-watcher",
     "personal-skills",
     "mattpocock-skills",
+    "orchestration",
 )
 
 
