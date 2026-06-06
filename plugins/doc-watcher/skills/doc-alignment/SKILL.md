@@ -43,7 +43,7 @@ For configured repository audits, start with deterministic evidence collection:
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
 python3 scripts/commit_counter.py --config config/repos.example.json
-python3 scripts/generate_report.py --config config/repos.example.json --print-report
+python3 scripts/generate_report.py --config config/repos.example.json --mode commit-dependent --mark-audited --digest
 ```
 
 Use `config/repos.json` instead of the example when a private local config exists.
@@ -54,7 +54,7 @@ For a single repository:
 python3 scripts/audit_repo.py --repo <repo-path> --name <repo-name> --print-report
 ```
 
-When `generate_report.py --mode commit-dependent` skips a repo, report it as skipped rather than audited. When any repo fails, surface the failing repo, command/path, and exact failure text.
+When `generate_report.py --mode commit-dependent` skips a repo, report it as skipped rather than audited. When repo config changes, treat the repo as due even if the commit threshold has not been reached. When any repo fails, surface the failing repo, command/path, and exact failure text.
 
 Review the generated report with these checks:
 

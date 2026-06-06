@@ -33,20 +33,20 @@ MVP 优先跑通这条轻量闭环：
 
 默认触发方式：
 
-- **Full scan mode**：扫描配置中的 repos，生成汇总报告，可由定时任务按日、周或手动触发。
-- **Commit-dependent mode**：记录每个 repo 的 last audited revision；当新增 commit 数达到阈值时触发扫描。
+- **Full scan mode**：扫描配置中的 repos，生成汇总报告，主要用于手动 baseline/full scan。
+- **Commit-dependent mode**：记录每个 repo 的 last audited revision、config hash 和 finding fingerprints；当新增 commit 数达到阈值或 repo 配置变化时触发扫描。
 - **Manual mode**：直接对某个 repo 运行一次 audit，用于临时检查。
 
 ## Audit Workflow Contract
 
-- Trigger: daily scan, commit-dependent scan, or an explicit manual audit request.
+- Trigger: commit-dependent scheduled scan, baseline full scan, or an explicit manual audit request.
 - Inputs: configured local repositories, selected source-of-truth files, recent commits, and audit configuration.
 - Outputs: deterministic audit pack plus human-readable audit summary.
 - Report location: `$CODEX_HOME/doc-watcher/reports/` unless the user passes an explicit output path.
-- State location: `$CODEX_HOME/doc-watcher/repo-state.json` for commit-dependent audit state.
+- State location: `$CODEX_HOME/doc-watcher/repo-state.json` for commit-dependent audit state, config hashes, and finding fingerprints.
 - Allowed actions: inspect target repositories, collect read-only evidence, generate audit reports, and summarize drift findings.
 - Forbidden actions: do not modify target repositories, rewrite docs, open remote review flows, or apply `doc-alignment` implementation changes unless the user explicitly asks for implementation mode.
-- Validation: report the audited repo, evidence pack or report path, checked entry points, findings, and blockers. Do not treat missing configured files as success unless the report names them.
+- Validation: report the audited repo, evidence pack or report path, checked entry points, new/resolved/still-open findings, and blockers. Do not treat missing configured files as success unless the report names them.
 
 ## Plugin Layout
 
@@ -148,6 +148,12 @@ python3 scripts/audit_repo.py --repo ../.. --name my-codex --print-report
 
 ```bash
 python3 scripts/generate_report.py --config config/repos.example.json --print-report
+```
+
+生成定时任务应使用的增量 digest，并在成功后推进 repo audit state：
+
+```bash
+python3 scripts/generate_report.py --config config/repos.example.json --mode commit-dependent --mark-audited --digest
 ```
 
 检查 commit 阈值触发状态：

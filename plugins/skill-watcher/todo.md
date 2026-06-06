@@ -15,6 +15,7 @@ This document tracks what is still unclosed after the MVP and V1 implementation.
 - Noise-reduced monitored-skill attribution is implemented with default coverage for the skills packaged by the `my-codex` marketplace.
 - The first scheduled report run wrote a report and did not generate proposals.
 - The scheduled automation has been moved to `Skill Watcher Weekly Report` for weekly Sunday 20:00 Asia/Shanghai reporting.
+- Weekly reports now use incremental report state so successful runs advance a watermark instead of reprocessing the same evidence window.
 
 ## Still Open
 

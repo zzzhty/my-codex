@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -25,9 +26,18 @@ from codex_hook_config import (  # noqa: E402
 )
 from check_my_codex import CheckRunner, decode_subprocess_output  # noqa: E402
 from doctor import find_managed_hook_issues  # noqa: E402
+from generate_report import (  # noqa: E402
+    event_hash,
+    load_report_state,
+    report_state_key,
+    save_report_state,
+    state_since,
+    update_report_state,
+)
 from propose_skill_patch import build_proposal  # noqa: E402
 from redact_event import REDACTION, redact_event  # noqa: E402
 from refresh_my_codex import marketplace_source_arg  # noqa: E402
+from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_proposal_status import update_status  # noqa: E402
 
 
@@ -338,6 +348,38 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertTrue(rejected_exists)
         self.assertIn("status: rejected", updated)
         self.assertIn("bad evidence", rejected_text)
+
+    def test_report_reader_and_state_support_incremental_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            log_file = state_dir / "logs" / "events.jsonl"
+            log_file.parent.mkdir(parents=True)
+            events = [
+                {"timestamp": "2026-06-01T00:00:00Z", "skill_name": "demo", "outcome": "success"},
+                {"timestamp": "2026-06-05T00:00:00Z", "skill_name": "demo", "outcome": "failure"},
+                {"timestamp": "2026-06-06T00:00:00Z", "skill_name": "demo", "outcome": "success"},
+            ]
+            log_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+
+            recent = read_events_since(log_file, parse_since("2026-06-05T00:00:00Z"), block_size=48)
+            state = load_report_state(state_dir)
+            key = report_state_key("demo")
+            update_report_state(
+                state,
+                key=key,
+                since=parse_since("2026-06-05T00:00:00Z"),
+                until=datetime(2026, 6, 6, tzinfo=timezone.utc),
+                event_count=len(recent),
+                output=state_dir / "reports" / "demo.md",
+                recent_hashes=[event_hash(event) for event in recent],
+            )
+            save_report_state(state_dir, state)
+            loaded = load_report_state(state_dir)
+
+        self.assertEqual([event["timestamp"] for event in recent], ["2026-06-05T00:00:00Z", "2026-06-06T00:00:00Z"])
+        self.assertEqual(state_since(loaded, key), datetime(2026, 6, 6, tzinfo=timezone.utc))
+        self.assertEqual(loaded["reports"][key]["last_event_count"], 2)
+        self.assertEqual(len(loaded["reports"][key]["recent_event_hashes"]), 2)
 
 
 if __name__ == "__main__":

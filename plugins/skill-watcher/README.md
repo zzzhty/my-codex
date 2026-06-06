@@ -142,21 +142,23 @@ Generate report-only summaries:
 
 ```bash
 "$MY_CODEX_PYTHON" scripts/generate_report.py --since 1d
-"$MY_CODEX_PYTHON" scripts/generate_report.py --since 7d
+"$MY_CODEX_PYTHON" scripts/generate_report.py --incremental --since 7d
 "$MY_CODEX_PYTHON" scripts/generate_report.py --skill skill-maintainer --since 1d
 ```
 
-The Codex automation named `Skill Watcher Weekly Report` runs this report workflow weekly on Sunday at 20:00 Asia/Shanghai and returns the report path plus summary counts. It does not generate proposals or modify skills.
+The Codex automation named `Skill Watcher Weekly Report` runs this incremental report workflow weekly on Sunday at 20:00 Asia/Shanghai and returns the report path plus summary counts. It does not generate proposals or modify skills.
+Incremental runs store their successful watermark in `$CODEX_HOME/skill-watcher/report-state.json`; the `--since 7d` window is only the first-run fallback. A small overlap with recent event hashes prevents late-arriving events from being dropped at the report boundary.
 
 ## Weekly Report Workflow Contract
 
 - Trigger: the `Skill Watcher Weekly Report` Codex automation, or an explicit user request to run the same report workflow.
 - Working directory: `plugins/skill-watcher`.
-- Command: `"$MY_CODEX_PYTHON" scripts/generate_report.py --since 7d`, with optional `--skill <skill-name>` when the user narrows scope.
+- Command: `"$MY_CODEX_PYTHON" scripts/generate_report.py --incremental --since 7d`, with optional `--skill <skill-name>` when the user narrows scope.
 - Outputs: report path, event count, and outcome counts from the command output.
 - Report location: `$CODEX_HOME/skill-watcher/reports/`.
+- Incremental state location: `$CODEX_HOME/skill-watcher/report-state.json`.
 - Memory location: `$CODEX_HOME/automations/skill-watcher-weekly-report/memory.md` when the scheduled automation needs run memory.
-- Allowed actions: generate the report, summarize the requested counts, and update the automation memory file when running inside that automation workflow.
+- Allowed actions: generate the report, summarize the requested counts, update the Skill Watcher report watermark after successful report writes, and update the automation memory file when running inside that automation workflow.
 - Forbidden actions: do not generate proposals, update proposal status, modify any `SKILL.md`, or mutate skill source unless the user explicitly expands the scope.
 - Validation: use the command output as the evidence source; do not assume success without a printed report path and counts.
 

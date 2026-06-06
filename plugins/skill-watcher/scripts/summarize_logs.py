@@ -60,6 +60,21 @@ def parse_since(raw: str | None) -> datetime | None:
     raise SystemExit(f"invalid --since value {raw!r}; use forms like 12h, 7d, 2w, or ISO timestamp")
 
 
+def parse_event_line(log_file: Path, line: str, *, line_number: int | None = None) -> dict[str, Any]:
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError as exc:
+        location = f" at line {line_number}" if line_number is not None else ""
+        raise SystemExit(
+            f"invalid JSONL in {log_file}{location}: "
+            f"line {exc.lineno}, column {exc.colno}"
+        ) from exc
+    if not isinstance(payload, dict):
+        location = f" at line {line_number}" if line_number is not None else ""
+        raise SystemExit(f"invalid JSONL in {log_file}{location}: event must be an object")
+    return payload
+
+
 def read_events(log_file: Path) -> list[dict[str, Any]]:
     if not log_file.exists():
         return []
@@ -69,19 +84,52 @@ def read_events(log_file: Path) -> list[dict[str, Any]]:
             for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
-                try:
-                    payload = json.loads(line)
-                except json.JSONDecodeError as exc:
-                    raise SystemExit(
-                        f"invalid JSONL in {log_file} at line {line_number}: "
-                        f"line {exc.lineno}, column {exc.colno}"
-                    ) from exc
-                if not isinstance(payload, dict):
-                    raise SystemExit(f"invalid JSONL in {log_file} at line {line_number}: event must be an object")
-                events.append(payload)
+                events.append(parse_event_line(log_file, line, line_number=line_number))
     except OSError as exc:
         raise SystemExit(f"failed to read log file {log_file}: {exc}") from exc
     return events
+
+
+def read_events_since(log_file: Path, since: datetime | None, *, block_size: int = 65536) -> list[dict[str, Any]]:
+    if since is None:
+        return read_events(log_file)
+    if not log_file.exists():
+        return []
+
+    events: list[dict[str, Any]] = []
+    carry = b""
+    try:
+        with log_file.open("rb") as handle:
+            position = handle.seek(0, os.SEEK_END)
+            while position > 0:
+                size = min(block_size, position)
+                position -= size
+                handle.seek(position)
+                data = handle.read(size)
+                lines = (data + carry).splitlines()
+                if position > 0:
+                    carry = lines[0] if lines else b""
+                    complete_lines = lines[1:]
+                else:
+                    carry = b""
+                    complete_lines = lines
+
+                should_stop = False
+                for raw_line in reversed(complete_lines):
+                    if not raw_line.strip():
+                        continue
+                    line = raw_line.decode("utf-8", errors="replace")
+                    event = parse_event_line(log_file, line)
+                    timestamp = parse_timestamp(str(event.get("timestamp", "")))
+                    if timestamp is not None and timestamp < since:
+                        should_stop = True
+                        break
+                    events.append(event)
+                if should_stop:
+                    break
+    except OSError as exc:
+        raise SystemExit(f"failed to read log file {log_file}: {exc}") from exc
+    return list(reversed(events))
 
 
 def filter_events(
@@ -233,7 +281,7 @@ def main() -> None:
     state_dir = state_dir_from_env_or_arg(args.state_dir)
     log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     since = parse_since(args.since)
-    events = filter_events(read_events(log_file), skill=args.skill, since=since)
+    events = filter_events(read_events_since(log_file, since), skill=args.skill, since=since)
     report = build_report(events, skill=args.skill, since_raw=args.since, log_file=log_file)
 
     output_path: Path | None = None

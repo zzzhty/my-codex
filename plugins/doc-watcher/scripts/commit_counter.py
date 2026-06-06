@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -13,6 +14,15 @@ from typing import Any
 from audit_repo import AuditFailure, expand_path, require_git_repo, resolve_state_dir, run_git
 
 DEFAULT_CONFIG = Path("config/repos.json")
+CONFIG_HASH_KEYS = (
+    "path",
+    "docs",
+    "source_of_truth",
+    "watch_terms",
+    "recent_limit",
+    "since_ref",
+    "commit_threshold",
+)
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -39,6 +49,15 @@ def load_config(path: Path) -> dict[str, Any]:
 
 def state_path(state_dir: Path) -> Path:
     return state_dir / "repo-state.json"
+
+
+def normalized_repo_config(repo_config: dict[str, Any]) -> dict[str, Any]:
+    return {key: repo_config.get(key) for key in CONFIG_HASH_KEYS if key in repo_config}
+
+
+def repo_config_hash(repo_config: dict[str, Any]) -> str:
+    payload = json.dumps(normalized_repo_config(repo_config), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def load_state(state_dir: Path) -> dict[str, Any]:
@@ -85,28 +104,45 @@ def repo_status(repo_config: dict[str, Any], state: dict[str, Any]) -> dict[str,
     threshold = int(repo_config.get("commit_threshold") or 0)
     repo_state = state.get("repos", {}).get(name, {})
     last = repo_state.get("last_audited_revision")
+    current_config_hash = repo_config_hash(repo_config)
+    last_config_hash = repo_state.get("config_hash")
+    config_changed = last_config_hash != current_config_hash
     count = count_since(repo, last)
-    due = threshold <= 0 or count >= threshold or not last
+    due = threshold <= 0 or count >= threshold or not last or config_changed
     return {
         "name": name,
         "path": str(repo),
         "head": head,
         "last_audited_revision": last,
+        "config_hash": current_config_hash,
+        "last_config_hash": last_config_hash,
+        "config_changed": config_changed,
         "commit_threshold": threshold,
         "commits_since_audit": count,
         "due": due,
     }
 
 
-def mark_current(state_dir: Path, state: dict[str, Any], statuses: list[dict[str, Any]]) -> None:
+def mark_current(
+    state_dir: Path,
+    state: dict[str, Any],
+    statuses: list[dict[str, Any]],
+    findings_by_name: dict[str, list[dict[str, str]]] | None = None,
+) -> None:
     repos = state.setdefault("repos", {})
     timestamp = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     for item in statuses:
+        previous = repos.get(item["name"], {})
         repos[item["name"]] = {
             "path": item["path"],
             "last_audited_revision": item["head"],
+            "config_hash": item.get("config_hash"),
             "updated_at": timestamp,
         }
+        if findings_by_name is not None and item["name"] in findings_by_name:
+            repos[item["name"]]["findings"] = findings_by_name[item["name"]]
+        elif isinstance(previous, dict) and "findings" in previous:
+            repos[item["name"]]["findings"] = previous["findings"]
     save_state(state_dir, state)
 
 
@@ -131,7 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         due = "due" if item["due"] else "skip"
         print(
             f"- {item['name']}: {due}; commits_since_audit={item['commits_since_audit']}; "
-            f"threshold={item['commit_threshold']}; head={item['head'][:12]}"
+            f"threshold={item['commit_threshold']}; config_changed={item['config_changed']}; "
+            f"head={item['head'][:12]}"
         )
     if args.mark_current:
         mark_current(state_dir, state, statuses)
