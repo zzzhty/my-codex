@@ -126,6 +126,30 @@ def git_remote_source(repo_root: Path) -> str | None:
     return source or None
 
 
+def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
+    remote_ref = f"refs/remotes/origin/{ref}"
+    head = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", "HEAD"],
+        capture_output=True,
+    )
+    if head.returncode != 0:
+        return False, "local HEAD is unavailable"
+
+    remote = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", remote_ref],
+        capture_output=True,
+    )
+    if remote.returncode != 0:
+        return False, f"remote tracking ref {remote_ref} is unavailable"
+
+    head_sha = decode_text(head.stdout).strip()
+    remote_sha = decode_text(remote.stdout).strip()
+    if head_sha != remote_sha:
+        return False, f"local HEAD {head_sha[:12]} differs from {remote_ref} {remote_sha[:12]}"
+
+    return True, f"local HEAD matches {remote_ref}"
+
+
 def toml_string_value(raw: str) -> str:
     value = raw.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
@@ -302,10 +326,23 @@ def ensure_marketplace_source(
     marketplace_name: str,
     git_source: str | None,
     git_ref: str,
+    git_source_explicit: bool,
     local_source: str,
     env: dict[str, str],
     dry_run: bool,
 ) -> None:
+    skipped_stale_git_source = False
+    if git_source:
+        if not git_source_explicit:
+            current, reason = git_remote_ref_status(REPO_ROOT, git_ref)
+            if not current:
+                print(f"Local checkout is ahead of or not aligned with Git marketplace ref `{git_ref}`; using local source.")
+                print(f"Reason: {reason}")
+                git_source = None
+                skipped_stale_git_source = True
+            else:
+                print(f"Git marketplace freshness check passed: {reason}")
+
     if git_source:
         print(f"Trying Git marketplace source first: {git_source}")
         git_exit = ensure_git_marketplace_source(
@@ -321,7 +358,7 @@ def ensure_marketplace_source(
             print("Marketplace source mode: git")
             return
         print(f"Git marketplace source failed with exit code {git_exit}; falling back to local source.")
-    else:
+    elif not skipped_stale_git_source:
         print("Git marketplace source was not found; falling back to local source.")
 
     ensure_local_marketplace_source(
@@ -390,6 +427,7 @@ def main() -> None:
             marketplace_name=args.marketplace_name,
             git_source=args.git_marketplace_source or git_remote_source(REPO_ROOT),
             git_ref=args.git_ref,
+            git_source_explicit=args.git_marketplace_source is not None,
             local_source=args.marketplace_source,
             env=env,
             dry_run=args.dry_run,

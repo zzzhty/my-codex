@@ -577,7 +577,7 @@ orchestration M3: current docs and checker integration completed
 
 ### M4 - End-to-end refresh/check and Codex acceptance
 
-状态：`Not Started`
+状态：`Done`
 
 范围：
 
@@ -595,6 +595,7 @@ python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 python3 -m json.tool plugins/orchestration/.codex-plugin/plugin.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration
+python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration
 git diff --check -- AGENTS.md README.md .agents/plugins/marketplace.json scripts plugins docs
 ```
 
@@ -642,14 +643,34 @@ Review gate：
 执行证据：
 
 1. 代码证据：
-   - 完成后填写 all changed files from M1-M3.
+   - All changed files from M1-M3 remain in scope: `plugins/orchestration/**`, `.agents/plugins/marketplace.json`, `scripts/refresh_my_codex.py`, `README.md`, `AGENTS.md`, and this goal file.
+   - M4 additionally updated `scripts/refresh_my_codex.py` so the default Git marketplace source is used only when local `HEAD` matches the requested `refs/remotes/origin/git-ref`; local-ahead or missing remote tracking state now uses the local checkout.
+   - M4 additionally updated `README.md` to document the refreshed source-selection behavior.
+   - M4 updated this goal file to record the stronger full refresh dry-run gate.
 2. 行为证据：
    - `orchestration` can be installed from `my-codex`.
-   - `$orchestrate-subagents` can be invoked explicitly.
+   - Selector dry-run prints `plugin add orchestration@my-codex`.
+   - Full marketplace-source dry-run now detects that local `HEAD` differs from `refs/remotes/origin/main`, chooses local source, and prints `Marketplace source mode: local` before `plugin add orchestration@my-codex`.
+   - `$orchestrate-subagents` can be invoked explicitly by the parent workflow; the acceptance test spawned three bounded read-only subagents and waited for all results.
+   - Real `refresh_my_codex.py --plugin orchestration` was not run because it mutates local Codex plugin/cache/hook state and this milestone requires explicit local-state mutation permission before apply.
 3. 测试证据：
-   - Record exact command outputs before marking M4 Done.
+   - `python3 -m json.tool .agents/plugins/marketplace.json >/dev/null` 通过，输出 `marketplace-json-ok`。
+   - `python3 -m json.tool plugins/orchestration/.codex-plugin/plugin.json >/dev/null` 通过，输出 `plugin-json-ok`。
+   - `"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$PWD/plugins/orchestration"` 通过，输出 `Plugin validation passed: /Users/max/Projects/my-codex/plugins/orchestration`。
+   - `python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration` 通过，输出 `plugin add orchestration@my-codex` and `dry-run only; no changes written`。
+   - `python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration` 通过，输出 `Local checkout is ahead of or not aligned with Git marketplace ref 'main'; using local source`, `Marketplace source mode: local`, `plugin add orchestration@my-codex`, and `dry-run only; no changes written`。
+   - `python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-hooks --skip-doctor --codex /bin/echo --git-marketplace-source git@github.com:zzzhty/my-codex.git --plugin orchestration` 通过，证明显式 Git source 仍被尊重，输出 `Marketplace source mode: git`。
+   - `python3 -m py_compile scripts/refresh_my_codex.py scripts/check_my_codex.py` 通过，输出 `py-compile-ok`。
+   - `git diff --check -- AGENTS.md README.md .agents/plugins/marketplace.json scripts plugins docs` 通过，无输出。
+   - Non-mutating installed-state check `python3 scripts/check_my_codex.py --plugin orchestration --skip-doctor` failed as expected before apply: `FAIL orchestration@my-codex is not installed, enabled` and `FAIL plugin cache missing installed manifests`; source plugin validation inside the same check passed.
+   - Acceptance subagent coverage:
+     - `explorer` mapped branch/base status, target files and integration seams; status `completed`.
+     - `default` implementation reviewer checked correctness/docs/contract risks and identified stale Git marketplace source risk before it was fixed; status `completed`.
+     - `default` test verifier checked M4 validation coverage and installed-state gap; status `completed`.
+   - Acceptance result: parent agent successfully spawned and waited for all selected subagents. Subagents reported no meaningful local `main...HEAD` branch diff because the current branch is `main`; they reviewed current orchestration surfaces and recorded partial runtime coverage where plugin install/apply was not permitted.
 4. 文档证据：
    - README, AGENTS, plugin README, skill docs and this goal file synchronized.
+   - README documents the local-vs-Git marketplace source behavior used by refresh.
 5. 回滚证据：
    - Remove `orchestration` from marketplace and `PLUGIN_NAMES`.
    - Delete `plugins/orchestration/`.
@@ -657,6 +678,8 @@ Review gate：
    - If refresh was applied, uninstall or disable the plugin through the normal Codex plugin workflow.
 6. 剩余风险：
    - Interactive subagent behavior depends on installed Codex version, app/CLI surface, sandbox policy and user permissions.
+   - Local Codex installed state remains unmodified; real plugin install/check requires an explicit apply step or a follow-up push/refresh workflow.
+   - Current branch is `main`; acceptance did not exercise a non-empty branch-vs-main diff.
 
 推荐验证：
 
@@ -665,6 +688,7 @@ python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 python3 -m json.tool plugins/orchestration/.codex-plugin/plugin.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration
+python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration
 git diff --check -- AGENTS.md README.md .agents/plugins/marketplace.json scripts plugins docs
 ```
 
@@ -682,7 +706,7 @@ orchestration M4: validation and Codex acceptance completed
 | M1 Plugin skeleton and marketplace entry | Done | Passed | Done |
 | M2 `$orchestrate-subagents` MVP skill | Done | Passed | Done |
 | M3 Current docs and checker integration | Done | Passed | Done |
-| M4 End-to-end refresh/check and Codex acceptance | Not Started | Pending | Pending |
+| M4 End-to-end refresh/check and Codex acceptance | Done | Passed | Done |
 | Close | Not Started | Pending | Pending |
 
 ## Close Gate
