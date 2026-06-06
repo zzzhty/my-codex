@@ -8,7 +8,7 @@ blockers, risks, validation gaps, and next actions.
 Current MVP scope:
 
 - plugin manifest and marketplace integration
-- `$orchestrate-subagents` skill in the next milestone
+- `$orchestrate-subagents` skill
 - explicit subagent orchestration only
 
 Out of scope:
@@ -29,9 +29,33 @@ skills/orchestrate-subagents/agents/openai.yaml
 skills/orchestrate-subagents/references/subagent-recipes.md
 ```
 
-The skill files are added in M2 of the active long-running goal. Until then,
-this plugin skeleton is installable metadata only and does not claim runtime
-skill behavior.
+The current runtime surface is the explicit `$orchestrate-subagents` workflow.
+It does not provide implicit auto-delegation, hooks, MCP servers, custom-agent
+sync, or a control-plane runtime.
+
+## Usage
+
+Invoke the skill explicitly when a task is complex enough to benefit from
+bounded subagents:
+
+```text
+Use $orchestrate-subagents to review this branch against main.
+```
+
+The parent agent remains responsible for planning, spawning selected subagents,
+waiting for results, rejecting incomplete reports, and consolidating:
+
+1. subagent coverage
+2. blocking issues
+3. non-blocking risks
+4. missing tests
+5. evidence
+6. unresolved blockers
+7. recommended next action
+
+Subagent failure is reported as a first-class failure. The workflow must not
+claim success when a subagent times out, lacks tools, returns incomplete
+evidence, or cannot cover its assigned scope.
 
 ## Install
 
@@ -46,8 +70,6 @@ codex plugin add orchestration@my-codex
 
 ```bash
 python3 -m json.tool plugins/orchestration/.codex-plugin/plugin.json >/dev/null
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 python3 scripts/refresh_my_codex.py --dry-run --skip-bootstrap --skip-marketplace --skip-hooks --skip-doctor --codex /bin/echo --plugin orchestration
 ```
-
-Full plugin validation is expected after M2 adds the `orchestrate-subagents`
-skill.

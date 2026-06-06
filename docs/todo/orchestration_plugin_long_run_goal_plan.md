@@ -407,7 +407,7 @@ orchestration M1: plugin skeleton and marketplace integration
 
 ### M2 - Implement `$orchestrate-subagents` MVP skill
 
-状态：`Not Started`
+状态：`Done`
 
 范围：
 
@@ -449,17 +449,32 @@ Review gate：
 执行证据：
 
 1. 代码证据：
-   - 完成后填写 skill files and references.
+   - 新增 `plugins/orchestration/skills/orchestrate-subagents/SKILL.md`。
+   - 新增 `plugins/orchestration/skills/orchestrate-subagents/agents/openai.yaml`。
+   - 新增 `plugins/orchestration/skills/orchestrate-subagents/references/subagent-recipes.md`。
+   - 更新 `plugins/orchestration/README.md`，记录 explicit skill usage、failure reporting 和 plugin validation。
 2. 行为证据：
    - `$orchestrate-subagents` becomes available as an explicit skill after plugin install.
+   - Skill frontmatter description covers complex Codex tasks, explicit subagent spawn, PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection and multi-file implementation planning.
+   - Skill body requires task-local subagent prompts, selected subagent spawning, waiting for results, partial-coverage reporting, and parent consolidation.
+   - `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`, matching the explicit-only MVP boundary.
+   - No `codex-home/agents/` or `scripts/sync_codex_agents.py` artifacts were added.
 3. 测试证据：
-   - 完成后填写实际命令和结果。
+   - `"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$PWD/plugins/orchestration"` 通过，输出 `Plugin validation passed: /Users/max/Projects/my-codex/plugins/orchestration`。
+   - Skill contract assertion passed, output `ok orchestrate-subagents skill contract`.
+   - `"$MY_CODEX_PYTHON" /Users/max/.codex/skills/.system/skill-creator/scripts/quick_validate.py plugins/orchestration/skills/orchestrate-subagents` 通过，输出 `Skill is valid!`。
+   - `python3 plugins/personal-skills/skills/long-run-goal/scripts/check_md_links.py plugins/orchestration` 通过，输出 `plugins/orchestration: markdown relative links OK`。
+   - `git diff --check -- plugins/orchestration docs/todo` 通过，无输出。
+   - `python3 - <<'PY' ... Path('codex-home/agents').exists()` artifact guard 通过，输出 `no custom agent sync artifacts`。
+   - 环境断点：系统 `python3 /Users/max/.codex/skills/.system/skill-creator/scripts/quick_validate.py ...` 因 `ModuleNotFoundError: No module named 'yaml'` 失败；根因是系统 Python 缺 `PyYAML`，已使用项目约定的 `$MY_CODEX_PYTHON` 重跑同一 validator 并通过。
 4. 文档证据：
-   - `plugins/orchestration/README.md` documents usage examples and failure reporting.
+   - `plugins/orchestration/README.md` documents usage examples, parent consolidation expectations, failure reporting and validation.
+   - `SKILL.md` links detailed recipes through `references/subagent-recipes.md`.
 5. 回滚证据：
    - Delete `skills/orchestrate-subagents/` and remove usage docs.
 6. 剩余风险：
    - Static validation cannot prove runtime subagent behavior; M4 must run acceptance prompt.
+   - Actual available subagent roles remain environment-dependent; skill uses role-selection guidance and partial-coverage reporting.
 
 推荐验证：
 
@@ -651,7 +666,7 @@ orchestration M4: validation and Codex acceptance completed
 |---|---|---|---|
 | M0 Contract review / design freeze | Done | Passed | Done |
 | M1 Plugin skeleton and marketplace entry | Done | Passed | Done |
-| M2 `$orchestrate-subagents` MVP skill | Not Started | Pending | Pending |
+| M2 `$orchestrate-subagents` MVP skill | Done | Passed | Done |
 | M3 Current docs and checker integration | Not Started | Pending | Pending |
 | M4 End-to-end refresh/check and Codex acceptance | Not Started | Pending | Pending |
 | Close | Not Started | Pending | Pending |
