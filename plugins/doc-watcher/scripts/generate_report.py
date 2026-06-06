@@ -17,7 +17,7 @@ DEFAULT_CONFIG = Path("config/repos.json")
 
 def default_report_path(state_dir: Path) -> Path:
     timestamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-    return state_dir / "reports" / f"{timestamp}-all-daily-audit.md"
+    return state_dir / "reports" / f"{timestamp}-all-audit-report.md"
 
 
 def write_report(path: Path, report: str) -> None:
@@ -25,7 +25,7 @@ def write_report(path: Path, report: str) -> None:
     try:
         path.write_text(report, encoding="utf-8")
     except OSError as exc:
-        raise AuditFailure(f"failed to write daily report {path}: {exc}") from exc
+        raise AuditFailure(f"failed to write audit report {path}: {exc}") from exc
 
 
 def audit_repo_from_config(repo_config: dict[str, Any]) -> dict[str, Any]:
@@ -45,7 +45,7 @@ def audit_repo_from_config(repo_config: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def render_daily_report(
+def render_audit_report(
     *,
     generated_at: str,
     config_path: Path,
@@ -54,7 +54,7 @@ def render_daily_report(
     failures: list[str],
 ) -> str:
     lines = [
-        "# DocWatcher Daily Audit",
+        "# DocWatcher Audit Report",
         "",
         f"- Generated: {generated_at}",
         f"- Config: `{config_path}`",
@@ -82,14 +82,14 @@ def render_daily_report(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Write a report-only DocWatcher daily audit under state reports/.")
+    parser = argparse.ArgumentParser(description="Write a report-only DocWatcher audit report under state reports/.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Repo config JSON path.")
     parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/doc-watcher.")
     parser.add_argument(
         "--mode",
-        choices=("daily", "commit-dependent"),
-        default="daily",
-        help="daily audits all configured repos; commit-dependent audits only repos whose threshold is due.",
+        choices=("all", "commit-dependent"),
+        default="all",
+        help="all audits all configured repos; commit-dependent audits only repos whose threshold is due.",
     )
     parser.add_argument("--mark-audited", action="store_true", help="After successful audits, mark audited repos at current HEAD.")
     parser.add_argument("--output", help="Explicit report output path.")
@@ -125,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(f"{name}: {exc}")
 
     generated_at = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    report = render_daily_report(
+    report = render_audit_report(
         generated_at=generated_at,
         config_path=config_path,
         reports=reports,

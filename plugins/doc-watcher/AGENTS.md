@@ -13,7 +13,7 @@ Frontend code lives in `frontend/src`: shared API clients in `api`, reusable UI 
 ## Build, Test, and Development Commands
 
 - `python3 scripts/audit_repo.py --repo <path> --name <name> --print-report`: run one read-only repo audit.
-- `python3 scripts/daily_report.py --config config/repos.example.json --print-report`: generate a report from configured repos.
+- `python3 scripts/generate_report.py --config config/repos.example.json --print-report`: generate a report from configured repos.
 - `python3 scripts/commit_counter.py --config config/repos.example.json`: inspect commit-threshold trigger state.
 - `python3 scripts/doctor.py --config config/repos.example.json`: check plugin/runtime/config basics.
 - `PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}" && cd backend && uv run python "$PLUGIN_VALIDATOR" ..`: validate plugin metadata with a Python environment that includes PyYAML.

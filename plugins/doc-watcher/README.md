@@ -14,7 +14,7 @@ DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 a
 - 报告优先：默认产物是 audit summary，不是补丁。
 - 人工决策：操作者阅读 summary 后，显式决定是否让 `doc-alignment` 进入 implementation mode。
 - 语义对齐：关注名称、入口、文档口径、历史/当前边界、断链、脚本命令和验证口径是否一致。
-- 低摩擦触发：支持 daily scan 和 commit-dependent scan，贴近日常个人工作流。
+- 低摩擦触发：支持 scheduled full scan 和 commit-dependent scan，贴近日常个人工作流。
 - 可复用资产收敛：旧实现中仅保留 dashboard 和 webhook 思路作为未来可复用能力。
 
 ## MVP Workflow
@@ -33,9 +33,20 @@ MVP 优先跑通这条轻量闭环：
 
 默认触发方式：
 
-- **Daily mode**：每天扫描配置中的 repos，生成汇总报告。
+- **Full scan mode**：扫描配置中的 repos，生成汇总报告，可由定时任务按日、周或手动触发。
 - **Commit-dependent mode**：记录每个 repo 的 last audited revision；当新增 commit 数达到阈值时触发扫描。
 - **Manual mode**：直接对某个 repo 运行一次 audit，用于临时检查。
+
+## Audit Workflow Contract
+
+- Trigger: daily scan, commit-dependent scan, or an explicit manual audit request.
+- Inputs: configured local repositories, selected source-of-truth files, recent commits, and audit configuration.
+- Outputs: deterministic audit pack plus human-readable audit summary.
+- Report location: `$CODEX_HOME/doc-watcher/reports/` unless the user passes an explicit output path.
+- State location: `$CODEX_HOME/doc-watcher/repo-state.json` for commit-dependent audit state.
+- Allowed actions: inspect target repositories, collect read-only evidence, generate audit reports, and summarize drift findings.
+- Forbidden actions: do not modify target repositories, rewrite docs, open remote review flows, or apply `doc-alignment` implementation changes unless the user explicitly asks for implementation mode.
+- Validation: report the audited repo, evidence pack or report path, checked entry points, findings, and blockers. Do not treat missing configured files as success unless the report names them.
 
 ## Plugin Layout
 
@@ -44,7 +55,7 @@ MVP 优先跑通这条轻量闭环：
 skills/doc-alignment/SKILL.md
 config/repos.example.json
 scripts/audit_repo.py
-scripts/daily_report.py
+scripts/generate_report.py
 scripts/commit_counter.py
 scripts/doctor.py
 ```
@@ -110,7 +121,7 @@ Repo `path` supports environment variables and relative paths. Relative paths ar
 
 - 新增 Codex plugin manifest。
 - 新增 `doc-alignment` skill，定义只读语义 audit 工作流。
-- 新增 repo audit、daily report、commit counter 和 doctor 脚本。
+- 新增 repo audit、report generation、commit counter 和 doctor 脚本。
 - active roadmap 已改为 audit-first，不再以远端分支评审作为未来路线。
 - 旧 backend/frontend 实现保留在仓库中，但不再代表当前 MVP 主线。
 
@@ -133,10 +144,10 @@ Repo `path` supports environment variables and relative paths. Relative paths ar
 python3 scripts/audit_repo.py --repo ../.. --name my-codex --print-report
 ```
 
-按配置生成日报：
+按配置生成审计报告：
 
 ```bash
-python3 scripts/daily_report.py --config config/repos.example.json --print-report
+python3 scripts/generate_report.py --config config/repos.example.json --print-report
 ```
 
 检查 commit 阈值触发状态：

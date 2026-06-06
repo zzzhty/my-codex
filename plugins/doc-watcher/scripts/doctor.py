@@ -61,7 +61,7 @@ class Doctor:
             REPO_ROOT / "skills" / "doc-alignment" / "scripts" / "check_planning_tree.py",
             "planning-tree helper",
         )
-        for name in ("audit_repo.py", "daily_report.py", "commit_counter.py", "doctor.py"):
+        for name in ("audit_repo.py", "generate_report.py", "commit_counter.py", "doctor.py"):
             self.check_file(REPO_ROOT / "scripts" / name, f"script {name}")
 
     def check_state_dir(self, state_dir: Path) -> None:

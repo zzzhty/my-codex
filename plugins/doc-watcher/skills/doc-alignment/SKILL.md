@@ -26,7 +26,7 @@ Before carrying over prior context, re-read the newest user request and the targ
 
 If an active long-running goal or prior implementation thread exists, treat it as background only unless the newest request explicitly asks to continue it. Alignment work should not advance old milestones, update old evidence, or run unrelated validation just because that context is present.
 
-Use read-only mode when the user asks for review, audit, analysis, comparison, assessment, daily report, scheduled scan, "only inspect", "do not edit", or similar language. In read-only mode:
+Use read-only mode when the user asks for review, audit, analysis, comparison, assessment, report-only scan, scheduled scan, "only inspect", "do not edit", or similar language. In read-only mode:
 
 1. Do not move, rename, delete, archive, or rewrite files in target repositories.
 2. Inspect the target area and report findings, affected paths, recommended edits, validation gaps, and open questions.
@@ -43,7 +43,7 @@ For configured repository audits, start with deterministic evidence collection:
 ```bash
 python3 scripts/doctor.py --config config/repos.example.json
 python3 scripts/commit_counter.py --config config/repos.example.json
-python3 scripts/daily_report.py --config config/repos.example.json --print-report
+python3 scripts/generate_report.py --config config/repos.example.json --print-report
 ```
 
 Use `config/repos.json` instead of the example when a private local config exists.
@@ -54,7 +54,7 @@ For a single repository:
 python3 scripts/audit_repo.py --repo <repo-path> --name <repo-name> --print-report
 ```
 
-When `daily_report.py --mode commit-dependent` skips a repo, report it as skipped rather than audited. When any repo fails, surface the failing repo, command/path, and exact failure text.
+When `generate_report.py --mode commit-dependent` skips a repo, report it as skipped rather than audited. When any repo fails, surface the failing repo, command/path, and exact failure text.
 
 Review the generated report with these checks:
 

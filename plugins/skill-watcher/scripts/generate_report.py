@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a report-only Skill Watcher daily report."""
+"""Generate a report-only Skill Watcher usage report."""
 
 from __future__ import annotations
 
@@ -35,13 +35,13 @@ def outcome_counts(events: list[dict[str, Any]]) -> Counter[str]:
     return counter
 
 
-def default_daily_report_path(state_dir: Path, skill: str | None) -> Path:
+def default_report_path(state_dir: Path, skill: str | None) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return state_dir / "reports" / f"{timestamp}-{safe_slug(skill or 'all')}-daily-report.md"
+    return state_dir / "reports" / f"{timestamp}-{safe_slug(skill or 'all')}-report.md"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Write a Skill Watcher daily report under state reports/.")
+    parser = argparse.ArgumentParser(description="Write a Skill Watcher usage report under state reports/.")
     parser.add_argument("--skill", help="Filter by skill_name. Defaults to all skills.")
     parser.add_argument("--since", default="1d", help="Evidence window such as 1d, 24h, or ISO timestamp.")
     parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
@@ -56,12 +56,12 @@ def main() -> None:
     events = filter_events(read_events(log_file), skill=args.skill, since=since)
     report = build_report(events, skill=args.skill, since_raw=args.since, log_file=log_file)
 
-    output = expand_path(args.output) if args.output else default_daily_report_path(state_dir, args.skill)
+    output = expand_path(args.output) if args.output else default_report_path(state_dir, args.skill)
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         output.write_text(report + "\n", encoding="utf-8")
     except OSError as exc:
-        raise SystemExit(f"failed to write daily report {output}: {exc}") from exc
+        raise SystemExit(f"failed to write report {output}: {exc}") from exc
 
     counts = outcome_counts(events)
     print(f"report: {output}")

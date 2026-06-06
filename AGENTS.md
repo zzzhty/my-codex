@@ -1,3 +1,13 @@
+## Agent Operating Principles
+
+- Recurring or long-running work should have a durable home: a named thread, repo file, automation memory, report, TODO, or skill. Do not leave important project state only in chat history.
+- Prefer inspectable artifacts over implicit memory. Reusable knowledge, commands, decisions, failures, and open loops should be written to reviewable files when they matter beyond the current turn.
+- Observe before acting. For uncertain, scheduled, or recurring workflows, collect evidence and write reports before making changes.
+- Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
+- Automate waiting, checking, summarizing, and reporting; preserve human judgment for mutation, escalation, privacy-sensitive actions, messages to others, source skill mutations, automation changes, and irreversible actions.
+- Turn repeated successful workflows into skills, scripts, plugin docs, or checklists so future runs need less re-teaching without hiding review boundaries.
+- When working in this repository, use `docs/agents/agent-operating-model.md` for repo-specific workflow mapping.
+
 ## Failure-handling policy
 
 - Surface failures directly: report the root cause, failing command/path, and exact breakpoint when known.
