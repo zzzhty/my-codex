@@ -77,6 +77,16 @@ def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool =
     return result.returncode
 
 
+def run_agent_sync(*, codex_home: Path, env: dict[str, str], dry_run: bool) -> None:
+    sync_script = REPO_ROOT / "scripts" / "sync_codex_agents.py"
+    if not sync_script.is_file():
+        raise SystemExit(f"agent sync script does not exist: {sync_script}")
+    command = [sys.executable, str(sync_script), "--codex-home", str(codex_home), "--prune"]
+    if dry_run:
+        command.append("--dry-run")
+    run(command, env=env, dry_run=False)
+
+
 def load_json_object(path: Path, *, label: str) -> dict:
     if not path.is_file():
         raise SystemExit(f"{label} file missing: {path}")
@@ -528,6 +538,7 @@ def main() -> None:
     parser.add_argument("--skip-bootstrap", action="store_true", help="Do not refresh the shared tooling venv.")
     parser.add_argument("--skip-marketplace", action="store_true", help="Do not refresh marketplace config/snapshot.")
     parser.add_argument("--skip-plugins", action="store_true", help="Do not run `codex plugin add`.")
+    parser.add_argument("--skip-agents", action="store_true", help="Do not sync custom agents into $CODEX_HOME/agents.")
     parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Skill Watcher hooks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Do not run Skill Watcher doctor after refresh.")
     args = parser.parse_args()
@@ -564,6 +575,9 @@ def main() -> None:
     if not args.skip_plugins:
         for plugin in selected_plugins(args.plugin, args.marketplace_name, action="install"):
             run([codex, "plugin", "add", plugin], env=env, dry_run=args.dry_run)
+
+    if not args.skip_agents:
+        run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)
 
     hook_installer = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "install_codex_hook.py"
     if not args.skip_hooks:

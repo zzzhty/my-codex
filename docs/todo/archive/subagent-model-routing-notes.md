@@ -1,17 +1,17 @@
-# Subagent Model Selection
+# Subagent Model Routing Notes
 
-状态：Active design note；第一轮方案合并完成。
+状态：Background design note；v1 execution contract 已迁移到 [subagent-model-routing-v1.md](subagent-model-routing-v1.md)。
 
-本文件是 subagent model-routing、custom-agent TOML 和后续 character 讨论的统一 TODO 入口。未收口内容不要写入 archive，也不要分散到 root README、agent operating model 或 plugin README 中。
+本文件保留 subagent model-routing、custom-agent TOML 和 character 讨论的背景材料。当前可执行 long-run-goal plan 是 [subagent-model-routing-v1.md](subagent-model-routing-v1.md)。
 
 当前边界：
 
 - 运行时执行合同仍以 `plugins/orchestration/skills/orchestrate-subagents/SKILL.md` 为准。
-- 本文件中的具体 agent 名称、模型、reasoning、权限和 character 仍是草案。
-- 在后续讨论完成并验证当前 Codex custom-agent surface 前，不创建 `.codex/agents/`、`$CODEX_HOME/agents/`、`[agents]` config snippet 或 sync 脚本。
-- 需要引用未收口方案时，引用本文件；archive 只保留已关闭历史。
+- V1 执行计划以 [subagent-model-routing-v1.md](subagent-model-routing-v1.md) 为准。
+- 本文件中的旧角色清单、目录结构和模型分配是背景草案；与 v1 冲突时，以 [subagent-model-routing-v1.md](subagent-model-routing-v1.md) 为准。
+- archive 只保留已关闭历史，不承载当前 open work。
 
-当前未收口问题：
+背景阶段曾记录的问题：
 
 1. 是否先落地 read-only custom agents，还是继续只使用内置 `explorer`、`default`、`worker` 加 assignment label。
 2. 具体 custom-agent character、命名规范和文件名规范。
@@ -21,6 +21,8 @@
 6. 是否增加一个 subagent fit check / advisor gate：复杂任务开始前先建议是否调用 `$orchestrate-subagents`，但不自动派生。
 7. 是否采用 `read-only` / `mixed` / `write-capable` 三类 work mode 作为人类可扫读的建议标签。
 8. 验证路径：Codex 版本、trusted project、agent 加载、`/agent` 可见性、sandbox/approval 继承行为和回滚方式。
+
+V1 已在 [subagent-model-routing-v1.md](subagent-model-routing-v1.md) 中收口为：M1 只落地 read-only custom agents、managed `$CODEX_HOME/agents/` sync 和 orchestration fallback；write-capable agents 与 advisor skill 留作 Future。
 
 官方依据：Codex 支持 custom agents，并允许在 agent TOML 中配置 `model`、`model_reasoning_effort`、`sandbox_mode` 等字段；custom agents 可放在 `~/.codex/agents/` 或项目级 `.codex/agents/`；`agents.max_threads` 默认上限为 6，`agents.max_depth` 默认 1。([OpenAI开发者][1])
 

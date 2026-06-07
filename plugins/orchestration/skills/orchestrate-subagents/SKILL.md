@@ -33,7 +33,25 @@ normal subagent policy.
 
 ## Role Selection
 
-Use the roles available in the current Codex environment. Prefer:
+Use the roles available in the current Codex environment. Do not assume custom
+agents are installed in every session.
+
+When the M1 read-only custom agents are available, prefer:
+
+- `code_mapper` for read-only codebase mapping, impact analysis, test
+  discovery, schema inspection, and evidence collection. Fallback:
+  `explorer as code-mapper`.
+- `reviewer` for correctness, security, regression, compatibility, contract,
+  and missing-test review. Fallback: `default as implementation-reviewer`.
+- `docs_researcher` for official documentation, API, configuration, version,
+  and migration-note verification. Fallback: `default as docs-researcher`.
+
+If a custom agent is unavailable, a pinned model is unavailable, or the runtime
+does not expose custom agents, use the built-in fallback only when the
+ownership and output contract still fit. Otherwise stop and report partial
+coverage.
+
+Built-in roles remain supported:
 
 - `explorer` for read-only codebase mapping, impact analysis, test discovery,
   schema inspection, and evidence collection.
@@ -45,9 +63,10 @@ Use the roles available in the current Codex environment. Prefer:
 When spawning multiple subagents with the same role, add an assignment label in
 the prompt, such as `default as test-verifier` or `worker as api-adapter`.
 
-If requested roles are not available, use the closest available role only when
-the ownership and output contract still fit. Otherwise stop and report partial
-coverage.
+Do not request write-capable custom-agent names such as `impl_worker` or
+`test_runner` until they exist in the current environment and have explicit
+ownership, rollback, conflict handling, and validation rules. Keep `worker`
+rules unchanged for implementation subtasks.
 
 For common patterns, read `references/subagent-recipes.md`.
 

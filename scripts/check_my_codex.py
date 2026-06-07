@@ -213,6 +213,21 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"Skill Watcher doctor failed: {output}")
 
+    def check_agent_sync(self, *, codex_home: Path, env: dict[str, str]) -> None:
+        sync_script = REPO_ROOT / "scripts" / "sync_codex_agents.py"
+        if not sync_script.is_file():
+            self.fail(f"agent sync script missing: {sync_script}")
+            return
+        result = self.run_command(
+            [sys.executable, str(sync_script), "--check", "--prune", "--codex-home", str(codex_home)],
+            env=env,
+        )
+        if result.returncode == 0:
+            self.ok(f"custom agents are synced: {codex_home / 'agents'}")
+        else:
+            output = (result.stderr or result.stdout).strip()
+            self.fail(f"custom agents are not synced: {output}")
+
     def finish(self, *, strict_warnings: bool) -> None:
         if strict_warnings and self.warnings:
             self.failures += self.warnings
@@ -231,8 +246,16 @@ def main() -> None:
     parser.add_argument("--python", help="Explicit tooling Python expected in hooks and diagnostics.")
     parser.add_argument("--marketplace-name", default="my-codex", help="Configured marketplace name.")
     parser.add_argument("--plugin", action="append", help="Plugin name or selector to check. May be repeated.")
+    parser.add_argument("--skip-plugins", action="store_true", help="Skip `codex plugin list` and plugin cache checks.")
+    parser.add_argument("--skip-hooks", action="store_true", help="Skip Skill Watcher hook config checks.")
+    parser.add_argument("--skip-agents", action="store_true", help="Skip custom-agent sync checks.")
     parser.add_argument("--skip-plugin-validation", action="store_true", help="Skip plugin validator checks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Skip Skill Watcher doctor.")
+    parser.add_argument(
+        "--skip-skill-watcher-doctor",
+        action="store_true",
+        help="Alias for --skip-doctor.",
+    )
     parser.add_argument("--strict-warnings", action="store_true", help="Treat warnings as failures.")
     args = parser.parse_args()
 
@@ -247,12 +270,16 @@ def main() -> None:
     runner = CheckRunner()
     runner.check_marketplace_file(plugins)
     runner.check_tooling_python(tooling_python, env=env)
-    runner.check_codex_plugin_list(codex, plugins, env=env)
-    runner.check_plugin_cache(plugins, codex_home=codex_home)
-    runner.check_hook_config(tooling_python, hook_config=codex_home / "hooks.json")
+    if not args.skip_plugins:
+        runner.check_codex_plugin_list(codex, plugins, env=env)
+        runner.check_plugin_cache(plugins, codex_home=codex_home)
+    if not args.skip_hooks:
+        runner.check_hook_config(tooling_python, hook_config=codex_home / "hooks.json")
+    if not args.skip_agents:
+        runner.check_agent_sync(codex_home=codex_home, env=env)
     if not args.skip_plugin_validation:
         runner.check_plugin_validation(tooling_python, plugins, env=env, validator=validator)
-    if not args.skip_doctor:
+    if not args.skip_doctor and not args.skip_skill_watcher_doctor:
         runner.check_doctor(tooling_python, env=env)
     runner.finish(strict_warnings=args.strict_warnings)
 

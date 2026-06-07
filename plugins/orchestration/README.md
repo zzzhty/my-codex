@@ -33,6 +33,11 @@ The current runtime surface is the explicit `$orchestrate-subagents` workflow.
 It does not provide implicit auto-delegation, hooks, MCP servers, custom-agent
 sync, or a control-plane runtime.
 
+When repo-managed custom agents are synced by `my-codex`, the orchestration
+recipes prefer read-only `code_mapper`, `reviewer`, and `docs_researcher`
+assignments with built-in fallbacks. This plugin still does not own the sync
+process or write to `$CODEX_HOME/agents/`.
+
 ## Usage
 
 Invoke the skill explicitly when a task is complex enough to benefit from
