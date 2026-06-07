@@ -167,15 +167,14 @@ python3 plugins/doc-watcher/skills/doc-alignment/scripts/check_planning_tree.py 
 3. 不长期保留 `personal-skills` alias 插件，避免两个插件同时提供 `long-run-goal`。
 4. 不编辑 Codex plugin cache、generated logs、runtime reports 或 `$CODEX_HOME` 文件来伪装迁移成功。
 
-## 非目标 / Future 边界
+## 非目标
 
 本 goal 不处理：
 
-1. 自定义 Codex agent TOML、`$CODEX_HOME/agents/` 同步或 root README 中标记为 future 的 custom agent surface。
-2. DocWatcher、Skill Watcher、Matt Pocock skills 或 orchestration 插件的产品重构，除非它们引用旧 plugin id 或安装清单。
-3. 自动化调度变更、外部消息发送、远程发布或不可逆清理。
-4. 长期保留 `personal-skills` 兼容插件。
-5. 在未验证 Codex CLI selector 格式前强行删除旧插件安装状态。
+1. DocWatcher、Skill Watcher、Matt Pocock skills 或 orchestration 插件的产品重构，除非它们引用旧 plugin id 或安装清单。
+2. 自动化调度变更、外部消息发送、远程发布或不可逆清理。
+3. 长期保留 `personal-skills` 兼容插件。
+4. 在未验证 Codex CLI selector 格式前强行删除旧插件安装状态。
 
 ## 阶段状态表
 

@@ -28,10 +28,11 @@ The full workflow lives in
 `plugins/orchestration/skills/orchestrate-subagents/SKILL.md`. Keep root docs
 limited to install, validation, and entry-point guidance.
 
-Custom agent TOML source, `$CODEX_HOME/agents/` sync, and `[agents]` config
-snippets are future work. Do not add `codex-home/agents/` or
-`scripts/sync_codex_agents.py` unless a new goal first verifies the current
-Codex custom-agent surface.
+Open custom-agent TOML, `$CODEX_HOME/agents/` sync, and `[agents]` config
+design lives in `docs/todo/subagent-model-selection.md`. Do not add
+`codex-home/agents/`, project custom-agent TOML, or
+`scripts/sync_codex_agents.py` until that TODO records the chosen design and
+validation evidence.
 
 ## Local Install
 

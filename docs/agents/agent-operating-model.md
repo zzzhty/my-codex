@@ -52,6 +52,23 @@ Default posture:
 
 When implementation is requested, act directly after enough context is known. When the root cause is unclear, collect minimal diagnostics and report the concrete blocker instead of routing around it.
 
+## Subagent Delegation
+
+Subagent work has two current layers in this repository.
+
+Current runtime workflow:
+
+- Use the `orchestration` plugin and `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
+- Treat `plugins/orchestration/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
+- Use the currently available Codex roles such as `explorer`, `worker`, and `default`, with task-local labels like `code-mapper` or `test-verifier`.
+- Keep the parent agent responsible for planning, write-scope decisions, integration, final validation, and the user-facing conclusion.
+
+Open custom-agent design:
+
+- Keep unresolved subagent model-routing, custom-agent TOML, naming, and character decisions in `docs/todo/subagent-model-selection.md`.
+- Do not use archive files as the current source for open subagent design.
+- Do not add `$CODEX_HOME/agents/` sync, project custom-agent TOML, or `[agents]` config snippets until that TODO records the chosen design and validation evidence.
+
 ## Review
 
 Every meaningful output should be inspectable.
