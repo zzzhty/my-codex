@@ -17,16 +17,18 @@ normal subagent policy.
 1. Decide whether the task is genuinely parallelizable before spawning.
 2. Keep the parent agent responsible for planning, final decisions,
    integration, verification, and user-facing conclusions.
-3. Spawn only bounded subagents with clear ownership, expected outputs, stop
+3. Give each subagent one task only. Do not combine mapping, review,
+   implementation, and validation in the same subagent prompt.
+4. Spawn only bounded subagents with clear ownership, expected outputs, stop
    conditions, and file/write boundaries.
-4. Do not rely on subagents implicitly inheriting this skill, parent context,
+5. Do not rely on subagents implicitly inheriting this skill, parent context,
    local plans, or unstated requirements. Put the needed instructions directly
    in each subagent prompt.
-5. Wait for all selected subagents, or record exactly which subagent did not
+6. Wait for all selected subagents, or record exactly which subagent did not
    return and why.
-6. Treat subagent failure, timeout, missing tools, incomplete findings,
+7. Treat subagent failure, timeout, missing tools, incomplete findings,
    conflicting results, and unsafe file overlap as first-class failures.
-7. Consolidate evidence before acting. Do not let subagent output replace
+8. Consolidate evidence before acting. Do not let subagent output replace
    parent review.
 
 ## Role Selection
@@ -40,19 +42,32 @@ Use the roles available in the current Codex environment. Prefer:
 - `default` for review, triage, and planning when no narrower role is
   available.
 
+When spawning multiple subagents with the same role, add an assignment label in
+the prompt, such as `default as test-verifier` or `worker as api-adapter`.
+
 If requested roles are not available, use the closest available role only when
 the ownership and output contract still fit. Otherwise stop and report partial
 coverage.
 
 For common patterns, read `references/subagent-recipes.md`.
 
+## Single-Task Fit Check
+
+Before spawning, rewrite each assignment until it has one primary verb, one bounded scope, and one expected output.
+Split any assignment that asks a subagent to both map and review, review and
+implement, implement and plan, or validate unrelated work.
+
+Validation commands may be required as evidence for an implementation task, but
+separate test strategy, missing-test discovery, or cross-slice validation should
+be a separate subagent task.
+
 ## Parent Workflow
 
 1. Restate the task, success criteria, and non-goals in one short block.
 2. Identify parallelizable slices and any shared files that must stay parent
    owned.
-3. Choose the minimum useful subagents. Do not delegate tiny tasks or tightly
-   coupled sequential debugging steps.
+3. Choose the minimum useful subagents, with one task per subagent. Do not
+   delegate tiny tasks or tightly coupled sequential debugging steps.
 4. Spawn selected subagents with task-local prompts.
 5. Continue only non-overlapping parent work while subagents run.
 6. Wait for all selected subagents before final consolidation unless a failure
@@ -69,6 +84,12 @@ Use this structure when spawning:
 ```text
 Task:
 <specific assignment, not the whole parent task>
+
+Assignment label:
+<role plus purpose, such as default as test-verifier>
+
+Single task:
+<one primary verb, one bounded scope, one expected output>
 
 Context:
 <files, commands, branch/base, goal path, constraints, relevant facts>
