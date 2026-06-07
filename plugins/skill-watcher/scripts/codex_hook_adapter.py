@@ -22,7 +22,8 @@ SUMMARY_LIMIT = 160
 DEFAULT_MONITORED_SKILLS = (
     "skill-watcher:skill-maintainer",
     "doc-watcher:doc-alignment",
-    "personal-skills:long-run-goal",
+    "workflow:long-run-goal",
+    "workflow:sop",
     "mattpocock-skills:caveman",
     "mattpocock-skills:diagnose",
     "mattpocock-skills:grill-me",
@@ -37,11 +38,19 @@ DEFAULT_MONITORED_SKILLS = (
     "mattpocock-skills:triage",
     "mattpocock-skills:write-a-skill",
     "mattpocock-skills:zoom-out",
+    "orchestration:orchestrate-subagents",
 )
 DEFAULT_SKILL_ALIASES = {
     "skill-watcher:skill-maintainer": ("skill-maintainer", "skill maintainer", "skill watcher"),
     "doc-watcher:doc-alignment": ("doc-alignment", "doc watcher", "documentation alignment"),
-    "personal-skills:long-run-goal": ("long-run-goal", "long run goal", "long-running goal"),
+    "workflow:long-run-goal": ("long-run-goal", "long run goal", "long-running goal"),
+    "workflow:sop": (
+        "sop",
+        "standard operating procedure",
+        "standard procedure",
+        "标准流程",
+        "标准处理流程",
+    ),
     "mattpocock-skills:caveman": ("caveman", "caveman mode"),
     "mattpocock-skills:diagnose": ("diagnose", "diagnose this", "debug this"),
     "mattpocock-skills:grill-me": ("grill-me", "grill me"),
@@ -61,6 +70,7 @@ DEFAULT_SKILL_ALIASES = {
     "mattpocock-skills:triage": ("triage", "triage issues"),
     "mattpocock-skills:write-a-skill": ("write-a-skill", "write a skill"),
     "mattpocock-skills:zoom-out": ("zoom-out", "zoom out"),
+    "orchestration:orchestrate-subagents": ("orchestrate-subagents", "orchestrate subagents"),
 }
 FAILURE_TEXT_RE = re.compile(
     r"(?:exit(?:ed)?\s+(?:with\s+)?(?:code|status)\s+[1-9]\d*|"
@@ -397,6 +407,7 @@ def normalize_hook_payload(payload: dict[str, Any], *, skill_context: dict[str, 
             "tool_use_id": payload.get("tool_use_id"),
             "skill_attribution": skill_attribution,
             "skill_confidence": skill_confidence,
+            "matched_alias": context.get("matched_alias", "") if context else "",
             "monitored_skill": context is not None,
         },
     }

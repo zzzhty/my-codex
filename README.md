@@ -10,7 +10,7 @@ This repository is the development mainline for the plugins and personal Codex c
 
 - `skill-watcher`: observes Codex skill usage and produces report/proposal artifacts.
 - `doc-watcher`: audits configured local repositories for documentation semantic drift.
-- `personal-skills`: packages original personal skills maintained in this repository.
+- `workflow`: packages reusable workflow skills, including long-running goal management.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
 - `orchestration`: packages explicit Codex subagent orchestration workflows.
 
@@ -30,10 +30,15 @@ limited to install, validation, and entry-point guidance.
 
 Custom agent TOML source, `$CODEX_HOME/agents/` sync, and `[agents]` config
 snippets are future work. Do not add `codex-home/agents/` or
-`scripts/sync_codex_agents.py` unless the future gate in the active goal plan
-has first verified the current Codex custom-agent surface.
+`scripts/sync_codex_agents.py` unless a new goal first verifies the current
+Codex custom-agent surface.
 
 ## Local Install
+
+For routine install or refresh, prefer the platform wrapper in
+[Marketplace And Hook Debugging](#marketplace-and-hook-debugging). The manual
+commands below are a fallback and should mirror
+`.agents/plugins/install-manifest.json`.
 
 Unix:
 
@@ -46,7 +51,7 @@ export PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-$CODEX_HOME/skills/.system/plugin-c
 codex plugin marketplace add "$MY_CODEX_ROOT"
 codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
-codex plugin add personal-skills@my-codex
+codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 codex plugin add orchestration@my-codex
 ```
@@ -63,7 +68,7 @@ Set-Location $env:MY_CODEX_ROOT
 codex plugin marketplace add $env:MY_CODEX_ROOT
 codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
-codex plugin add personal-skills@my-codex
+codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 codex plugin add orchestration@my-codex
 ```
@@ -160,7 +165,9 @@ Windows PowerShell:
 
 The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Unix wrapper fails before refresh when the Codex CLI does not expose `codex plugin add` and `codex plugin list`; non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
-`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref`, falls back to the current checkout as a local marketplace source when the Git source is stale, unavailable, or fails, runs `codex plugin add` for every plugin packaged here, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print the commands without changing local Codex state.
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print the commands without changing local Codex state.
+
+Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
 
 Direct helper usage remains supported:
 
@@ -206,7 +213,7 @@ py scripts\bootstrap_tooling_env.py
 codex plugin marketplace add $env:MY_CODEX_ROOT
 codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
-codex plugin add personal-skills@my-codex
+codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 codex plugin add orchestration@my-codex
 ```
@@ -278,9 +285,10 @@ Unix:
 
 ```bash
 python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
+python3 -m json.tool .agents/plugins/install-manifest.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/skill-watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/doc-watcher"
-"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/personal-skills"
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/workflow"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 ```
@@ -289,9 +297,10 @@ Windows PowerShell:
 
 ```powershell
 & $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\marketplace.json | Out-Null
+& $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\install-manifest.json | Out-Null
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\skill-watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\doc-watcher"
-& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\personal-skills"
+& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\workflow"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\orchestration"
 ```
@@ -300,10 +309,11 @@ Windows PowerShell:
 
 ```text
 .agents/plugins/marketplace.json
+.agents/plugins/install-manifest.json
 plugins/
   skill-watcher/
   doc-watcher/
-  personal-skills/
+  workflow/
   mattpocock-skills/
   orchestration/
 requirements-tools.txt

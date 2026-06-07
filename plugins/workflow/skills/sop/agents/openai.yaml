@@ -1,0 +1,4 @@
+interface:
+  display_name: "SOP"
+  short_description: "Create, update, or execute reusable procedures"
+  default_prompt: "Use $sop to create, update, validate, or execute a reusable standard operating procedure with explicit trigger, inputs, ordered steps, outputs, validation evidence, allowed and forbidden actions, stop conditions, and failure handling."

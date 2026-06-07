@@ -14,7 +14,6 @@ from refresh_my_codex import (
     CODEX_HOME,
     DEFAULT_VENV,
     MARKETPLACE_FILE,
-    PLUGIN_NAMES,
     REPO_ROOT,
     build_env,
     command_text,
@@ -85,7 +84,7 @@ class CheckRunner:
         except FileNotFoundError as exc:
             return subprocess.CompletedProcess(command, 127, "", f"command not found: {exc.filename}")
 
-    def check_marketplace_file(self) -> None:
+    def check_marketplace_file(self, expected_plugins: list[str]) -> None:
         if not MARKETPLACE_FILE.is_file():
             self.fail(f"marketplace file missing: {MARKETPLACE_FILE}")
             return
@@ -97,12 +96,13 @@ class CheckRunner:
         if data.get("name") != "my-codex":
             self.fail(f"marketplace name mismatch in {MARKETPLACE_FILE}: {data.get('name')!r}")
             return
-        plugins = data.get("plugins")
-        if not isinstance(plugins, list):
+        marketplace_plugins = data.get("plugins")
+        if not isinstance(marketplace_plugins, list):
             self.fail(f"marketplace plugins field is not a list: {MARKETPLACE_FILE}")
             return
-        present = {str(plugin.get("name")) for plugin in plugins if isinstance(plugin, dict)}
-        missing = sorted(set(PLUGIN_NAMES) - present)
+        present = {str(plugin.get("name")) for plugin in marketplace_plugins if isinstance(plugin, dict)}
+        expected = {selector.split("@", 1)[0] for selector in expected_plugins}
+        missing = sorted(expected - present)
         if missing:
             self.fail(f"marketplace is missing plugins: {', '.join(missing)}")
             return
@@ -241,11 +241,11 @@ def main() -> None:
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
     codex = resolve_executable(args.codex)
-    plugins = selected_plugins(args.plugin, args.marketplace_name)
+    plugins = selected_plugins(args.plugin, args.marketplace_name, action="check")
     validator = Path(env["PLUGIN_VALIDATOR"])
 
     runner = CheckRunner()
-    runner.check_marketplace_file()
+    runner.check_marketplace_file(plugins)
     runner.check_tooling_python(tooling_python, env=env)
     runner.check_codex_plugin_list(codex, plugins, env=env)
     runner.check_plugin_cache(plugins, codex_home=codex_home)

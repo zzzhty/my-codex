@@ -29,10 +29,10 @@
       "category": "Productivity"
     },
     {
-      "name": "personal-skills",
+      "name": "workflow",
       "source": {
         "source": "local",
-        "path": "./plugins/personal-skills"
+        "path": "./plugins/workflow"
       },
       "policy": {
         "installation": "AVAILABLE",

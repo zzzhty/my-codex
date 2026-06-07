@@ -115,7 +115,7 @@ Windows PowerShell:
 py scripts\refresh_my_codex.py
 ```
 
-That helper refreshes the marketplace with Git first and local checkout fallback, reruns `codex plugin add` for every `my-codex` plugin, and then reruns this hook installer. This is required after hook schema changes because plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`.
+That helper uses the Git marketplace source only when the checkout is aligned and clean, otherwise falls back to the local checkout, reruns `codex plugin add` for every plugin selected by `.agents/plugins/install-manifest.json`, and then reruns this hook installer. This is required after hook schema changes because plugin marketplace refreshes do not rewrite `$CODEX_HOME/hooks.json`.
 
 After refresh, run the repository-level closure check from the checkout root:
 
@@ -178,7 +178,8 @@ Default monitored skills are every skill packaged by the `my-codex` marketplace:
 ```text
 skill-watcher:skill-maintainer
 doc-watcher:doc-alignment
-personal-skills:long-run-goal
+workflow:long-run-goal
+workflow:sop
 mattpocock-skills:caveman
 mattpocock-skills:diagnose
 mattpocock-skills:grill-me
@@ -193,6 +194,7 @@ mattpocock-skills:to-prd
 mattpocock-skills:triage
 mattpocock-skills:write-a-skill
 mattpocock-skills:zoom-out
+orchestration:orchestrate-subagents
 ```
 
 Override the allowlist with a comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable.

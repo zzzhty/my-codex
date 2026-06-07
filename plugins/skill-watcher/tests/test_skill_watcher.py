@@ -37,6 +37,7 @@ from generate_report import (  # noqa: E402
 from propose_skill_patch import build_proposal  # noqa: E402
 from redact_event import REDACTION, redact_event  # noqa: E402
 from refresh_my_codex import marketplace_source_arg  # noqa: E402
+from refresh_my_codex import default_plugin_names, selected_plugins  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_proposal_status import update_status  # noqa: E402
 
@@ -115,6 +116,65 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(calls[0][0][0], str(tooling_python))
         self.assertEqual(calls[0][0][1], str(validator))
         self.assertIsNone(calls[0][1])
+
+    def test_install_manifest_drives_default_plugin_selection(self) -> None:
+        expected = [
+            "skill-watcher",
+            "doc-watcher",
+            "workflow",
+            "mattpocock-skills",
+            "orchestration",
+        ]
+
+        self.assertEqual(
+            default_plugin_names("install", marketplace_name="my-codex"),
+            expected,
+        )
+        self.assertEqual(
+            selected_plugins(None, "my-codex", action="install"),
+            [f"{plugin}@my-codex" for plugin in expected],
+        )
+        self.assertEqual(
+            selected_plugins(["doc-watcher"], "my-codex", action="install"),
+            ["doc-watcher@my-codex"],
+        )
+        self.assertEqual(
+            selected_plugins(["external@other-market"], "my-codex", action="install"),
+            ["external@other-market"],
+        )
+
+    def test_install_manifest_fails_when_selected_plugin_is_missing_from_marketplace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest = tmp_path / "install-manifest.json"
+            marketplace = tmp_path / "marketplace.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "marketplace": "my-codex",
+                        "plugins": [
+                            {"name": "missing-plugin", "install": True, "check": True},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            marketplace.write_text(
+                json.dumps({"name": "my-codex", "plugins": [{"name": "skill-watcher"}]}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                selected_plugins(
+                    None,
+                    "my-codex",
+                    action="install",
+                    manifest_file=manifest,
+                    marketplace_file=marketplace,
+                )
+
+        self.assertIn("missing-plugin", str(raised.exception))
 
     def test_redacts_secret_keys_and_values(self) -> None:
         payload = {
@@ -216,6 +276,26 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertIn("user_skill_context", summary["codex"]["turn_summary"])
         self.assertEqual(len(lines), 3)
         self.assertNotIn("sk-testsecret123456789", "\n".join(lines))
+
+        sop_prompt = normalize_hook_payload(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "请使用标准流程整理这次重复任务。",
+            }
+        )
+        self.assertEqual(sop_prompt["skill_name"], "workflow:sop")
+        self.assertEqual(sop_prompt["codex"]["skill_attribution"], "prompt_mention")
+        self.assertEqual(sop_prompt["codex"]["matched_alias"], "标准流程")
+
+        sop_assistant = normalize_hook_payload(
+            {
+                "hook_event_name": "Stop",
+                "last_assistant_message": "I will use $sop for this recurring procedure.",
+            }
+        )
+        self.assertEqual(sop_assistant["skill_name"], "workflow:sop")
+        self.assertEqual(sop_assistant["codex"]["skill_attribution"], "assistant_announcement")
+        self.assertEqual(sop_assistant["codex"]["matched_alias"], "sop")
 
     def test_hook_config_runtime_helpers_and_stale_schema_detection(self) -> None:
         with mock.patch.dict("os.environ", {"MY_CODEX_PYTHON": "/tmp/shared-python"}, clear=True):

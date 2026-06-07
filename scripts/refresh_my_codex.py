@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
 import shutil
@@ -15,15 +16,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKETPLACE_FILE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
+INSTALL_MANIFEST_FILE = REPO_ROOT / ".agents" / "plugins" / "install-manifest.json"
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
-PLUGIN_NAMES = (
-    "skill-watcher",
-    "doc-watcher",
-    "personal-skills",
-    "mattpocock-skills",
-    "orchestration",
-)
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -82,9 +77,133 @@ def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool =
     return result.returncode
 
 
-def selected_plugins(raw_plugins: list[str] | None, marketplace_name: str) -> list[str]:
-    plugins = raw_plugins or list(PLUGIN_NAMES)
-    return [plugin if "@" in plugin else f"{plugin}@{marketplace_name}" for plugin in plugins]
+def load_json_object(path: Path, *, label: str) -> dict:
+    if not path.is_file():
+        raise SystemExit(f"{label} file missing: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"{label} file is not valid JSON: {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise SystemExit(f"{label} file must contain a JSON object: {path}")
+    return data
+
+
+def marketplace_plugin_names(marketplace_file: Path = MARKETPLACE_FILE) -> set[str]:
+    data = load_json_object(marketplace_file, label="marketplace")
+    plugins = data.get("plugins")
+    if not isinstance(plugins, list):
+        raise SystemExit(f"marketplace plugins field is not a list: {marketplace_file}")
+
+    names: set[str] = set()
+    for index, plugin in enumerate(plugins):
+        if not isinstance(plugin, dict):
+            raise SystemExit(f"marketplace plugin entry #{index + 1} is not an object: {marketplace_file}")
+        name = plugin.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise SystemExit(f"marketplace plugin entry #{index + 1} has no valid name: {marketplace_file}")
+        names.add(name)
+    return names
+
+
+def load_install_manifest(manifest_file: Path = INSTALL_MANIFEST_FILE) -> dict:
+    data = load_json_object(manifest_file, label="install manifest")
+    if data.get("schemaVersion") != 1:
+        raise SystemExit(f"install manifest schemaVersion must be 1: {manifest_file}")
+
+    plugins = data.get("plugins")
+    if not isinstance(plugins, list):
+        raise SystemExit(f"install manifest plugins field is not a list: {manifest_file}")
+
+    seen: set[str] = set()
+    for index, plugin in enumerate(plugins):
+        if not isinstance(plugin, dict):
+            raise SystemExit(f"install manifest plugin entry #{index + 1} is not an object: {manifest_file}")
+        name = plugin.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise SystemExit(f"install manifest plugin entry #{index + 1} has no valid name: {manifest_file}")
+        if name in seen:
+            raise SystemExit(f"install manifest contains duplicate plugin: {name}")
+        seen.add(name)
+        for flag in ("install", "check"):
+            if not isinstance(plugin.get(flag), bool):
+                raise SystemExit(f"install manifest plugin `{name}` has non-boolean `{flag}`")
+    return data
+
+
+def ensure_plugins_in_marketplace(plugin_names: list[str], *, marketplace_file: Path = MARKETPLACE_FILE) -> None:
+    present = marketplace_plugin_names(marketplace_file)
+    missing = sorted(set(plugin_names) - present)
+    if missing:
+        raise SystemExit(
+            "install manifest selected plugins are missing from marketplace: " + ", ".join(missing)
+        )
+
+
+def default_plugin_names(
+    action: str,
+    *,
+    marketplace_name: str,
+    manifest_file: Path = INSTALL_MANIFEST_FILE,
+    marketplace_file: Path = MARKETPLACE_FILE,
+) -> list[str]:
+    if action not in {"install", "check"}:
+        raise ValueError(f"unsupported plugin selection action: {action}")
+
+    manifest = load_install_manifest(manifest_file)
+    configured_marketplace = manifest.get("marketplace")
+    if configured_marketplace != marketplace_name:
+        raise SystemExit(
+            f"install manifest marketplace mismatch: expected {marketplace_name!r}, "
+            f"found {configured_marketplace!r}"
+        )
+
+    plugins = manifest["plugins"]
+    names = [plugin["name"] for plugin in plugins if plugin[action]]
+    if not names:
+        raise SystemExit(f"install manifest selects no plugins for `{action}`")
+    ensure_plugins_in_marketplace(names, marketplace_file=marketplace_file)
+    return names
+
+
+def selected_plugins(
+    raw_plugins: list[str] | None,
+    marketplace_name: str,
+    *,
+    action: str,
+    manifest_file: Path = INSTALL_MANIFEST_FILE,
+    marketplace_file: Path = MARKETPLACE_FILE,
+) -> list[str]:
+    if raw_plugins is None:
+        plugin_names = default_plugin_names(
+            action,
+            marketplace_name=marketplace_name,
+            manifest_file=manifest_file,
+            marketplace_file=marketplace_file,
+        )
+    else:
+        plugin_names = raw_plugins
+
+    selectors: list[str] = []
+    names_to_validate: list[str] = []
+    for raw_plugin in plugin_names:
+        plugin = raw_plugin.strip()
+        if not plugin:
+            raise SystemExit("plugin selector cannot be empty")
+        name, separator, selector_marketplace = plugin.partition("@")
+        if not name:
+            raise SystemExit(f"plugin selector has no plugin name: {plugin}")
+        if separator:
+            selectors.append(plugin)
+            if selector_marketplace == marketplace_name:
+                names_to_validate.append(name)
+        else:
+            selectors.append(f"{name}@{marketplace_name}")
+            names_to_validate.append(name)
+
+    if names_to_validate:
+        ensure_plugins_in_marketplace(names_to_validate, marketplace_file=marketplace_file)
+    return selectors
 
 
 def tooling_python_from_args(args: argparse.Namespace, venv_path: Path) -> Path:
@@ -127,6 +246,15 @@ def git_remote_source(repo_root: Path) -> str | None:
 
 
 def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
+    worktree = subprocess.run(
+        ["git", "-C", str(repo_root), "status", "--porcelain"],
+        capture_output=True,
+    )
+    if worktree.returncode != 0:
+        return False, "local worktree status is unavailable"
+    if decode_text(worktree.stdout).strip():
+        return False, "local worktree has uncommitted changes"
+
     remote_ref = f"refs/remotes/origin/{ref}"
     head = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "--verify", "HEAD"],
@@ -434,7 +562,7 @@ def main() -> None:
         )
 
     if not args.skip_plugins:
-        for plugin in selected_plugins(args.plugin, args.marketplace_name):
+        for plugin in selected_plugins(args.plugin, args.marketplace_name, action="install"):
             run([codex, "plugin", "add", plugin], env=env, dry_run=args.dry_run)
 
     hook_installer = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "install_codex_hook.py"
