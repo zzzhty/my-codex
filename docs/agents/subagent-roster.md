@@ -41,6 +41,8 @@ Recipes should prefer the M1 custom agent when it exists in the current Codex en
 
 If neither the custom agent nor the fallback role is available, the parent must report partial coverage or stop if that coverage is required for the gate.
 
+Exact runtime custom-agent selector coverage is being tracked in [Subagent Runtime Selection Validation](../todo/subagent-runtime-selection-validation.md). Until that goal closes with verified selector evidence, do not treat assignment labels alone as proof that a custom-agent TOML was loaded.
+
 ## Deferred Roles
 
 The following roles are intentionally not part of M1:

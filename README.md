@@ -37,7 +37,9 @@ validation gates.
 
 Current roster policy lives in `docs/agents/subagent-roster.md`. The closed v1
 plan and validation evidence lives in
-`docs/todo/archive/subagent-model-routing-v1.md`.
+`docs/todo/archive/subagent-model-routing-v1.md`. Exact runtime custom-agent
+selector coverage is tracked in the active plan
+`docs/todo/subagent-runtime-selection-validation.md`.
 
 ## Local Install
 

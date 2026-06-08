@@ -68,7 +68,8 @@ Custom-agent routing:
 - Use `docs/agents/subagent-roster.md` as the current roster and model policy for M1 read-only custom agents.
 - Manage source TOML under `codex-home/agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
 - Treat `code_mapper`, `reviewer`, and `docs_researcher` as custom-agent-first read-only roles when available, with built-in fallbacks defined by the orchestration skill.
-- Keep `impl_worker`, `test_runner`, advisor skills, and project-scoped `.codex/agents/` dogfood as Future work unless a new active plan is created.
+- Track exact runtime custom-agent selector coverage in `docs/todo/subagent-runtime-selection-validation.md`; until that goal proves selector behavior, report partial coverage when exact custom-agent loading cannot be verified.
+- Keep `impl_worker`, `test_runner`, advisor skills, and project-scoped `.codex/agents/` dogfood as Future work unless a separate active plan is created.
 - The closed v1 execution record is archived at `docs/todo/archive/subagent-model-routing-v1.md`; do not use archive files as current instructions except for historical evidence.
 
 ## Review

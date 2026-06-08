@@ -9,6 +9,6 @@ Archive files are closed historical records, not current sources for open work.
 
 ## Active Long-Running Goals
 
-No active long-running goal plans.
+- [Subagent Runtime Selection Validation](subagent-runtime-selection-validation.md): prove or deny exact Codex runtime custom-agent selector coverage for the M1 read-only roster, then sync current docs to the verified behavior.
 
 Closed plans are indexed in [archive/README.md](archive/README.md).
