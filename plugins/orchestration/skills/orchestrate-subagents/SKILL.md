@@ -39,7 +39,7 @@ selector, use the selector such as `agent_type` for exact custom-agent
 selection; assignment labels in prompts are not proof that a custom-agent TOML
 was loaded.
 
-When the M1 read-only custom agents are available, prefer:
+When read-only custom agents are available, prefer:
 
 - `code_mapper` for read-only codebase mapping, impact analysis, test
   discovery, schema inspection, and evidence collection. Fallback:

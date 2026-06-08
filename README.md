@@ -29,18 +29,15 @@ The full workflow lives in
 limited to install, validation, and entry-point guidance.
 
 Custom-agent source TOML lives in `codex-home/agents/` and is synced into
-`$CODEX_HOME/agents/` by `scripts/sync_codex_agents.py`. The M1 roster is
-read-only only: `code_mapper`, `reviewer`, and `docs_researcher`. Write-capable
-custom agents such as `impl_worker` and `test_runner` remain deferred until a
-separate plan defines write ownership, rollback, conflict handling, and
-validation gates.
+`$CODEX_HOME/agents/` by `scripts/sync_codex_agents.py`. The current read-only
+roster is `code_mapper`, `reviewer`, and `docs_researcher`. Write-capable custom
+agents such as `impl_worker` and `test_runner` remain deferred until a separate
+plan defines write ownership, rollback, conflict handling, and validation gates.
 
 Current roster policy lives in `docs/agents/subagent-roster.md`. The current
 runtime exposes custom-agent selection through the subagent tool's `agent_type`
-field, while `codex exec` does not expose a direct custom-agent selector flag.
-The closed v1 plan and validation evidence lives in
-`docs/todo/archive/subagent-model-routing-v1.md`; exact selector evidence lives
-in `docs/todo/archive/subagent-runtime-selection-validation.md`.
+field, and local session metadata records the resulting `agent_role`; `codex
+exec` does not expose a direct custom-agent selector flag.
 
 ## Local Install
 

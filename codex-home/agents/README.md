@@ -10,7 +10,7 @@ $CODEX_HOME/agents/
 
 Use `scripts/sync_codex_agents.py` to copy these files into the target. Do not hand-edit managed target files; edit the source TOML here and sync again.
 
-M1 includes read-only agents only:
+The current managed roster includes read-only agents only:
 
 - `code_mapper.toml`
 - `reviewer.toml`

@@ -1,7 +1,7 @@
 # Subagent Recipes
 
 Use these recipes with `$orchestrate-subagents` when the user explicitly asks
-for subagents. Prefer M1 read-only custom agents when they are available, and
+for subagents. Prefer read-only custom agents when they are available, and
 use the listed built-in fallbacks when they are not. The parent agent remains
 responsible for final judgment, integration, validation, and user-facing
 reporting.

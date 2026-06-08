@@ -4,7 +4,7 @@ This document is the current source of truth for custom subagent names, model po
 
 ## Current Scope
 
-M1 includes read-only custom agents only:
+The current roster includes read-only custom agents only:
 
 | Agent | Work mode | Model | Reasoning | Sandbox | Built-in fallback |
 |---|---|---|---|---|---|
@@ -24,7 +24,7 @@ If a pinned model is unavailable in a runtime account, do not silently edit the 
 
 ## Safety Policy
 
-M1 agents must stay read-only:
+Current agents must stay read-only:
 
 - `sandbox_mode = "read-only"` is required.
 - Agents must not edit files, run destructive commands, or claim success without paths, commands, and evidence.
@@ -33,7 +33,7 @@ M1 agents must stay read-only:
 
 ## Fallback Policy
 
-Recipes should prefer the M1 custom agent when it exists in the current Codex environment, then name the built-in fallback explicitly:
+Recipes should prefer the matching custom agent when it exists in the current Codex environment, then name the built-in fallback explicitly:
 
 - Prefer `code_mapper`; fallback to `explorer as code-mapper`.
 - Prefer `reviewer`; fallback to `default as implementation-reviewer`.
@@ -41,11 +41,11 @@ Recipes should prefer the M1 custom agent when it exists in the current Codex en
 
 If neither the custom agent nor the fallback role is available, the parent must report partial coverage or stop if that coverage is required for the gate.
 
-Runtime selector coverage has been verified for the current subagent tool surface: parent calls use `agent_type`, and local session metadata records the resulting `agent_role`. Child sessions do not expose a direct `AGENT_TYPE` environment variable, and `codex exec` does not expose a direct custom-agent selector flag. Do not treat assignment labels alone as proof that a custom-agent TOML was loaded; use selector calls and session metadata when exact proof matters. Evidence is archived in [Subagent Runtime Selection Validation](../todo/archive/subagent-runtime-selection-validation.md).
+Runtime selector coverage has been verified for the current subagent tool surface: parent calls use `agent_type`, and local session metadata records the resulting `agent_role`. Child sessions do not expose a direct `AGENT_TYPE` environment variable, and `codex exec` does not expose a direct custom-agent selector flag. Do not treat assignment labels alone as proof that a custom-agent TOML was loaded; use selector calls and session metadata when exact proof matters.
 
 ## Deferred Roles
 
-The following roles are intentionally not part of M1:
+The following roles are intentionally not part of the current roster:
 
 | Deferred agent | Reason |
 |---|---|
