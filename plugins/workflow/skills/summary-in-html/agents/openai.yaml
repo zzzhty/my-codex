@@ -1,0 +1,4 @@
+interface:
+  display_name: "Summary In HTML"
+  short_description: "Generate scoped HTML developer summaries"
+  default_prompt: "Use $summary-in-html to generate a standalone HTML developer reference for this project, module, directory, feature area, or documentation chapter."
