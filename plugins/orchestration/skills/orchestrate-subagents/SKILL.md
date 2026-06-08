@@ -34,7 +34,10 @@ normal subagent policy.
 ## Role Selection
 
 Use the roles available in the current Codex environment. Do not assume custom
-agents are installed in every session.
+agents are installed in every session. When the subagent tool exposes a role
+selector, use the selector such as `agent_type` for exact custom-agent
+selection; assignment labels in prompts are not proof that a custom-agent TOML
+was loaded.
 
 When the M1 read-only custom agents are available, prefer:
 
@@ -50,6 +53,12 @@ If a custom agent is unavailable, a pinned model is unavailable, or the runtime
 does not expose custom agents, use the built-in fallback only when the
 ownership and output contract still fit. Otherwise stop and report partial
 coverage.
+
+When exact role proof matters, use parent tool-call evidence plus local session
+metadata such as `agent_role`. Child sessions may not expose `AGENT_TYPE` or a
+similar self-identity variable. Runtime sandbox overrides can also supersede a
+custom agent's `sandbox_mode`, so repeat read-only constraints in each prompt
+and report the effective sandbox if it matters for the gate.
 
 Built-in roles remain supported:
 

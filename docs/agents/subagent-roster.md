@@ -28,7 +28,7 @@ M1 agents must stay read-only:
 
 - `sandbox_mode = "read-only"` is required.
 - Agents must not edit files, run destructive commands, or claim success without paths, commands, and evidence.
-- Parent runtime overrides can still affect spawned sessions, so read-only intent must also be repeated in orchestration prompts.
+- Parent runtime overrides can supersede spawned-session sandbox defaults, so read-only intent must also be repeated in orchestration prompts and verified from runtime metadata when it matters.
 - Each spawned agent gets one task only. Mapping, review, docs verification, implementation, and validation stay separate assignments.
 
 ## Fallback Policy
@@ -41,7 +41,7 @@ Recipes should prefer the M1 custom agent when it exists in the current Codex en
 
 If neither the custom agent nor the fallback role is available, the parent must report partial coverage or stop if that coverage is required for the gate.
 
-Exact runtime custom-agent selector coverage is being tracked in [Subagent Runtime Selection Validation](../todo/subagent-runtime-selection-validation.md). Until that goal closes with verified selector evidence, do not treat assignment labels alone as proof that a custom-agent TOML was loaded.
+Runtime selector coverage has been verified for the current subagent tool surface: parent calls use `agent_type`, and local session metadata records the resulting `agent_role`. Child sessions do not expose a direct `AGENT_TYPE` environment variable, and `codex exec` does not expose a direct custom-agent selector flag. Do not treat assignment labels alone as proof that a custom-agent TOML was loaded; use selector calls and session metadata when exact proof matters. Evidence is archived in [Subagent Runtime Selection Validation](../todo/archive/subagent-runtime-selection-validation.md).
 
 ## Deferred Roles
 

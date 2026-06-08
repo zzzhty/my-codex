@@ -6,6 +6,11 @@ use the listed built-in fallbacks when they are not. The parent agent remains
 responsible for final judgment, integration, validation, and user-facing
 reporting.
 
+When the current subagent tool exposes exact role selection, use that selector
+for custom agents and keep assignment labels as task context only. If only
+prompt labels are available, report custom-agent coverage as partial and use
+the listed built-in fallback when it still fits the task.
+
 Single-task rule: each subagent must have exactly one outcome-oriented
 assignment. Split mapping, review, implementation, validation, and docs checks
 into separate subagents instead of bundling them into one prompt.

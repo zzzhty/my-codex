@@ -35,11 +35,12 @@ custom agents such as `impl_worker` and `test_runner` remain deferred until a
 separate plan defines write ownership, rollback, conflict handling, and
 validation gates.
 
-Current roster policy lives in `docs/agents/subagent-roster.md`. The closed v1
-plan and validation evidence lives in
-`docs/todo/archive/subagent-model-routing-v1.md`. Exact runtime custom-agent
-selector coverage is tracked in the active plan
-`docs/todo/subagent-runtime-selection-validation.md`.
+Current roster policy lives in `docs/agents/subagent-roster.md`. The current
+runtime exposes custom-agent selection through the subagent tool's `agent_type`
+field, while `codex exec` does not expose a direct custom-agent selector flag.
+The closed v1 plan and validation evidence lives in
+`docs/todo/archive/subagent-model-routing-v1.md`; exact selector evidence lives
+in `docs/todo/archive/subagent-runtime-selection-validation.md`.
 
 ## Local Install
 

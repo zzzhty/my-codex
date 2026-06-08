@@ -38,6 +38,11 @@ recipes prefer read-only `code_mapper`, `reviewer`, and `docs_researcher`
 assignments with built-in fallbacks. This plugin still does not own the sync
 process or write to `$CODEX_HOME/agents/`.
 
+In the current runtime, exact custom-agent selection is available through the
+subagent tool's `agent_type` field and is recorded in local session metadata as
+`agent_role`. Prompt assignment labels are useful context, but they are not
+proof that a custom-agent TOML was loaded.
+
 ## Usage
 
 Invoke the skill explicitly when a task is complex enough to benefit from
