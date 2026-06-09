@@ -29,7 +29,7 @@ Long-running work should be anchored outside chat history.
 Local durable homes:
 
 - root `AGENTS.md` for global agent behavior
-- `docs/agents/` for repo-specific agent workflow mapping
+- `agents/` for repo-specific agent workflow mapping, custom-agent source, and subagent support notes
 - plugin `README.md` files for product and workflow contracts
 - skill `SKILL.md` files for reusable agent procedures
 - `$CODEX_HOME/<tool>/reports/` for generated reports
@@ -66,8 +66,8 @@ Current runtime workflow:
 
 Custom-agent routing:
 
-- Use `docs/agents/subagent-roster.md` as the current roster and model policy for read-only custom agents.
-- Manage source TOML under `codex-home/agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
+- Use `agents/subagent-roster.md` as the current roster and model policy for read-only custom agents.
+- Manage source TOML and support notes under `agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
 - Treat `code_mapper`, `reviewer`, and `docs_researcher` as custom-agent-first read-only roles when available, with built-in fallbacks defined by the orchestration skill.
 - Current-session runtime selector coverage is verified through `multi_agent_v1.spawn_agent.agent_type` plus local session metadata `agent_role`; child sessions do not expose a direct `AGENT_TYPE` environment variable, and `codex exec` does not expose a direct selector flag.
 - Keep `impl_worker`, `test_runner`, advisor skills, and project-scoped `.codex/agents/` dogfood as Future work unless a separate active plan is created.

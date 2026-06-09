@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync my-codex custom agents into a Codex agents directory."""
+"""Sync my-codex custom agents and support notes into a Codex agents directory."""
 
 from __future__ import annotations
 
@@ -11,17 +11,23 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_ROOT = REPO_ROOT / "codex-home" / "agents"
+DEFAULT_SOURCE_ROOT = REPO_ROOT / "agents"
 DEFAULT_CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 BUILTIN_AGENT_NAMES = {"default", "worker", "explorer"}
 MANAGED_MARKER = "Managed by my-codex scripts/sync_codex_agents.py."
 
 
 @dataclass(frozen=True)
-class AgentSource:
+class SourceFile:
     path: Path
-    name: str
+    target_name: str
     text: str
+
+
+@dataclass(frozen=True)
+class AgentDefinition:
+    file: SourceFile
+    name: str
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -44,7 +50,16 @@ def required_string(data: dict, path: Path, key: str) -> str:
     return value
 
 
-def validate_agent(path: Path, *, allow_write_capable: bool) -> AgentSource:
+def load_text_file(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise SystemExit(f"source file must be UTF-8 text: {path}: {exc}") from exc
+    except OSError as exc:
+        raise SystemExit(f"cannot read source file: {path}: {exc}") from exc
+
+
+def validate_agent(path: Path, *, allow_write_capable: bool) -> AgentDefinition:
     text = path.read_text(encoding="utf-8")
     data = load_toml(path)
     name = required_string(data, path, "name")
@@ -58,39 +73,45 @@ def validate_agent(path: Path, *, allow_write_capable: bool) -> AgentSource:
     if not allow_write_capable and data.get("sandbox_mode") != "read-only":
         raise SystemExit(f"{path}: sandbox_mode must be `read-only` unless --allow-write-capable is used")
 
-    return AgentSource(path=path, name=name, text=text)
+    return AgentDefinition(file=SourceFile(path=path, target_name=path.name, text=text), name=name)
 
 
-def load_sources(source_root: Path, *, allow_write_capable: bool) -> list[AgentSource]:
+def load_sources(source_root: Path, *, allow_write_capable: bool) -> list[SourceFile]:
     if not source_root.is_dir():
         raise SystemExit(f"agent source directory does not exist: {source_root}")
 
-    sources = [
+    agents = [
         validate_agent(path, allow_write_capable=allow_write_capable)
         for path in sorted(source_root.glob("*.toml"))
     ]
-    if not sources:
+    if not agents:
         raise SystemExit(f"agent source directory contains no TOML files: {source_root}")
 
     seen: set[str] = set()
-    for source in sources:
-        if source.name in seen:
-            raise SystemExit(f"duplicate agent name: {source.name}")
-        seen.add(source.name)
-    return sources
+    for agent in agents:
+        if agent.name in seen:
+            raise SystemExit(f"duplicate agent name: {agent.name}")
+        seen.add(agent.name)
+
+    sources = [agent.file for agent in agents]
+    for path in sorted(source_root.iterdir()):
+        if not path.is_file() or path.suffix == ".toml":
+            continue
+        sources.append(SourceFile(path=path, target_name=path.name, text=load_text_file(path)))
+    return sorted(sources, key=lambda source: source.target_name)
 
 
-def managed_text(source: AgentSource) -> str:
+def managed_text(source: SourceFile) -> str:
     body = source.text
     if not body.endswith("\n"):
         body += "\n"
-    return "\n".join(managed_header(source.path.name)) + "\n\n" + body
+    return "\n".join(managed_header(source.target_name)) + "\n\n" + body
 
 
 def managed_header(source_name: str) -> list[str]:
     return [
         f"# {MANAGED_MARKER}",
-        f"# Source: codex-home/agents/{source_name}",
+        f"# Source: agents/{source_name}",
         "# Do not edit this target file directly.",
     ]
 
@@ -104,7 +125,7 @@ def is_managed(path: Path) -> bool:
         return False
     return (
         first_lines[0] == managed_header("<source>")[0]
-        and first_lines[1].startswith("# Source: codex-home/agents/")
+        and first_lines[1].startswith("# Source: ")
         and first_lines[2] == managed_header("<source>")[2]
     )
 
@@ -120,7 +141,7 @@ def print_plan(action: str, path: Path) -> None:
 
 
 def sync_sources(
-    sources: list[AgentSource],
+    sources: list[SourceFile],
     *,
     target_root: Path,
     dry_run: bool,
@@ -128,12 +149,12 @@ def sync_sources(
     prune: bool,
     force: bool,
 ) -> int:
-    expected_names = {source.path.name for source in sources}
+    expected_names = {source.target_name for source in sources}
     failures = 0
 
     if check:
         for source in sources:
-            target = target_root / source.path.name
+            target = target_root / source.target_name
             expected = managed_text(source)
             if not target.exists():
                 print_plan("missing", target)
@@ -150,7 +171,9 @@ def sync_sources(
                 print_plan("ok", target)
 
         if prune and target_root.exists():
-            for target in sorted(target_root.glob("*.toml")):
+            for target in sorted(target_root.iterdir()):
+                if not target.is_file():
+                    continue
                 if target.name not in expected_names and is_managed(target):
                     print_plan("extra-managed", target)
                     failures += 1
@@ -165,7 +188,7 @@ def sync_sources(
         target_root.mkdir(parents=True, exist_ok=True)
 
     for source in sources:
-        target = target_root / source.path.name
+        target = target_root / source.target_name
         expected = managed_text(source)
         if target.exists():
             actual = target.read_text(encoding="utf-8", errors="replace")
@@ -185,7 +208,9 @@ def sync_sources(
             target.write_text(expected, encoding="utf-8")
 
     if prune and target_root.exists():
-        for target in sorted(target_root.glob("*.toml")):
+        for target in sorted(target_root.iterdir()):
+            if not target.is_file():
+                continue
             if target.name in expected_names:
                 continue
             if not is_managed(target):
@@ -203,8 +228,8 @@ def sync_sources(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sync repo-managed Codex custom agents.")
-    parser.add_argument("--source-root", default=str(DEFAULT_SOURCE_ROOT), help="Source directory containing agent TOML files.")
+    parser = argparse.ArgumentParser(description="Sync repo-managed Codex custom agents and support notes.")
+    parser.add_argument("--source-root", default=str(DEFAULT_SOURCE_ROOT), help="Source directory containing agent TOML files and support notes.")
     parser.add_argument("--codex-home", default=str(DEFAULT_CODEX_HOME), help="Codex home directory; target is <codex-home>/agents.")
     parser.add_argument("--target-root", help="Override the target agents directory.")
     parser.add_argument("--dry-run", action="store_true", help="Print planned writes without modifying the target.")

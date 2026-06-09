@@ -47,7 +47,7 @@ Use a stable slug based on the scope:
 
 - repository root: `project-overview.html`
 - `plugins/workflow`: `plugins-workflow.html`
-- `docs/agents/agent-operating-model.md`: `chapter-agent-operating-model.html`
+- `agents/agent-operating-model.md`: `chapter-agent-operating-model.html`
 - feature topic: `<feature-slug>.html`
 
 If the file already exists and replacement was not requested, append a short

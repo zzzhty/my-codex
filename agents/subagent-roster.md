@@ -12,7 +12,7 @@ The current roster includes read-only custom agents only:
 | `reviewer` | read-only | `gpt-5.5` | high | read-only | `default as implementation-reviewer` |
 | `docs_researcher` | read-only | `gpt-5.4-mini` | medium | read-only | `default as docs-researcher` |
 
-Source TOML lives in [codex-home/agents/](../../codex-home/agents/). Managed copies are synced into `$CODEX_HOME/agents/` by [scripts/sync_codex_agents.py](../../scripts/sync_codex_agents.py).
+Source TOML and support notes live in this `agents/` directory. Managed copies are synced into `$CODEX_HOME/agents/` by [scripts/sync_codex_agents.py](../scripts/sync_codex_agents.py).
 
 ## Model Policy
 
