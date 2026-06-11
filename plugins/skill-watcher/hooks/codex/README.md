@@ -24,7 +24,7 @@ $env:MY_CODEX_ROOT = (Get-Location).Path
 $python = "$env:CODEX_HOME\venvs\my-codex\Scripts\python.exe"
 
 uv venv "$env:CODEX_HOME\venvs\my-codex"
-uv pip install --python $python -r "$env:MY_CODEX_ROOT\requirements-tools.txt"
+uv pip install --python $python -r "$env:MY_CODEX_ROOT\requirements.txt"
 
 & $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --dry-run --python $python
 & $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --apply --python $python

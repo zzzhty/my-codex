@@ -1,15 +1,9 @@
 # Subagent Recipes
 
 Use these recipes with `$orchestrate-subagents` when the user explicitly asks
-for subagents. Prefer read-only custom agents when they are available, and
-use the listed built-in fallbacks when they are not. The parent agent remains
-responsible for final judgment, integration, validation, and user-facing
-reporting.
-
-When the current subagent tool exposes exact role selection, use that selector
-for custom agents and keep assignment labels as task context only. If only
-prompt labels are available, report custom-agent coverage as partial and use
-the listed built-in fallback when it still fits the task.
+for subagents. Use built-in Codex roles with task-local assignment labels. The
+parent agent remains responsible for final judgment, integration, validation,
+and user-facing reporting.
 
 Single-task rule: each subagent must have exactly one outcome-oriented
 assignment. Split mapping, review, implementation, validation, and docs checks
@@ -75,11 +69,10 @@ Do not use when:
 
 Suggested subagents:
 
-- `code_mapper` as `code-mapper`; fallback `explorer as code-mapper`: map
-  changed files, affected symbols, call paths, config changes, and risky areas.
-- `reviewer` as `implementation-reviewer`; fallback `default as
-  implementation-reviewer`: review correctness, security, regression,
-  compatibility, and contract risks.
+- `explorer` as `code-mapper`: map changed files, affected symbols, call paths,
+  config changes, and risky areas.
+- `default` as `implementation-reviewer`: review correctness, security,
+  regression, compatibility, and contract risks.
 - `default` as `test-verifier`: identify missing tests and validation gaps.
 
 Required evidence:
@@ -98,11 +91,10 @@ Use $orchestrate-subagents.
 Task: Review this branch against <base>.
 
 Spawn bounded read-only subagents:
-- code_mapper as code-mapper, or fallback explorer as code-mapper: identify
-  changed files, affected symbols, call paths, config changes, and risky areas.
-- reviewer as implementation-reviewer, or fallback default as
-  implementation-reviewer: review correctness, security, regression,
-  compatibility, and contract risks.
+- explorer as code-mapper: identify changed files, affected symbols, call paths,
+  config changes, and risky areas.
+- default as implementation-reviewer: review correctness, security,
+  regression, compatibility, and contract risks.
 - default as test-verifier: identify missing tests and validation gaps.
 
 Context:
@@ -138,11 +130,10 @@ Suggested subagents:
 
 - `default` as `failure-classifier`: reproduce or classify the failure from
   logs and commands.
-- `code_mapper` as `code-path-mapper`; fallback `explorer as
-  code-path-mapper`: inspect nearby code paths, configuration, and recent
-  changes.
-- `reviewer` as `test-diagnostic-planner`; fallback `default as
-  test-diagnostic-planner`: propose focused regression tests or diagnostics.
+- `explorer` as `code-path-mapper`: inspect nearby code paths, configuration,
+  and recent changes.
+- `default` as `test-diagnostic-planner`: propose focused regression tests or
+  diagnostics.
 
 Required evidence:
 
@@ -161,11 +152,10 @@ Task: Diagnose <failure>.
 Spawn bounded subagents:
 - default as failure-classifier: reproduce or classify the failure using the
   provided command/log/error.
-- code_mapper as code-path-mapper, or fallback explorer as code-path-mapper:
-  inspect nearby code paths, configuration, and recent changes that could
-  explain the failure.
-- reviewer as test-diagnostic-planner, or fallback default as
-  test-diagnostic-planner: propose focused regression tests or diagnostics.
+- explorer as code-path-mapper: inspect nearby code paths, configuration, and
+  recent changes that could explain the failure.
+- default as test-diagnostic-planner: propose focused regression tests or
+  diagnostics.
 
 Context:
 - failing command/log/error: <exact command, log path, or error text>
@@ -197,13 +187,11 @@ Do not use when:
 
 Suggested subagents:
 
-- `code_mapper` as `architecture-mapper`; fallback `explorer as
-  architecture-mapper`: map existing architecture, ownership boundaries, and
-  related tests.
-- `reviewer` as `option-reviewer`; fallback `default as option-reviewer`:
-  compare implementation options and risks.
-- `reviewer` as `validation-planner`; fallback `default as
-  validation-planner`: identify validation gates and rollback paths.
+- `explorer` as `architecture-mapper`: map existing architecture, ownership
+  boundaries, and related tests.
+- `default` as `option-reviewer`: compare implementation options and risks.
+- `default` as `validation-planner`: identify validation gates and rollback
+  paths.
 
 Required evidence:
 
@@ -220,13 +208,11 @@ Use $orchestrate-subagents.
 Task: Plan <feature, migration, refactor, or architecture change>.
 
 Spawn bounded read-only subagents:
-- code_mapper as architecture-mapper, or fallback explorer as
-  architecture-mapper: map current architecture, ownership boundaries, entry
-  points, and related tests.
-- reviewer as option-reviewer, or fallback default as option-reviewer: compare
-  viable implementation options and risks.
-- reviewer as validation-planner, or fallback default as validation-planner:
-  identify validation gates, missing tests, and rollback paths.
+- explorer as architecture-mapper: map current architecture, ownership
+  boundaries, entry points, and related tests.
+- default as option-reviewer: compare viable implementation options and risks.
+- default as validation-planner: identify validation gates, missing tests, and
+  rollback paths.
 
 Context:
 - goal: <goal>
@@ -263,8 +249,8 @@ Suggested subagents:
   or adapter.
 - `worker` as `slice-b-implementer`: implement another disjoint module, file
   group, or adapter.
-- `reviewer` as `integration-risk-reviewer`; fallback `default as
-  integration-risk-reviewer`: review integration risks without editing files.
+- `default` as `integration-risk-reviewer`: review integration risks without
+  editing files.
 
 Required evidence:
 
@@ -295,8 +281,7 @@ Spawn bounded subagents:
   Single task: implement <scope-b>.
   Must not edit <blocked-files>.
   Validation evidence: <commands or dry-runs for scope-b>.
-- reviewer as integration-risk-reviewer, or fallback default as
-  integration-risk-reviewer:
+- default as integration-risk-reviewer:
   Ownership: read-only.
   Single task: review integration risks.
   Inspect integration risks across the planned scopes.
@@ -328,13 +313,12 @@ Do not use when:
 
 Suggested subagents:
 
-- `code_mapper` as `schema-mapper`; fallback `explorer as schema-mapper`:
-  locate schema definitions, serializers, migrations, clients, and tests.
-- `reviewer` as `compatibility-reviewer`; fallback `default as
-  compatibility-reviewer`: review compatibility and contract risks.
-- `docs_researcher` as `docs-verifier`; fallback `default as docs-researcher`:
-  verify official API, configuration, version, or migration assumptions when
-  relevant.
+- `explorer` as `schema-mapper`: locate schema definitions, serializers,
+  migrations, clients, and tests.
+- `default` as `compatibility-reviewer`: review compatibility and contract
+  risks.
+- `default` as `docs-verifier`: verify official API, configuration, version, or
+  migration assumptions when relevant.
 - `default` as `fixture-verifier`: identify validation commands and fixture
   gaps.
 
@@ -354,13 +338,11 @@ Use $orchestrate-subagents.
 Task: Inspect API or schema compatibility for <change>.
 
 Spawn bounded read-only subagents:
-- code_mapper as schema-mapper, or fallback explorer as schema-mapper: locate
-  schema definitions, serializers, migrations, clients, and tests.
-- reviewer as compatibility-reviewer, or fallback default as
-  compatibility-reviewer: review compatibility and contract risks.
-- docs_researcher as docs-verifier, or fallback default as docs-researcher:
-  verify official API, configuration, version, or migration assumptions when
-  relevant.
+- explorer as schema-mapper: locate schema definitions, serializers,
+  migrations, clients, and tests.
+- default as compatibility-reviewer: review compatibility and contract risks.
+- default as docs-verifier: verify official API, configuration, version, or
+  migration assumptions when relevant.
 - default as fixture-verifier: identify validation commands and fixture gaps.
 
 Context:
@@ -392,11 +374,10 @@ Do not use when:
 
 Suggested subagents:
 
-- `code_mapper` as `doc-inventory-mapper`; fallback `explorer as
-  doc-inventory-mapper`: inventory active docs, indexes, entry points, and
-  stale terms.
-- `reviewer` as `doc-drift-reviewer`; fallback `default as
-  doc-drift-reviewer`: classify findings by severity and recommend edits.
+- `explorer` as `doc-inventory-mapper`: inventory active docs, indexes, entry
+  points, and stale terms.
+- `default` as `doc-drift-reviewer`: classify findings by severity and
+  recommend edits.
 - `default` as `link-validation-reviewer`: check validation and link coverage.
 
 Required evidence:
@@ -414,11 +395,10 @@ Use $orchestrate-subagents.
 Task: Align documentation for <area>.
 
 Spawn bounded read-only subagents:
-- code_mapper as doc-inventory-mapper, or fallback explorer as
-  doc-inventory-mapper: inventory active docs, indexes, entry points, and stale
-  terms.
-- reviewer as doc-drift-reviewer, or fallback default as doc-drift-reviewer:
-  classify semantic drift by severity and recommend edits.
+- explorer as doc-inventory-mapper: inventory active docs, indexes, entry
+  points, and stale terms.
+- default as doc-drift-reviewer: classify semantic drift by severity and
+  recommend edits.
 - default as link-validation-reviewer: check validation and link coverage.
 
 Context:

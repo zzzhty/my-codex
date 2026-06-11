@@ -33,34 +33,7 @@ normal subagent policy.
 
 ## Role Selection
 
-Use the roles available in the current Codex environment. Do not assume custom
-agents are installed in every session. When the subagent tool exposes a role
-selector, use the selector such as `agent_type` for exact custom-agent
-selection; assignment labels in prompts are not proof that a custom-agent TOML
-was loaded.
-
-When read-only custom agents are available, prefer:
-
-- `code_mapper` for read-only codebase mapping, impact analysis, test
-  discovery, schema inspection, and evidence collection. Fallback:
-  `explorer as code-mapper`.
-- `reviewer` for correctness, security, regression, compatibility, contract,
-  and missing-test review. Fallback: `default as implementation-reviewer`.
-- `docs_researcher` for official documentation, API, configuration, version,
-  and migration-note verification. Fallback: `default as docs-researcher`.
-
-If a custom agent is unavailable, a pinned model is unavailable, or the runtime
-does not expose custom agents, use the built-in fallback only when the
-ownership and output contract still fit. Otherwise stop and report partial
-coverage.
-
-When exact role proof matters, use parent tool-call evidence plus local session
-metadata such as `agent_role`. Child sessions may not expose `AGENT_TYPE` or a
-similar self-identity variable. Runtime sandbox overrides can also supersede a
-custom agent's `sandbox_mode`, so repeat read-only constraints in each prompt
-and report the effective sandbox if it matters for the gate.
-
-Built-in roles remain supported:
+Use the built-in roles available in the current Codex environment:
 
 - `explorer` for read-only codebase mapping, impact analysis, test discovery,
   schema inspection, and evidence collection.
@@ -72,10 +45,9 @@ Built-in roles remain supported:
 When spawning multiple subagents with the same role, add an assignment label in
 the prompt, such as `default as test-verifier` or `worker as api-adapter`.
 
-Do not request write-capable custom-agent names such as `impl_worker` or
-`test_runner` until they exist in the current environment and have explicit
-ownership, rollback, conflict handling, and validation rules. Keep `worker`
-rules unchanged for implementation subtasks.
+Do not request custom-agent names in orchestration recipes. Keep role-specific
+behavior in the task-local prompt, assignment label, ownership block, expected
+output, and stop condition.
 
 For common patterns, read `references/subagent-recipes.md`.
 

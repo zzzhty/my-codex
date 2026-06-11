@@ -539,7 +539,7 @@ def main() -> None:
     parser.add_argument("--skip-bootstrap", action="store_true", help="Do not refresh the shared tooling venv.")
     parser.add_argument("--skip-marketplace", action="store_true", help="Do not refresh marketplace config/snapshot.")
     parser.add_argument("--skip-plugins", action="store_true", help="Do not run `codex plugin add`.")
-    parser.add_argument("--skip-agents", action="store_true", help="Do not sync custom agents into $CODEX_HOME/agents.")
+    parser.add_argument("--skip-agents", action="store_true", help="Do not sync the subagent support file into $CODEX_HOME/agents.")
     parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Skill Watcher hooks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Do not run Skill Watcher doctor after refresh.")
     args = parser.parse_args()

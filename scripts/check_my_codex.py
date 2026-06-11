@@ -223,10 +223,10 @@ class CheckRunner:
             env=env,
         )
         if result.returncode == 0:
-            self.ok(f"custom agents are synced: {codex_home / 'agents'}")
+            self.ok(f"subagent support file is synced: {codex_home / 'agents'}")
         else:
             output = (result.stderr or result.stdout).strip()
-            self.fail(f"custom agents are not synced: {output}")
+            self.fail(f"subagent support file is not synced: {output}")
 
     def finish(self, *, strict_warnings: bool) -> None:
         if strict_warnings and self.warnings:
@@ -248,7 +248,7 @@ def main() -> None:
     parser.add_argument("--plugin", action="append", help="Plugin name or selector to check. May be repeated.")
     parser.add_argument("--skip-plugins", action="store_true", help="Skip `codex plugin list` and plugin cache checks.")
     parser.add_argument("--skip-hooks", action="store_true", help="Skip Skill Watcher hook config checks.")
-    parser.add_argument("--skip-agents", action="store_true", help="Skip custom-agent sync checks.")
+    parser.add_argument("--skip-agents", action="store_true", help="Skip subagent support-file sync checks.")
     parser.add_argument("--skip-plugin-validation", action="store_true", help="Skip plugin validator checks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Skip Skill Watcher doctor.")
     parser.add_argument(

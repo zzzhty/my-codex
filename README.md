@@ -28,16 +28,12 @@ The full workflow lives in
 `plugins/orchestration/skills/orchestrate-subagents/SKILL.md`. Keep root docs
 limited to install, validation, and entry-point guidance.
 
-Custom-agent source TOML and support notes live in `agents/` and are synced into
-`$CODEX_HOME/agents/` by `scripts/sync_codex_agents.py`. The current read-only
-roster is `code_mapper`, `reviewer`, and `docs_researcher`. Write-capable custom
-agents such as `impl_worker` and `test_runner` remain deferred until a separate
-plan defines write ownership, rollback, conflict handling, and validation gates.
-
-Current roster policy lives in `agents/subagent-roster.md`. The current
-runtime exposes custom-agent selection through the subagent tool's `agent_type`
-field, and local session metadata records the resulting `agent_role`; `codex
-exec` does not expose a direct custom-agent selector flag.
+The orchestration workflow uses Codex's built-in subagent roles, such as
+`explorer`, `default`, and `worker`, with task-local assignment labels like
+`code-mapper` and `test-verifier`. The managed support file lives in
+`agents/operating-principles.md`; repo-facing notes live in
+`docs/codex-agent-support.md`. Local custom-agent preset TOML is not maintained
+in this repository.
 
 ## Local Install
 
@@ -171,7 +167,7 @@ Windows PowerShell:
 
 The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Unix wrapper fails before refresh when the Codex CLI does not expose `codex plugin add` and `codex plugin list`; non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
-`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs custom agents and support notes into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print commands and the custom-agent sync plan without changing local Codex state. Use `--skip-agents` to skip custom-agent sync.
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
 
 Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
 
@@ -201,7 +197,7 @@ Windows PowerShell:
 py scripts\check_my_codex.py
 ```
 
-The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Skill Watcher hook schema, custom-agent and support-note sync state, plugin validation, and Skill Watcher doctor. It does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip custom-agent sync checks.
+The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Skill Watcher hook schema, subagent support-file sync state, plugin validation, and Skill Watcher doctor. It does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
 
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
@@ -323,7 +319,7 @@ plugins/
   workflow/
   mattpocock-skills/
   orchestration/
-requirements-tools.txt
+requirements.txt
 scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py
 scripts/refresh_my_codex.py

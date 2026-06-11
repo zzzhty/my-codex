@@ -50,7 +50,7 @@ $env:MY_CODEX_PYTHON = "$env:CODEX_HOME\venvs\my-codex\Scripts\python.exe"
 $env:PLUGIN_VALIDATOR = "$env:CODEX_HOME\skills\.system\plugin-creator\scripts\validate_plugin.py"
 
 uv venv "$env:CODEX_HOME\venvs\my-codex"
-uv pip install --python $env:MY_CODEX_PYTHON -r requirements-tools.txt
+uv pip install --python $env:MY_CODEX_PYTHON -r requirements.txt
 Set-Location plugins\skill-watcher
 ```
 

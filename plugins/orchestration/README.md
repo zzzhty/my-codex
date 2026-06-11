@@ -33,15 +33,10 @@ The current runtime surface is the explicit `$orchestrate-subagents` workflow.
 It does not provide implicit auto-delegation, hooks, MCP servers, custom-agent
 sync, or a control-plane runtime.
 
-When repo-managed custom agents are synced by `my-codex`, the orchestration
-recipes prefer read-only `code_mapper`, `reviewer`, and `docs_researcher`
-assignments with built-in fallbacks. This plugin still does not own the sync
-process or write to `$CODEX_HOME/agents/`.
-
-In the current runtime, exact custom-agent selection is available through the
-subagent tool's `agent_type` field and is recorded in local session metadata as
-`agent_role`. Prompt assignment labels are useful context, but they are not
-proof that a custom-agent TOML was loaded.
+The orchestration recipes use Codex's built-in subagent roles with task-local
+assignment labels such as `explorer as code-mapper`, `default as
+implementation-reviewer`, and `worker as slice-a-implementer`. Custom agents
+are not required for this plugin's workflow.
 
 ## Usage
 

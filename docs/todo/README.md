@@ -5,10 +5,11 @@
 No active design notes.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
-Archive files are closed historical records, not current sources for open work.
+Closed historical records should stay out of active navigation unless a current
+archive index exists.
 
 ## Active Long-Running Goals
 
 No active long-running goal plans.
 
-Closed plans are indexed in [archive/README.md](archive/README.md).
+No closed long-running goal index is currently tracked.

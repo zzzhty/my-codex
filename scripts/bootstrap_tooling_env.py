@@ -14,7 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
-DEFAULT_REQUIREMENTS = REPO_ROOT / "requirements-tools.txt"
+DEFAULT_REQUIREMENTS = REPO_ROOT / "requirements.txt"
 
 
 def run(command: list[str]) -> None:

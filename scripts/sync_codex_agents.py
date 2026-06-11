@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Sync my-codex custom agents and support notes into a Codex agents directory."""
+"""Sync the my-codex subagent support file into a Codex agents directory."""
 
 from __future__ import annotations
 
 import argparse
 import os
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,7 +12,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = REPO_ROOT / "agents"
 DEFAULT_CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-BUILTIN_AGENT_NAMES = {"default", "worker", "explorer"}
 MANAGED_MARKER = "Managed by my-codex scripts/sync_codex_agents.py."
 
 
@@ -24,30 +22,8 @@ class SourceFile:
     text: str
 
 
-@dataclass(frozen=True)
-class AgentDefinition:
-    file: SourceFile
-    name: str
-
-
 def expand_path(raw: str | Path) -> Path:
     return Path(os.path.expandvars(str(raw))).expanduser()
-
-
-def load_toml(path: Path) -> dict:
-    try:
-        return tomllib.loads(path.read_text(encoding="utf-8"))
-    except tomllib.TOMLDecodeError as exc:
-        raise SystemExit(f"invalid TOML: {path}: {exc}") from exc
-    except OSError as exc:
-        raise SystemExit(f"cannot read TOML: {path}: {exc}") from exc
-
-
-def required_string(data: dict, path: Path, key: str) -> str:
-    value = data.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise SystemExit(f"{path}: required field `{key}` must be a non-empty string")
-    return value
 
 
 def load_text_file(path: Path) -> str:
@@ -59,45 +35,22 @@ def load_text_file(path: Path) -> str:
         raise SystemExit(f"cannot read source file: {path}: {exc}") from exc
 
 
-def validate_agent(path: Path, *, allow_write_capable: bool) -> AgentDefinition:
-    text = path.read_text(encoding="utf-8")
-    data = load_toml(path)
-    name = required_string(data, path, "name")
-    required_string(data, path, "description")
-    required_string(data, path, "developer_instructions")
-
-    if name in BUILTIN_AGENT_NAMES:
-        raise SystemExit(f"{path}: custom agent name must not override built-in agent `{name}`")
-    if name != path.stem:
-        raise SystemExit(f"{path}: agent name `{name}` must match filename stem `{path.stem}`")
-    if not allow_write_capable and data.get("sandbox_mode") != "read-only":
-        raise SystemExit(f"{path}: sandbox_mode must be `read-only` unless --allow-write-capable is used")
-
-    return AgentDefinition(file=SourceFile(path=path, target_name=path.name, text=text), name=name)
-
-
-def load_sources(source_root: Path, *, allow_write_capable: bool) -> list[SourceFile]:
+def load_sources(source_root: Path) -> list[SourceFile]:
     if not source_root.is_dir():
-        raise SystemExit(f"agent source directory does not exist: {source_root}")
+        raise SystemExit(f"agent support source directory does not exist: {source_root}")
 
-    agents = [
-        validate_agent(path, allow_write_capable=allow_write_capable)
-        for path in sorted(source_root.glob("*.toml"))
-    ]
-    if not agents:
-        raise SystemExit(f"agent source directory contains no TOML files: {source_root}")
+    toml_files = sorted(source_root.glob("*.toml"))
+    if toml_files:
+        files = ", ".join(str(path) for path in toml_files)
+        raise SystemExit(f"local custom-agent TOML presets are no longer managed here: {files}")
 
-    seen: set[str] = set()
-    for agent in agents:
-        if agent.name in seen:
-            raise SystemExit(f"duplicate agent name: {agent.name}")
-        seen.add(agent.name)
-
-    sources = [agent.file for agent in agents]
+    sources: list[SourceFile] = []
     for path in sorted(source_root.iterdir()):
-        if not path.is_file() or path.suffix == ".toml":
+        if not path.is_file():
             continue
         sources.append(SourceFile(path=path, target_name=path.name, text=load_text_file(path)))
+    if not sources:
+        raise SystemExit(f"agent support source directory contains no files: {source_root}")
     return sorted(sources, key=lambda source: source.target_name)
 
 
@@ -179,9 +132,9 @@ def sync_sources(
                     failures += 1
 
         if failures:
-            print(f"agent sync check failed with {failures} issue(s)")
+            print(f"agent support sync check failed with {failures} issue(s)")
             return 1
-        print("agent sync check OK")
+        print("agent support sync check OK")
         return 0
 
     if not dry_run:
@@ -221,31 +174,26 @@ def sync_sources(
                 target.unlink()
 
     if dry_run:
-        print("dry-run only; no agent files written")
+        print("dry-run only; no agent support files written")
     else:
-        print("agent sync complete")
+        print("agent support sync complete")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sync repo-managed Codex custom agents and support notes.")
-    parser.add_argument("--source-root", default=str(DEFAULT_SOURCE_ROOT), help="Source directory containing agent TOML files and support notes.")
+    parser = argparse.ArgumentParser(description="Sync the repo-managed Codex subagent support file.")
+    parser.add_argument("--source-root", default=str(DEFAULT_SOURCE_ROOT), help="Source directory containing the support file.")
     parser.add_argument("--codex-home", default=str(DEFAULT_CODEX_HOME), help="Codex home directory; target is <codex-home>/agents.")
     parser.add_argument("--target-root", help="Override the target agents directory.")
     parser.add_argument("--dry-run", action="store_true", help="Print planned writes without modifying the target.")
     parser.add_argument("--check", action="store_true", help="Fail if target managed files are missing or out of sync.")
-    parser.add_argument("--prune", action="store_true", help="Remove managed target TOML files that no longer have source files.")
+    parser.add_argument("--prune", action="store_true", help="Remove managed target files that no longer have source files.")
     parser.add_argument("--force", action="store_true", help="Allow overwriting unmanaged target files with matching names.")
-    parser.add_argument(
-        "--allow-write-capable",
-        action="store_true",
-        help="Allow source agents whose sandbox_mode is not read-only.",
-    )
     args = parser.parse_args()
 
     source_root = expand_path(args.source_root)
     target_root = target_root_from_args(args)
-    sources = load_sources(source_root, allow_write_capable=args.allow_write_capable)
+    sources = load_sources(source_root)
     return sync_sources(
         sources,
         target_root=target_root,

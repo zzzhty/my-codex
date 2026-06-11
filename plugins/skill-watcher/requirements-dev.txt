@@ -1,2 +1,2 @@
 # Compatibility wrapper for the shared my-codex tooling dependencies.
--r ../../requirements-tools.txt
+-r ../../requirements.txt

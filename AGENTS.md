@@ -6,7 +6,7 @@
 - Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
 - Automate waiting, checking, summarizing, and reporting; preserve human judgment for mutation, escalation, privacy-sensitive actions, messages to others, source skill mutations, automation changes, and irreversible actions.
 - Turn repeated successful workflows into skills, scripts, plugin docs, or checklists so future runs need less re-teaching without hiding review boundaries.
-- For global subagent workflow guidance, use the installed note at `$CODEX_HOME/agents/agent-operating-model.md`; if `$CODEX_HOME` is unset, use `~/.codex/agents/agent-operating-model.md`.
+- For global subagent workflow guidance, use the installed note at `$CODEX_HOME/agents/operating-principles.md`; if `$CODEX_HOME` is unset, use `~/.codex/agents/operating-principles.md`.
 
 ## Failure-handling policy
 

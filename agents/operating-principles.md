@@ -1,4 +1,4 @@
-# Agent Operating Model
+# Agent Operating Principles
 
 This document maps the root agent operating principles to this repository's actual workflows, files, reports, automations, and review boundaries. It is the second layer of guidance: `AGENTS.md` defines the rules, this document explains how to apply them here, and each plugin or workflow README defines its own contract.
 
@@ -29,7 +29,7 @@ Long-running work should be anchored outside chat history.
 Local durable homes:
 
 - root `AGENTS.md` for global agent behavior
-- `agents/` for repo-specific agent workflow mapping, custom-agent source, and subagent support notes
+- `agents/operating-principles.md` for the managed subagent support note
 - plugin `README.md` files for product and workflow contracts
 - skill `SKILL.md` files for reusable agent procedures
 - `$CODEX_HOME/<tool>/reports/` for generated reports
@@ -54,23 +54,33 @@ When implementation is requested, act directly after enough context is known. Wh
 
 ## Subagent Delegation
 
-Subagent work has two current layers in this repository.
+Subagent work has one current workflow layer in this repository.
 
 Current runtime workflow:
 
 - Use the `orchestration` plugin and `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
 - Treat `plugins/orchestration/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
 - Use the currently available Codex roles such as `explorer`, `worker`, and `default`, with task-local labels like `code-mapper` or `test-verifier`.
-- When the current subagent tool exposes a role selector, use `agent_type` for exact custom-agent selection; assignment labels alone are only presentation/context and do not prove custom-agent TOML loading.
 - Keep the parent agent responsible for planning, write-scope decisions, integration, final validation, and the user-facing conclusion.
 
-Custom-agent routing:
+Agent support note:
 
-- Use `agents/subagent-roster.md` as the current roster and model policy for read-only custom agents.
-- Manage source TOML and support notes under `agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
-- Treat `code_mapper`, `reviewer`, and `docs_researcher` as custom-agent-first read-only roles when available, with built-in fallbacks defined by the orchestration skill.
-- Current-session runtime selector coverage is verified through `multi_agent_v1.spawn_agent.agent_type` plus local session metadata `agent_role`; child sessions do not expose a direct `AGENT_TYPE` environment variable, and `codex exec` does not expose a direct selector flag.
-- Keep `impl_worker`, `test_runner`, advisor skills, and project-scoped `.codex/agents/` dogfood as Future work unless a separate active plan is created.
+- Use built-in roles and assignment labels by default for `$orchestrate-subagents`.
+- Keep this support note under `agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
+- Do not make orchestration recipes depend on custom-agent names, pinned models, or custom-agent runtime selector proof.
+- Do not maintain local custom-agent preset TOML in this repository.
+
+Current role labels:
+
+- Use `explorer as code-mapper`, `explorer as schema-mapper`, or `explorer as doc-inventory-mapper` for read-only mapping and evidence collection.
+- Use `default as implementation-reviewer`, `default as docs-verifier`, `default as test-verifier`, or `default as doc-drift-reviewer` for review, verification, triage, and planning.
+- Use `worker as slice-a-implementer` or `worker as slice-b-implementer` only when the user authorized implementation and the write scope is disjoint.
+
+Future custom agents:
+
+- Add custom-agent TOML only when built-in roles plus assignment labels are not enough for a repeated workflow.
+- Before adding one, create an active plan that defines the agent's purpose, model and sandbox policy, fallback behavior, sync validation, rollback path, and parent integration boundary.
+- Keep write-capable custom agents out of scope until ownership, conflict handling, generated artifacts, and final validation are explicitly covered.
 
 ## Review
 
