@@ -21,11 +21,6 @@
       "name": "mattpocock-skills",
       "install": true,
       "check": true
-    },
-    {
-      "name": "orchestration",
-      "install": true,
-      "check": true
     }
   ]
 }

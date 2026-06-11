@@ -10,22 +10,21 @@ This repository is the development mainline for the plugins and personal Codex c
 
 - `skill-watcher`: observes Codex skill usage and produces report/proposal artifacts.
 - `doc-watcher`: audits configured local repositories for documentation semantic drift and exposes a local audit cockpit backed by plugin reports/state.
-- `workflow`: packages reusable workflow skills, including long-running goal management.
+- `workflow`: packages reusable workflow skills, including long-running goal management and explicit subagent orchestration.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
-- `orchestration`: packages explicit Codex subagent orchestration workflows.
 
 ## Orchestration Workflow
 
-Use the `orchestration` plugin when a task explicitly needs bounded Codex
-subagents. Invoke the workflow directly instead of relying on implicit
-auto-delegation:
+Use the `workflow` plugin's `$orchestrate-subagents` skill when a task
+explicitly needs bounded Codex subagents. Invoke the workflow directly instead
+of relying on implicit auto-delegation:
 
 ```text
 Use $orchestrate-subagents to review this branch against main.
 ```
 
 The full workflow lives in
-`plugins/orchestration/skills/orchestrate-subagents/SKILL.md`. Keep root docs
+`plugins/workflow/skills/orchestrate-subagents/SKILL.md`. Keep root docs
 limited to install, validation, and entry-point guidance.
 
 The orchestration workflow uses Codex's built-in subagent roles, such as
@@ -55,7 +54,6 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
-codex plugin add orchestration@my-codex
 ```
 
 Windows PowerShell:
@@ -72,7 +70,6 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
-codex plugin add orchestration@my-codex
 ```
 
 Install directly from this repository checkout. Do not clone or copy the repo to an extra local path just to install the marketplace.
@@ -217,7 +214,6 @@ codex plugin add skill-watcher@my-codex
 codex plugin add doc-watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
-codex plugin add orchestration@my-codex
 ```
 
 Skill Watcher installs user-level Codex command hooks in `$CODEX_HOME/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
@@ -293,7 +289,6 @@ python3 -m json.tool .agents/plugins/install-manifest.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/doc-watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/workflow"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
-"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/orchestration"
 ```
 
 Windows PowerShell:
@@ -305,7 +300,6 @@ Windows PowerShell:
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\doc-watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\workflow"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
-& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\orchestration"
 ```
 
 ## Layout
@@ -318,7 +312,6 @@ plugins/
   doc-watcher/
   workflow/
   mattpocock-skills/
-  orchestration/
 requirements.txt
 scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py

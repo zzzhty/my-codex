@@ -19,7 +19,7 @@ def test_docops_initializer_generates_candidate_from_repo_shape(tmp_path):
     )
 
     project = Project(
-        name="orchestration",
+        name="control-plane-sample",
         repo_url=str(tmp_path),
         provider="local",
         local_path=str(tmp_path),

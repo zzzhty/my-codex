@@ -25,8 +25,8 @@ source files here and sync again.
 ## Current Policy
 
 The sync script rejects local `agents/*.toml` custom-agent presets. The
-`orchestration` plugin uses built-in Codex roles with task-local assignment
-labels today.
+`workflow` plugin's `$orchestrate-subagents` skill uses built-in Codex roles
+with task-local assignment labels today.
 
 ## Future Custom Agents
 

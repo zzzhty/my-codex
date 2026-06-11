@@ -51,18 +51,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
-    },
-    {
-      "name": "orchestration",
-      "source": {
-        "source": "local",
-        "path": "./plugins/orchestration"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
     }
   ]
 }

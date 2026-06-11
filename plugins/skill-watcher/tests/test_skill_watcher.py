@@ -129,7 +129,6 @@ class SkillWatcherTests(unittest.TestCase):
             "doc-watcher",
             "workflow",
             "mattpocock-skills",
-            "orchestration",
         ]
 
         self.assertEqual(

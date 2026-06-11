@@ -26,6 +26,7 @@ DEFAULT_MONITORED_SKILLS = (
     "doc-watcher:doc-alignment",
     "doc-watcher:housekeeping",
     "workflow:long-running-goal",
+    "workflow:orchestrate-subagents",
     "workflow:sop",
     "workflow:summary-in-html",
     "mattpocock-skills:caveman",
@@ -42,13 +43,13 @@ DEFAULT_MONITORED_SKILLS = (
     "mattpocock-skills:triage",
     "mattpocock-skills:write-a-skill",
     "mattpocock-skills:zoom-out",
-    "orchestration:orchestrate-subagents",
 )
 DEFAULT_SKILL_ALIASES = {
     "skill-watcher:skill-maintainer": ("skill-maintainer", "skill maintainer", "skill watcher"),
     "doc-watcher:doc-alignment": ("doc-alignment", "doc watcher", "documentation alignment"),
     "doc-watcher:housekeeping": ("housekeeping", "cleanup", "clean up", "repo cleanup"),
     "workflow:long-running-goal": ("long-running-goal", "long running goal", "long-running goal"),
+    "workflow:orchestrate-subagents": ("orchestrate-subagents", "orchestrate subagents"),
     "workflow:summary-in-html": ("summary-in-html", "summary in html", "html summary", "developer summary"),
     "workflow:sop": (
         "sop",
@@ -76,7 +77,6 @@ DEFAULT_SKILL_ALIASES = {
     "mattpocock-skills:triage": ("triage", "triage issues"),
     "mattpocock-skills:write-a-skill": ("write-a-skill", "write a skill"),
     "mattpocock-skills:zoom-out": ("zoom-out", "zoom out"),
-    "orchestration:orchestrate-subagents": ("orchestrate-subagents", "orchestrate subagents"),
 }
 FAILURE_TEXT_RE = re.compile(
     r"(?:exit(?:ed)?\s+(?:with\s+)?(?:code|status)\s+[1-9]\d*|"

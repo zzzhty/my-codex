@@ -58,8 +58,8 @@ Subagent work has one current workflow layer in this repository.
 
 Current runtime workflow:
 
-- Use the `orchestration` plugin and `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
-- Treat `plugins/orchestration/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
+- Use the `workflow` plugin's `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
+- Treat `plugins/workflow/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
 - Use the currently available Codex roles such as `explorer`, `worker`, and `default`, with task-local labels like `code-mapper` or `test-verifier`.
 - Keep the parent agent responsible for planning, write-scope decisions, integration, final validation, and the user-facing conclusion.
 

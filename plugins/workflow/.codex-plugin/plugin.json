@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "version": "0.1.0+codex.20260611025449",
+  "version": "0.1.0+codex.20260612015338",
   "description": "Reusable Codex workflow skills maintained from the my-codex repository.",
   "author": {
     "name": "Max"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Workflow",
     "shortDescription": "Use reusable workflow skills maintained in my-codex.",
-    "longDescription": "Workflow packages reusable Codex procedures for long-running goals, SOPs, and other repeatable agent workflows so they can be installed from the my-codex marketplace instead of being maintained directly under $CODEX_HOME/skills.",
+    "longDescription": "Workflow packages reusable Codex procedures for long-running goals, SOPs, explicit subagent orchestration, and other repeatable agent workflows so they can be installed from the my-codex marketplace instead of being maintained directly under $CODEX_HOME/skills.",
     "developerName": "Max",
     "category": "Productivity",
     "capabilities": [
