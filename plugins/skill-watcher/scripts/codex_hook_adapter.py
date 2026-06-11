@@ -19,11 +19,15 @@ from redact_event import redact_event, redact_string
 
 SUPPORTED_HOOK_EVENTS = {"SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"}
 SUMMARY_LIMIT = 160
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+ALLOWLIST_FILE = "monitored-skills.json"
 DEFAULT_MONITORED_SKILLS = (
     "skill-watcher:skill-maintainer",
     "doc-watcher:doc-alignment",
-    "workflow:long-run-goal",
+    "doc-watcher:housekeeping",
+    "workflow:long-running-goal",
     "workflow:sop",
+    "workflow:summary-in-html",
     "mattpocock-skills:caveman",
     "mattpocock-skills:diagnose",
     "mattpocock-skills:grill-me",
@@ -43,7 +47,9 @@ DEFAULT_MONITORED_SKILLS = (
 DEFAULT_SKILL_ALIASES = {
     "skill-watcher:skill-maintainer": ("skill-maintainer", "skill maintainer", "skill watcher"),
     "doc-watcher:doc-alignment": ("doc-alignment", "doc watcher", "documentation alignment"),
-    "workflow:long-run-goal": ("long-run-goal", "long run goal", "long-running goal"),
+    "doc-watcher:housekeeping": ("housekeeping", "cleanup", "clean up", "repo cleanup"),
+    "workflow:long-running-goal": ("long-running-goal", "long running goal", "long-running goal"),
+    "workflow:summary-in-html": ("summary-in-html", "summary in html", "html summary", "developer summary"),
     "workflow:sop": (
         "sop",
         "standard operating procedure",
@@ -156,9 +162,143 @@ def parse_env_list(raw: str | None) -> tuple[str, ...]:
     return tuple(value.strip() for value in values if value.strip())
 
 
-def monitored_skills() -> tuple[str, ...]:
+def marketplace_root_from_adapter() -> Path:
+    override = os.environ.get("MY_CODEX_ROOT")
+    if override:
+        return expand_path(override)
+    for parent in Path(__file__).resolve().parents:
+        if (parent / ".agents" / "plugins" / "marketplace.json").is_file():
+            return parent
+    for parent in Path(__file__).resolve().parents:
+        if parent.name == "plugins":
+            return parent.parent
+    return PLUGIN_ROOT
+
+
+def plugin_name_from_manifest(plugin_dir: Path) -> str:
+    manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        if isinstance(data, dict) and isinstance(data.get("name"), str) and data["name"].strip():
+            return data["name"].strip()
+    return plugin_dir.name
+
+
+def skill_name_from_frontmatter(skill_file: Path) -> str:
+    try:
+        lines = skill_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return skill_file.parent.name
+    if lines and lines[0].strip() == "---":
+        for line in lines[1:]:
+            stripped = line.strip()
+            if stripped == "---":
+                break
+            if stripped.startswith("name:"):
+                name = stripped.split(":", 1)[1].strip().strip("\"'")
+                return name or skill_file.parent.name
+    return skill_file.parent.name
+
+
+def marketplace_plugin_dirs(marketplace_root: Path) -> list[Path]:
+    marketplace = marketplace_root / ".agents" / "plugins" / "marketplace.json"
+    if not marketplace.is_file():
+        return sorted((marketplace_root / "plugins").glob("*"))
+    try:
+        data = json.loads(marketplace.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return sorted((marketplace_root / "plugins").glob("*"))
+    plugins = data.get("plugins") if isinstance(data, dict) else None
+    if not isinstance(plugins, list):
+        return sorted((marketplace_root / "plugins").glob("*"))
+
+    plugin_dirs: list[Path] = []
+    for plugin in plugins:
+        if not isinstance(plugin, dict):
+            continue
+        source = plugin.get("source")
+        if not isinstance(source, dict) or source.get("source") != "local":
+            continue
+        raw_path = source.get("path")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            continue
+        path = expand_path(raw_path)
+        if not path.is_absolute():
+            path = marketplace_root / path
+        plugin_dirs.append(path)
+    return sorted(plugin_dirs)
+
+
+def discover_packaged_skills(marketplace_root: Path | None = None) -> tuple[str, ...]:
+    root = marketplace_root or marketplace_root_from_adapter()
+    skills: set[str] = set()
+    for plugin_dir in marketplace_plugin_dirs(root):
+        skills_dir = plugin_dir / "skills"
+        if not skills_dir.is_dir():
+            continue
+        plugin_name = plugin_name_from_manifest(plugin_dir)
+        for skill_file in sorted(skills_dir.glob("*/SKILL.md")):
+            skills.add(f"{plugin_name}:{skill_name_from_frontmatter(skill_file)}")
+    return tuple(sorted(skills))
+
+
+def allowlist_path(state_dir: Path) -> Path:
+    return state_dir / ALLOWLIST_FILE
+
+
+def load_dynamic_monitored_skills(state_dir: Path | None = None) -> tuple[str, ...]:
+    target_state_dir = state_dir or state_dir_from_env_or_arg(None)
+    path = allowlist_path(target_state_dir)
+    if not path.is_file():
+        return ()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ()
+    skills = data.get("skills") if isinstance(data, dict) else None
+    if not isinstance(skills, list):
+        return ()
+    return tuple(str(skill).strip() for skill in skills if str(skill).strip())
+
+
+def refresh_dynamic_monitored_skills(state_dir: Path) -> dict[str, Any]:
+    source_root = marketplace_root_from_adapter()
+    skills = discover_packaged_skills(source_root)
+    if skills:
+        path = allowlist_path(state_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "generated_at": utc_now(),
+                    "source_root": str(source_root),
+                    "skills": list(skills),
+                },
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    return {
+        "path": str(allowlist_path(state_dir)),
+        "skill_count": len(skills),
+        "source_root": str(source_root),
+        "updated": bool(skills),
+    }
+
+
+def monitored_skills(state_dir: Path | None = None) -> tuple[str, ...]:
     configured = parse_env_list(os.environ.get("SKILL_WATCHER_MONITORED_SKILLS"))
-    return configured or DEFAULT_MONITORED_SKILLS
+    if configured:
+        return configured
+    dynamic = load_dynamic_monitored_skills(state_dir)
+    return dynamic or DEFAULT_MONITORED_SKILLS
 
 
 def aliases_for_skill(skill_name: str) -> tuple[str, ...]:
@@ -189,11 +329,11 @@ def text_for_matching(value: Any) -> str:
     return json_fingerprint(value)
 
 
-def match_monitored_skill(value: Any) -> dict[str, str] | None:
+def match_monitored_skill(value: Any, *, state_dir: Path | None = None) -> dict[str, str] | None:
     text = text_for_matching(value).lower()
     if not text:
         return None
-    for skill_name in monitored_skills():
+    for skill_name in monitored_skills(state_dir):
         for alias in aliases_for_skill(skill_name):
             if alias_matches(text, alias):
                 return {"skill_name": skill_name, "matched_alias": alias}
@@ -209,19 +349,19 @@ def context_from_match(match: dict[str, str], *, attribution: str, confidence: s
     }
 
 
-def infer_skill_context(payload: dict[str, Any]) -> dict[str, str] | None:
+def infer_skill_context(payload: dict[str, Any], *, state_dir: Path | None = None) -> dict[str, str] | None:
     provided = payload.get("skill_name") or payload.get("skill")
-    provided_match = match_monitored_skill(provided)
+    provided_match = match_monitored_skill(provided, state_dir=state_dir)
     if provided_match:
         return context_from_match(provided_match, attribution="provided", confidence="high")
 
     if "prompt" in payload:
-        prompt_match = match_monitored_skill(payload.get("prompt"))
+        prompt_match = match_monitored_skill(payload.get("prompt"), state_dir=state_dir)
         if prompt_match:
             return context_from_match(prompt_match, attribution="prompt_mention", confidence="high")
 
     if "last_assistant_message" in payload:
-        assistant_match = match_monitored_skill(payload.get("last_assistant_message"))
+        assistant_match = match_monitored_skill(payload.get("last_assistant_message"), state_dir=state_dir)
         if assistant_match:
             return context_from_match(assistant_match, attribution="assistant_announcement", confidence="medium")
 
@@ -370,10 +510,15 @@ def detect_post_tool_outcome(tool_response: Any) -> tuple[str, str]:
     return "success", ""
 
 
-def normalize_hook_payload(payload: dict[str, Any], *, skill_context: dict[str, str] | None = None) -> dict[str, Any]:
+def normalize_hook_payload(
+    payload: dict[str, Any],
+    *,
+    skill_context: dict[str, str] | None = None,
+    state_dir: Path | None = None,
+) -> dict[str, Any]:
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
     event_type = camel_to_snake(hook_event_name)
-    context = skill_context or infer_skill_context(payload)
+    context = skill_context or infer_skill_context(payload, state_dir=state_dir)
     skill_name = context["skill_name"] if context else "unknown"
     skill_attribution = context["skill_attribution"] if context else "unknown"
     skill_confidence = context["skill_confidence"] if context else "unknown"
@@ -491,10 +636,13 @@ def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, 
     ensure_runtime_dirs(target_state_dir)
 
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
-    direct_context = infer_skill_context(payload)
+    allowlist_update = refresh_dynamic_monitored_skills(target_state_dir) if hook_event_name == "SessionStart" else None
+    direct_context = infer_skill_context(payload, state_dir=target_state_dir)
     state = load_turn_state(target_state_dir, payload)
     context = direct_context or state_skill_context(state)
-    event = normalize_hook_payload(payload, skill_context=context)
+    event = normalize_hook_payload(payload, skill_context=context, state_dir=target_state_dir)
+    if allowlist_update is not None:
+        event["codex"]["allowlist_update"] = allowlist_update
 
     if hook_event_name == "UserPromptSubmit":
         if direct_context:
@@ -532,8 +680,8 @@ def main() -> None:
     log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
     if args.dry_run:
         state = load_turn_state(state_dir, payload)
-        context = infer_skill_context(payload) or state_skill_context(state)
-        event = normalize_hook_payload(payload, skill_context=context)
+        context = infer_skill_context(payload, state_dir=state_dir) or state_skill_context(state)
+        event = normalize_hook_payload(payload, skill_context=context, state_dir=state_dir)
         if str(payload.get("hook_event_name") or payload.get("event") or "unknown") == "Stop" and context:
             event = apply_turn_summary(event, state)
         event["codex"]["persisted"] = should_persist_event(event)

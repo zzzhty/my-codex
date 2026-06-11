@@ -1,6 +1,6 @@
 # DocWatcher
 
-DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 audit plugin**。它定期或按 commit 阈值扫描指定本地仓库，收集只读证据，使用内置 `doc-alignment` 的语义对齐流程产出 audit summary，再由操作者决定是否修改文档。
+DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 audit plugin**。它定期或按 commit 阈值扫描指定本地仓库，收集只读证据，使用内置 `doc-alignment` 的语义对齐流程产出 audit summary，再由操作者决定是否修改文档；显式 cleanup 请求可使用 `housekeeping` 清理临时文件、缓存和 active docs 中的过时内容。
 
 产品定位：**a local audit runner for drifting docs**。DocWatcher 先报告，不自动改目标仓库，不创建远端评审流程，不把个人工作流升级成公司级治理平台。
 
@@ -13,6 +13,7 @@ DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 a
 - 目标仓库只读：DocWatcher 不修改被扫描仓库的代码或文档。
 - 报告优先：默认产物是 audit summary，不是补丁。
 - 人工决策：操作者阅读 summary 后，显式决定是否让 `doc-alignment` 进入 implementation mode。
+- 清理分流：临时文件、缓存、过时 active docs、旧 hook/skill 名称和迁移残留走 `housekeeping`，语义审查和文档对齐仍以 `doc-alignment` 为基准。
 - 语义对齐：关注名称、入口、文档口径、历史/当前边界、断链、脚本命令和验证口径是否一致。
 - 低摩擦触发：支持 scheduled full scan 和 commit-dependent scan，贴近日常个人工作流。
 - Cockpit 作为 adapter：本地 backend/frontend 只展示 audit state、运行报告和手动触发结果，不拥有第二套事实源。
@@ -53,6 +54,7 @@ MVP 优先跑通这条轻量闭环：
 ```text
 .codex-plugin/plugin.json
 skills/doc-alignment/SKILL.md
+skills/housekeeping/SKILL.md
 config/repos.example.json
 scripts/audit_repo.py
 scripts/generate_report.py
@@ -145,6 +147,7 @@ Repo `path` supports environment variables and relative paths. Relative paths ar
 
 - 新增 Codex plugin manifest。
 - 新增 `doc-alignment` skill，定义只读语义 audit 工作流。
+- 新增 `housekeeping` skill，基于 `doc-alignment` 语义清理临时文件、缓存、过时 active docs 和迁移残留。
 - 新增 repo audit、report generation、commit counter 和 doctor 脚本。
 - 新增 backend audit read model 和 command bridge，API 状态全部回溯到 plugin config、runtime state、reports 和 run records。
 - 新增 frontend audit cockpit，默认 route 是 `/audit`，当前导航只展示 audit cockpit。
@@ -238,3 +241,4 @@ Frontend `/dashboard` redirects to `/audit`. Current visible routes are the audi
 - `README.md`：当前产品定位、MVP 路线和维护入口。
 - `AGENTS.md`：贡献者和 agent 工作约束。
 - `skills/doc-alignment/SKILL.md`：可由 Codex 调用的语义 audit 工作流。
+- `skills/housekeeping/SKILL.md`：可由 Codex 调用的 cleanup 工作流，用于临时文件、缓存和过时 active docs 清理。

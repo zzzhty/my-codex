@@ -27,7 +27,7 @@ from refresh_my_codex import (
 SKILL_WATCHER_SCRIPTS = REPO_ROOT / "plugins" / "skill-watcher" / "scripts"
 sys.path.insert(0, str(SKILL_WATCHER_SCRIPTS))
 
-from codex_hook_config import adapter_path, load_config  # noqa: E402
+from codex_hook_config import HOOK_EVENTS, adapter_path, load_config  # noqa: E402
 from doctor import find_managed_hook_issues  # noqa: E402
 
 
@@ -174,7 +174,7 @@ class CheckRunner:
                 f"Run scripts/refresh_my_codex.py. Issues: {issues}"
             )
             return
-        expected = {"UserPromptSubmit", "PostToolUse", "Stop"}
+        expected = set(HOOK_EVENTS)
         if matched_events != expected:
             self.fail(
                 "Skill Watcher hook config event coverage mismatch: "

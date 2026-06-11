@@ -17,7 +17,13 @@ ROOT_SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(ROOT_SCRIPTS))
 sys.path.insert(0, str(SCRIPTS))
 
-from codex_hook_adapter import DEFAULT_MONITORED_SKILLS, normalize_hook_payload, write_hook_event  # noqa: E402
+from codex_hook_adapter import (  # noqa: E402
+    DEFAULT_MONITORED_SKILLS,
+    discover_packaged_skills,
+    load_dynamic_monitored_skills,
+    normalize_hook_payload,
+    write_hook_event,
+)
 from codex_hook_config import (  # noqa: E402
     default_python,
     install_skill_watcher_hooks,
@@ -195,7 +201,10 @@ class SkillWatcherTests(unittest.TestCase):
             f"{skill_file.parents[2].name}:{skill_file.parent.name}"
             for skill_file in (REPO_ROOT / "plugins").glob("*/skills/*/SKILL.md")
         )
-        self.assertEqual(sorted(DEFAULT_MONITORED_SKILLS), packaged)
+        self.assertTrue(DEFAULT_MONITORED_SKILLS)
+        self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
+        self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
+        self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
 
         normalized = normalize_hook_payload(
             {
@@ -219,6 +228,15 @@ class SkillWatcherTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
+            session_start = write_hook_event(
+                {
+                    "hook_event_name": "SessionStart",
+                    "cwd": "/tmp/workspace",
+                    "session_id": "session-start",
+                    "turn_id": "turn-start",
+                },
+                state_dir=state_dir,
+            )
             unknown = write_hook_event(
                 {
                     "hook_event_name": "UserPromptSubmit",
@@ -262,7 +280,11 @@ class SkillWatcherTests(unittest.TestCase):
             )
             summary = write_hook_event({**base, "hook_event_name": "Stop"}, state_dir=state_dir)
             lines = (state_dir / "logs" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            dynamic_skills = load_dynamic_monitored_skills(state_dir)
 
+        self.assertFalse(session_start["codex"]["persisted"])
+        self.assertEqual(session_start["codex"]["allowlist_update"]["skill_count"], len(packaged))
+        self.assertEqual(dynamic_skills, tuple(packaged))
         self.assertFalse(unknown["codex"]["persisted"])
         self.assertEqual(prompt["skill_name"], "mattpocock-skills:diagnose")
         self.assertEqual(prompt["codex"]["skill_attribution"], "prompt_mention")
@@ -315,7 +337,7 @@ class SkillWatcherTests(unittest.TestCase):
         with mock.patch("codex_hook_config.os.name", "nt"):
             self.assertEqual(
                 skill_watcher_command(python, adapter),
-                r'"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe" '
+                r'"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe" -B '
                 r'"C:\Users\Max Smith\Projects\my-codex\plugins\skill-watcher\scripts\codex_hook_adapter.py"',
             )
 
@@ -342,12 +364,12 @@ class SkillWatcherTests(unittest.TestCase):
         uninstalled, removed_on_uninstall = remove_skill_watcher_hooks(installed)
 
         self.assertEqual(installed, installed_again)
-        self.assertEqual(removed, 3)
-        self.assertEqual(removed_on_uninstall, 3)
+        self.assertEqual(removed, 4)
+        self.assertEqual(removed_on_uninstall, 4)
         self.assertEqual(installed["hooks"]["PostToolUse"][0]["hooks"][0]["command"], "/usr/bin/true")
-        self.assertNotIn("SessionStart", installed["hooks"])
+        self.assertIn("SessionStart", installed["hooks"])
         self.assertEqual(uninstalled["hooks"], {"PostToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "/usr/bin/true"}]}]})
-        for event in ("UserPromptSubmit", "PostToolUse", "Stop"):
+        for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):
             handlers = [handler for group in installed["hooks"][event] for handler in group["hooks"]]
             managed = [handler for handler in handlers if "codex_hook_adapter.py" in handler["command"]]
             self.assertTrue(managed)
@@ -373,7 +395,7 @@ class SkillWatcherTests(unittest.TestCase):
             adapter=Path("/tmp/skill-watcher/scripts/codex_hook_adapter.py"),
         )
 
-        self.assertEqual(matched_events, {"UserPromptSubmit"})
+        self.assertEqual(matched_events, {"SessionStart", "UserPromptSubmit"})
         self.assertTrue(any("timeoutSec" in issue for issue in issues))
         self.assertTrue(any("unexpected keys: timeout" in issue for issue in issues))
         self.assertTrue(any("SessionStart" in issue for issue in issues))

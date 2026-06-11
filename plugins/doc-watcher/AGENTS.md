@@ -4,7 +4,7 @@
 
 DocWatcher is now an audit-first Codex plugin for personal documentation drift checks. `README.md` is the source of truth for the audit-first product model.
 
-Plugin files live at the repository root: `.codex-plugin/plugin.json` defines the plugin, `skills/doc-alignment` contains the agent workflow, `scripts` contains local audit/report utilities, and `config` contains example repo configuration.
+Plugin files live at the repository root: `.codex-plugin/plugin.json` defines the plugin, `skills/doc-alignment` and `skills/housekeeping` contain agent workflows, `scripts` contains local audit/report utilities, and `config` contains example repo configuration.
 
 The Python backend and Vite/React frontend now provide a local audit cockpit. Backend audit API code lives under `backend/app/api/v1/audit.py`, audit read/run logic under `backend/app/services/audit_*`, and API schemas under `backend/app/schemas/audit.py`. Older database-backed projects, patches, doc PR, provider, and webhook surfaces remain legacy compatibility code unless a separate plan revives them. Backend tests belong in `backend/tests`.
 

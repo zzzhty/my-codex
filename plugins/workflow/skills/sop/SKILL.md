@@ -7,7 +7,7 @@ description: Use when creating, updating, executing, validating, or reusing a de
 
 Use this skill when a repeated workflow should become a reusable standard operating procedure.
 
-Do not use it for exploratory planning, unresolved design work, or long-running milestone execution. Use `long-run-goal` when the work needs ordered milestones, review gates, checkpoint evidence, and close/archive hygiene.
+Do not use it for exploratory planning, unresolved design work, or long-running milestone execution. Use `long-running-goal` when the work needs ordered milestones, review gates, checkpoint evidence, and close/archive hygiene.
 
 ## SOP Boundary
 

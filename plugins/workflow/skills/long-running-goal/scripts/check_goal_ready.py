@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lightweight readiness checks for a long-run-goal Markdown file."""
+"""Lightweight readiness checks for a long-running-goal Markdown file."""
 
 from __future__ import annotations
 

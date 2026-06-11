@@ -229,6 +229,7 @@ def build_env(*, codex_home: Path, tooling_python: Path) -> dict[str, str]:
     env["MY_CODEX_ROOT"] = str(REPO_ROOT)
     env["MY_CODEX_PYTHON"] = str(tooling_python)
     env["MY_CODEX_TOOLING_PYTHON"] = str(tooling_python)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     env.setdefault(
         "PLUGIN_VALIDATOR",
         str(codex_home / "skills" / ".system" / "plugin-creator" / "scripts" / "validate_plugin.py"),

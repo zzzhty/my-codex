@@ -1,4 +1,0 @@
-interface:
-  display_name: "Long Run Goal"
-  short_description: "Create, execute, or close staged active goals"
-  default_prompt: "Use $long-run-goal to create, execute, resume, evolve, or close a staged goal with milestones, validation gates, checkpoint evidence, request-supersession checks, strategy/plan evolution, active goal-state hygiene, and clean active/archive sync."

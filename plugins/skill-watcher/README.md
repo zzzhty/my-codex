@@ -79,7 +79,7 @@ Validate the plugin:
 
 ## Codex Hook Install
 
-Skill Watcher installs user-level hooks at `$CODEX_HOME/hooks.json` and preserves unrelated hook entries. The default generated handlers observe `UserPromptSubmit`, `PostToolUse`, and `Stop`. `SessionStart` is not installed by default because it does not provide skill attribution and produces low-value noise.
+Skill Watcher installs user-level hooks at `$CODEX_HOME/hooks.json` and preserves unrelated hook entries. The default generated handlers observe `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`. `SessionStart` refreshes the monitored-skill allowlist and is not persisted unless hook debugging is enabled.
 
 The hook config uses the current Codex command-hook schema:
 
@@ -173,29 +173,7 @@ Codex hook payloads do not provide a stable native skill identifier. Skill Watch
 - `assistant_announcement`: the assistant message explicitly mentioned a monitored skill name or alias
 - `unknown`: no reliable monitored-skill signal
 
-Default monitored skills are every skill packaged by the `my-codex` marketplace:
-
-```text
-skill-watcher:skill-maintainer
-doc-watcher:doc-alignment
-workflow:long-run-goal
-workflow:sop
-mattpocock-skills:caveman
-mattpocock-skills:diagnose
-mattpocock-skills:grill-me
-mattpocock-skills:grill-with-docs
-mattpocock-skills:handoff
-mattpocock-skills:improve-codebase-architecture
-mattpocock-skills:prototype
-mattpocock-skills:setup-matt-pocock-skills
-mattpocock-skills:tdd
-mattpocock-skills:to-issues
-mattpocock-skills:to-prd
-mattpocock-skills:triage
-mattpocock-skills:write-a-skill
-mattpocock-skills:zoom-out
-orchestration:orchestrate-subagents
-```
+On `SessionStart`, Skill Watcher scans the current `my-codex` marketplace source for `plugins/*/skills/*/SKILL.md`, derives monitored names as `<plugin-name>:<skill-name>`, and writes the current allowlist to `$CODEX_HOME/skill-watcher/monitored-skills.json`. Subsequent hook events read that file before falling back to the built-in bootstrap list, so adding or renaming packaged skills does not require editing the adapter's static allowlist.
 
 Override the allowlist with a comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable.
 
@@ -203,6 +181,7 @@ For monitored prompts, Skill Watcher records a redacted `user_skill_context` sum
 
 Noise filtering:
 
+- `SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
 - `UserPromptSubmit` is persisted only when it identifies a monitored skill.
 - `PostToolUse` updates per-turn tool counts for the active monitored skill, but successful tool calls are not persisted by default.
 - failed `PostToolUse` events are persisted for the active monitored skill.

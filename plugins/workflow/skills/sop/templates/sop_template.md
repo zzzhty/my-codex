@@ -18,7 +18,7 @@ Owner：`<owner / team / agent>`
 不适用场景：
 
 1. `<明确不适用场景。>`
-2. `<需要改用 long-run-goal / report / automation 的场景。>`
+2. `<需要改用 long-running-goal / report / automation 的场景。>`
 
 ## 触发条件
 

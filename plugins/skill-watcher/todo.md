@@ -7,12 +7,12 @@ This document tracks what is still unclosed after the MVP and V1 implementation.
 - MVP plugin scaffold and local JSONL workflow are implemented.
 - V1 source implementation has been migrated into `my-codex/plugins/skill-watcher`.
 - User-level Codex hook path is confirmed as `$CODEX_HOME/hooks.json`.
-- Skill Watcher hook handlers are installed by default for `UserPromptSubmit`, `PostToolUse`, and `Stop`; `SessionStart` remains available for debugging but is not part of the default noise-reduced install.
+- Skill Watcher hook handlers are installed by default for `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`; `SessionStart` refreshes the monitored-skill allowlist without persisting a normal event.
 - Weekly report automation is configured as `Skill Watcher Weekly Report`.
 - Plugin validation, unit tests, py_compile, doctor, local adapter smoke test, report generation, proposal generation, and candidate validation pass.
 - Installed command hooks were trusted and captured real Codex events.
 - Real hook payloads were observed for `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
-- Noise-reduced monitored-skill attribution is implemented with default coverage for the skills packaged by the `my-codex` marketplace.
+- Noise-reduced monitored-skill attribution is implemented with a `SessionStart` scan of the skills packaged by the `my-codex` marketplace.
 - The first scheduled report run wrote a report and did not generate proposals.
 - The scheduled automation has been moved to `Skill Watcher Weekly Report` for weekly Sunday 20:00 Asia/Shanghai reporting.
 - Weekly reports now use incremental report state so successful runs advance a watermark instead of reprocessing the same evidence window.

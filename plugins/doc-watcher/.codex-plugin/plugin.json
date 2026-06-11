@@ -1,6 +1,6 @@
 {
   "name": "doc-watcher",
-  "version": "0.2.0",
+  "version": "0.2.0+codex.20260611033901",
   "description": "Audit configured local repositories for documentation semantic drift and produce operator-reviewed summaries.",
   "author": {
     "name": "Local developer"

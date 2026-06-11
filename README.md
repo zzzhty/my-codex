@@ -228,11 +228,12 @@ Skill Watcher installs user-level Codex command hooks in `$CODEX_HOME/hooks.json
 
 The generated hook handlers observe:
 
+- `SessionStart`
 - `UserPromptSubmit`
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` is not installed by default because it does not provide useful skill attribution.
+`SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
 
 Expected command-hook schema:
 

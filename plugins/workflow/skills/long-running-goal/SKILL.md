@@ -1,9 +1,9 @@
 ---
-name: long-run-goal
+name: long-running-goal
 description: Use when creating, upgrading, executing, resuming, evolving, or closing a long-running goal plan for a project, especially when work needs ordered milestones, review gates, checkpoint evidence, validation evidence, current-doc synchronization, failure breakpoints, plan/gate evolution, close/archive hygiene, or a decision about whether the newest user request supersedes an active goal context.
 ---
 
-# Long Run Goal
+# Long Running Goal
 
 Use this skill when a task should become an executable long-running goal in the project's planning area, or when an existing checklist/TODO needs to be upgraded into a staged goal contract.
 
@@ -22,7 +22,7 @@ If the newest request asks to change the goal plan itself, update the planning d
 The reusable template is bundled in this skill at:
 
 ```text
-templates/long_run_goal_template.md
+templates/long_running_goal_template.md
 ```
 
 Resolve that path relative to the skill folder. Copy the template into the project's active planning area, then replace all placeholders before marking the goal `Ready`.
@@ -49,7 +49,7 @@ Prefer existing conventions in this order:
 1. User-specified goal path, goal directory, or planning root.
 2. Existing active goal/TODO directories, such as `docs/todo/`, `planning/todo/`, `goals/`, or `.codex/goals/`.
 3. Existing current-doc indexes, development guides, validation logs, runbooks, or architecture/status registers that already reference active work.
-4. If no convention exists and the user wants a new file, use goal directory `docs/todo/` and goal path `docs/todo/<goal_slug>_long_run_goal_plan.md` unless the repository clearly favors another docs root.
+4. If no convention exists and the user wants a new file, use goal directory `docs/todo/` and goal path `docs/todo/<goal_slug>_long_running_goal_plan.md` unless the repository clearly favors another docs root.
 
 Do not create a new planning tree when the repository already has a live one under another name.
 
@@ -66,8 +66,8 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
    - relevant validation logs, runtime audits, architecture docs, contract docs, and existing goal/archive docs
 
 2. Create or upgrade the goal file:
-   - New goal path: `<goal-dir>/<goal_slug>_long_run_goal_plan.md` unless local conventions differ.
-   - Copy from `templates/long_run_goal_template.md`.
+   - New goal path: `<goal-dir>/<goal_slug>_long_running_goal_plan.md` unless local conventions differ.
+   - Copy from `templates/long_running_goal_template.md`.
    - Replace every `<...>` placeholder before marking the goal `Ready`.
    - If upgrading an existing TODO, preserve useful findings but reshape them into the template sections.
 

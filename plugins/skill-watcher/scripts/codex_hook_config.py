@@ -24,7 +24,7 @@ CODEX_HOME = expand_path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
 DEFAULT_TOOLING_VENV = CODEX_HOME / "venvs" / "my-codex"
 DEFAULT_TARGET = CODEX_HOME / "hooks.json"
 DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
-HOOK_EVENTS = ("UserPromptSubmit", "PostToolUse", "Stop")
+HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
 STATUS_PREFIX = "Skill Watcher:"
 ADAPTER_NAME = "codex_hook_adapter.py"
 
@@ -44,7 +44,7 @@ def adapter_path() -> Path:
 
 
 def skill_watcher_command(python_path: Path | None = None, adapter: Path | None = None) -> str:
-    args = [str(python_path or default_python()), str(adapter or adapter_path())]
+    args = [str(python_path or default_python()), "-B", str(adapter or adapter_path())]
     if os.name == "nt":
         return subprocess.list2cmdline(args)
     return " ".join(shlex.quote(arg) for arg in args)

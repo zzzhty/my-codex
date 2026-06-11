@@ -1,6 +1,6 @@
-# Long Run Goal Template
+# Long Running Goal Template
 
-本文件是 long-running goal 文档模板。使用时复制到项目的 active goal directory，例如 `<goal-dir>/<goal_slug>_long_run_goal_plan.md`，再替换所有 `<...>` 占位符；不要直接在本模板中记录具体任务进度。
+本文件是 long-running goal 文档模板。使用时复制到项目的 active goal directory，例如 `<goal-dir>/<goal_slug>_long_running_goal_plan.md`，再替换所有 `<...>` 占位符；不要直接在本模板中记录具体任务进度。
 
 整体状态：`Draft`
 
@@ -10,7 +10,7 @@
 2. 复制本文件到目标计划路径，例如：
 
 ```bash
-cp <skill-folder>/templates/long_run_goal_template.md <goal-dir>/<goal_slug>_long_run_goal_plan.md
+cp <skill-folder>/templates/long_running_goal_template.md <goal-dir>/<goal_slug>_long_running_goal_plan.md
 ```
 
 3. 将标题、目标描述、目标路径、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
@@ -33,7 +33,7 @@ cp <skill-folder>/templates/long_run_goal_template.md <goal-dir>/<goal_slug>_lon
 
 目标 owner：`<owner / team / agent>`
 
-目标路径：`<goal-dir>/<goal_slug>_long_run_goal_plan.md`
+目标路径：`<goal-dir>/<goal_slug>_long_running_goal_plan.md`
 
 Planning root：`<planning-root>`
 
@@ -67,7 +67,7 @@ M0 设计冻结时的当前基线：
 6. 任何阶段失败必须停在失败点，记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议。
 7. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
 8. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
-9. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界或 long-run-goal 策略不够严谨，必须先暂停实现，记录暴露该问题的证据，更新 reusable strategy 或本计划合同，再完成相关验证后回到原阶段继续；不得在实现完成后静默放宽验收标准。
+9. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界或 long-running-goal 策略不够严谨，必须先暂停实现，记录暴露该问题的证据，更新 reusable strategy 或本计划合同，再完成相关验证后回到原阶段继续；不得在实现完成后静默放宽验收标准。
 10. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求重新确认是否继续本 goal；若最新请求转为 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，不得继续旧阶段执行，也不得更新旧 goal 证据。
 11. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
 
@@ -333,7 +333,7 @@ Checkpoint evidence：
 ## 推荐 Goal Prompt
 
 ```text
-请按照 <goal-dir>/<goal_slug>_long_run_goal_plan.md 执行 <Goal Name>。
+请按照 <goal-dir>/<goal_slug>_long_running_goal_plan.md 执行 <Goal Name>。
 
 执行要求：
 1. 阶段必须顺序执行，不得跳过 gate。

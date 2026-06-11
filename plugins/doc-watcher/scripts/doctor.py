@@ -57,6 +57,7 @@ class Doctor:
 
     def check_layout(self) -> None:
         self.check_file(REPO_ROOT / "skills" / "doc-alignment" / "SKILL.md", "audit skill")
+        self.check_file(REPO_ROOT / "skills" / "housekeeping" / "SKILL.md", "housekeeping skill")
         self.check_file(
             REPO_ROOT / "skills" / "doc-alignment" / "scripts" / "check_planning_tree.py",
             "planning-tree helper",

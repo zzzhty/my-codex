@@ -58,18 +58,19 @@ The repository-level helper refreshes the marketplace with Git first and local c
 The installed command is:
 
 ```bash
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/codex_hook_adapter.py"
+"$MY_CODEX_PYTHON" -B "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/codex_hook_adapter.py"
 ```
 
 On Windows, the installed command is rendered as a Windows command line with `Scripts\python.exe`; on Unix, it is rendered with POSIX shell quoting. Command hook handlers use `async: false` and `timeoutSec` to match the current Codex hook schema.
 
 It observes these Codex lifecycle events by default:
 
+- `SessionStart`
 - `UserPromptSubmit`
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` is supported by the adapter but is not installed by default because it does not provide useful skill attribution.
+`SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
 
 The adapter reads one Codex hook JSON object from stdin, infers monitored-skill attribution when possible, and appends only useful normalized events to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
 
