@@ -15,7 +15,7 @@ DocWatcher 是一个面向个人 vibe coding 工作流的 **文档语义漂移 a
 - 人工决策：操作者阅读 summary 后，显式决定是否让 `doc-alignment` 进入 implementation mode。
 - 语义对齐：关注名称、入口、文档口径、历史/当前边界、断链、脚本命令和验证口径是否一致。
 - 低摩擦触发：支持 scheduled full scan 和 commit-dependent scan，贴近日常个人工作流。
-- 可复用资产收敛：旧实现中仅保留 dashboard 和 webhook 思路作为未来可复用能力。
+- Cockpit 作为 adapter：本地 backend/frontend 只展示 audit state、运行报告和手动触发结果，不拥有第二套事实源。
 
 ## MVP Workflow
 
@@ -69,6 +69,30 @@ $CODEX_HOME/doc-watcher/
 └── repo-state.json
 ```
 
+## Local Audit Cockpit
+
+DocWatcher 现在包含一个本地 audit cockpit，用来查看配置仓库、commit-dependent 状态、审计报告、finding delta 和手动运行日志。Cockpit 是 plugin scripts 的 adapter：
+
+- Backend 读取 `config/repos*.json`、`$CODEX_HOME/doc-watcher/repo-state.json`、`$CODEX_HOME/doc-watcher/reports/` 和 `runs/` 记录。
+- Frontend 默认进入 `/audit`，报告详情在 `/audit/reports/:reportId`，finding 详情在 `/audit/repos/:repoName/findings/:findingId`。
+- 手动按钮调用同一组脚本：`commit_counter.py`、`generate_report.py`、`audit_repo.py`。
+- Cockpit 不写目标仓库，不生成补丁，不创建远端 PR；需要修改文档时，复制 handoff prompt 后显式进入 `doc-alignment` implementation mode。
+
+主要 API：
+
+```text
+GET  /api/v1/audit/status
+GET  /api/v1/audit/repos
+GET  /api/v1/audit/repos/{repo_name}
+GET  /api/v1/audit/reports
+GET  /api/v1/audit/reports/{report_id}
+GET  /api/v1/audit/last-run
+GET  /api/v1/audit/runs
+POST /api/v1/audit/runs/commit-counter
+POST /api/v1/audit/runs/generate-report
+POST /api/v1/audit/repos/{repo_name}/runs/audit
+```
+
 ## Target Repo Contract
 
 DocWatcher 默认面向普通本地 Git 项目，不要求额外治理配置。推荐但不强制存在以下入口：
@@ -117,18 +141,20 @@ Repo `path` supports environment variables and relative paths. Relative paths ar
 
 ## Current MVP Status
 
-当前已完成 MVP pivot 的源头改造：
+当前 MVP 已完成 audit-first pivot，并接入本地 audit cockpit：
 
 - 新增 Codex plugin manifest。
 - 新增 `doc-alignment` skill，定义只读语义 audit 工作流。
 - 新增 repo audit、report generation、commit counter 和 doctor 脚本。
+- 新增 backend audit read model 和 command bridge，API 状态全部回溯到 plugin config、runtime state、reports 和 run records。
+- 新增 frontend audit cockpit，默认 route 是 `/audit`，当前导航只展示 audit cockpit。
 - active roadmap 已改为 audit-first，不再以远端分支评审作为未来路线。
-- 旧 backend/frontend 实现保留在仓库中，但不再代表当前 MVP 主线。
+- 旧 patch/PR/provider/webhook 路由和页面文件保留为 legacy compatibility/source history，不挂载为当前产品导航。
 
 可复用旧资产：
 
-- **Dashboard**：未来可改造成 audit backlog 和 drift trend 页面。
-- **Webhook**：未来可作为 commit/event 触发器，不承担写入或远端评审职责。
+- **Audit cockpit**：当前用于 audit backlog、latest report、finding backlog、recent runs 和手动触发。
+- **Webhook 思路**：未来可作为 commit/event 触发器，不承担写入或远端评审职责。
 
 暂不继续投入：
 
@@ -170,15 +196,18 @@ PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system
 (cd backend && uv run python "$PLUGIN_VALIDATOR" ..)
 ```
 
-旧 Web app 仍可本地运行，用于查看可复用界面和服务代码：
+运行本地 audit cockpit：
 
 ```bash
 ./scripts/doc-watcher init
+./scripts/doc-watcher up
 ./scripts/doc-watcher start
 ./scripts/doc-watcher status
 ./scripts/doc-watcher logs
 ./scripts/doc-watcher stop
 ```
+
+`up` 在前台同时启动 backend 和 frontend，适合开发和 Browser 验证；`start/status/logs/stop` 使用本地 run/log 目录管理后台进程。
 
 Backend:
 
@@ -190,6 +219,8 @@ uv run ruff check app tests
 uv run --all-groups python -m pytest
 ```
 
+Backend audit endpoints are served under `/api/v1/audit/*`. Existing database-backed patch/PR/provider routes are legacy compatibility surfaces and are not the current audit product source of truth.
+
 Frontend:
 
 ```bash
@@ -199,6 +230,8 @@ pnpm dev
 pnpm build
 pnpm lint
 ```
+
+Frontend `/dashboard` redirects to `/audit`. Current visible routes are the audit cockpit, report detail, and finding detail views.
 
 ## Documentation Map
 

@@ -1,44 +1,48 @@
+import { Activity, FileSearch } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 export default function Layout() {
   const location = useLocation();
 
   const navItems = [
-    { to: "/dashboard", label: "Dashboard", icon: "Gauge" },
-    { to: "/projects", label: "Projects", icon: "FolderGit2" },
+    { to: "/audit", label: "Audit", icon: FileSearch },
   ];
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <aside className="w-52 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <Link to="/dashboard" className="text-xl font-bold text-gray-900">
-            DocWatcher
+    <div className="min-h-screen bg-gray-50 text-gray-950 md:flex">
+      <aside className="border-b border-gray-200 bg-white md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col md:border-b-0 md:border-r">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-4">
+          <Link to="/audit" className="flex min-w-0 items-center gap-2 text-lg font-semibold text-gray-950">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-700 text-white">
+              <Activity size={17} />
+            </span>
+            <span className="truncate">DocWatcher</span>
           </Link>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex gap-2 overflow-x-auto p-3 md:flex-1 md:flex-col md:gap-1 md:overflow-visible md:p-4">
           {navItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
                 isActive(item.to)
-                  ? "bg-blue-50 text-blue-700 font-medium"
+                  ? "bg-emerald-50 text-emerald-800 font-medium"
                   : "text-gray-600 hover:bg-gray-100"
               }`}
             >
+              <item.icon size={17} />
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-200 text-xs text-gray-400">
+        <div className="hidden border-t border-gray-100 p-4 text-xs text-gray-400 md:block">
           DocWatcher v0.1.0
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+      <main className="min-w-0 flex-1 md:pl-56">
+        <div className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
       </main>

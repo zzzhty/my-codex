@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from app.api.v1 import changes, dashboard, doc_prs, docs, impacts, patches, projects, webhooks
+from app.api.v1 import audit, changes, dashboard, doc_prs, docs, impacts, patches, projects, webhooks
 
 router = APIRouter(prefix="/api/v1")
+router.include_router(audit.router, prefix="/audit", tags=["audit"])
 router.include_router(projects.router, prefix="/projects", tags=["projects"])
 router.include_router(changes.router, prefix="/projects", tags=["changes"])
 router.include_router(impacts.router, prefix="/projects", tags=["impacts"])

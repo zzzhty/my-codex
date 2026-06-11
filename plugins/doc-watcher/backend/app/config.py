@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     gitea_url: str = ""
     gitea_token: str = ""
 
+    docwatcher_config_path: str = ""
+    docwatcher_state_dir: str = ""
+
     cors_origins: list[str] = ["http://localhost:5173"]
 
 
