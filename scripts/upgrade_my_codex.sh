@@ -49,32 +49,6 @@ resolve_command() {
     exit 1
 }
 
-codex_version() {
-    "$codex_path" --version 2>/dev/null || printf '%s\n' "unknown"
-}
-
-require_codex_subcommand() {
-    command_label=$1
-    shift
-    if "$codex_path" "$@" --help >/dev/null 2>&1; then
-        return
-    fi
-
-    echo "required Codex CLI command is unavailable: codex $command_label" >&2
-    echo "CodexPath=$codex_path" >&2
-    echo "CodexVersion=$(codex_version)" >&2
-    echo "FailedCommand=$codex_path $* --help" >&2
-    echo "Breakpoint=before marketplace refresh in scripts/upgrade_my_codex.sh" >&2
-    echo "Upgrade Codex CLI to 0.131.0 or newer; 0.130.0 lacks non-interactive plugin add/list commands." >&2
-    exit 1
-}
-
-require_codex_plugin_commands() {
-    require_codex_subcommand "plugin marketplace add" plugin marketplace add
-    require_codex_subcommand "plugin add" plugin add
-    require_codex_subcommand "plugin list" plugin list
-}
-
 canonical_path() {
     path=$1
     if command -v realpath >/dev/null 2>&1; then
@@ -302,10 +276,6 @@ if [ -z "$codex_path" ]; then
     codex_path=$(resolve_command "Codex CLI" codex)
 else
     codex_path=$(resolve_command "Codex CLI" "$codex_path")
-fi
-require_codex_plugin_commands
-if [ "$prune_plugins" -eq 1 ]; then
-    require_codex_subcommand "plugin remove" plugin remove
 fi
 
 if [ -z "$tooling_python" ]; then

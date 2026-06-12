@@ -19,14 +19,16 @@ $CODEX_HOME/agents/operating-principles.md
 ```
 
 Use `scripts/sync_codex_agents.py` to copy repo-managed support files from
-`agents/` into the target. Do not hand-edit managed target files; edit the
-source files here and sync again.
+`agents/` into the target. The script currently syncs only the managed support
+file listed above. Do not hand-edit managed target files; edit the source file
+here and sync again.
 
 ## Current Policy
 
-The sync script rejects local `agents/*.toml` custom-agent presets. The
+The sync script ignores local `agents/*.toml` custom-agent presets today. The
 `workflow` plugin's `$orchestrate-subagents` skill uses built-in Codex roles
-with task-local assignment labels today.
+with task-local assignment labels, so legacy local presets are neither synced
+nor installed by this support-file path.
 
 ## Future Custom Agents
 

@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = REPO_ROOT / "agents"
 DEFAULT_CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 MANAGED_MARKER = "Managed by my-codex scripts/sync_codex_agents.py."
+SUPPORT_SOURCE_NAMES = ("operating-principles.md",)
 
 
 @dataclass(frozen=True)
@@ -39,18 +40,15 @@ def load_sources(source_root: Path) -> list[SourceFile]:
     if not source_root.is_dir():
         raise SystemExit(f"agent support source directory does not exist: {source_root}")
 
-    toml_files = sorted(source_root.glob("*.toml"))
-    if toml_files:
-        files = ", ".join(str(path) for path in toml_files)
-        raise SystemExit(f"local custom-agent TOML presets are no longer managed here: {files}")
-
     sources: list[SourceFile] = []
-    for path in sorted(source_root.iterdir()):
+    for name in SUPPORT_SOURCE_NAMES:
+        path = source_root / name
         if not path.is_file():
             continue
         sources.append(SourceFile(path=path, target_name=path.name, text=load_text_file(path)))
     if not sources:
-        raise SystemExit(f"agent support source directory contains no files: {source_root}")
+        expected = ", ".join(SUPPORT_SOURCE_NAMES)
+        raise SystemExit(f"agent support source directory contains no managed support files: {source_root}; expected one of: {expected}")
     return sorted(sources, key=lambda source: source.target_name)
 
 

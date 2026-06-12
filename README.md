@@ -162,11 +162,11 @@ Windows PowerShell:
 .\scripts\upgrade_my_codex.ps1
 ```
 
-The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Unix wrapper fails before refresh when the Codex CLI does not expose `codex plugin add` and `codex plugin list`; non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
+The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
 `scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
 
-Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
+Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
 
 Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
 

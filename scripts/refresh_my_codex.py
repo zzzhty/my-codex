@@ -78,6 +78,47 @@ def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool =
     return result.returncode
 
 
+def codex_version(codex: str, *, env: dict[str, str]) -> str:
+    try:
+        result = subprocess.run([codex, "--version"], env=env, capture_output=True, text=True)
+    except FileNotFoundError:
+        return "unknown"
+    if result.returncode != 0:
+        return "unknown"
+    return (result.stdout or result.stderr).strip() or "unknown"
+
+
+def require_codex_subcommand(codex: str, label: str, args: list[str], *, env: dict[str, str]) -> None:
+    command = [codex, *args, "--help"]
+    try:
+        result = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError as exc:
+        raise SystemExit(f"command not found: {command[0]}") from exc
+    if result.returncode == 0:
+        return
+
+    raise SystemExit(
+        "\n".join(
+            [
+                f"required Codex CLI command is unavailable: codex {label}",
+                f"CodexPath={codex}",
+                f"CodexVersion={codex_version(codex, env=env)}",
+                f"FailedCommand={command_text(command)}",
+                "Breakpoint=before marketplace refresh in scripts/refresh_my_codex.py",
+                "Upgrade Codex CLI; this refresh flow requires non-interactive plugin marketplace/add/list commands and pruning also requires plugin remove.",
+            ]
+        )
+    )
+
+
+def require_codex_plugin_commands(codex: str, *, env: dict[str, str], require_remove: bool = False) -> None:
+    require_codex_subcommand(codex, "plugin marketplace add", ["plugin", "marketplace", "add"], env=env)
+    require_codex_subcommand(codex, "plugin add", ["plugin", "add"], env=env)
+    require_codex_subcommand(codex, "plugin list", ["plugin", "list"], env=env)
+    if require_remove:
+        require_codex_subcommand(codex, "plugin remove", ["plugin", "remove"], env=env)
+
+
 def run_agent_sync(*, codex_home: Path, env: dict[str, str], dry_run: bool) -> None:
     sync_script = REPO_ROOT / "scripts" / "sync_codex_agents.py"
     if not sync_script.is_file():
@@ -615,6 +656,7 @@ def main() -> None:
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
     codex = resolve_executable(args.codex)
+    require_codex_plugin_commands(codex, env=env, require_remove=args.prune_plugins)
 
     if not args.skip_bootstrap:
         run(

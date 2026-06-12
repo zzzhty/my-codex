@@ -50,6 +50,7 @@ from refresh_my_codex import (  # noqa: E402
     selected_plugins,
     stale_plugin_names,
 )
+from sync_codex_agents import load_sources  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_proposal_status import update_status  # noqa: E402
 
@@ -219,6 +220,16 @@ class SkillWatcherTests(unittest.TestCase):
                 ),
                 ["cached-old", "old-plugin"],
             )
+
+    def test_agent_sync_ignores_legacy_custom_agent_toml_presets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source_root = Path(tmp)
+            (source_root / "operating-principles.md").write_text("support note\n", encoding="utf-8")
+            (source_root / "reviewer.toml").write_text('name = "reviewer"\n', encoding="utf-8")
+
+            sources = load_sources(source_root)
+
+        self.assertEqual([source.target_name for source in sources], ["operating-principles.md"])
 
     def test_redacts_secret_keys_and_values(self) -> None:
         payload = {
