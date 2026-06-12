@@ -7,6 +7,7 @@ param(
     [string]$MarketplaceName = "my-codex",
     [string]$GitMarketplaceSource,
     [string]$GitRef = "main",
+    [switch]$PrunePlugins,
     [switch]$DryRun,
     [switch]$SkipCheck
 )
@@ -252,6 +253,19 @@ Write-Host "PLUGIN_VALIDATOR=$env:PLUGIN_VALIDATOR"
 Write-Host "BootstrapPython=$BootstrapPython"
 Write-Host "CodexPath=$CodexPath"
 Write-Host "MarketplaceName=$MarketplaceName"
+if ($PrunePlugins) {
+    Write-Host "PrunePlugins=enabled"
+}
+else {
+    Write-Host "PrunePlugins=disabled"
+}
+
+if ($PrunePlugins -and -not $DryRun) {
+    Write-Host "Plugin pruning removes installed or cached $MarketplaceName plugins that are not selected by .agents/plugins/install-manifest.json."
+    if (-not (Confirm-Action -Prompt "Prune stale $MarketplaceName plugins during refresh")) {
+        throw "plugin pruning was requested but not confirmed"
+    }
+}
 
 $refreshArgs = @(
     "scripts\refresh_my_codex.py",
@@ -268,6 +282,9 @@ if ($GitMarketplaceSource) {
 }
 if ($DryRun) {
     $refreshArgs += "--dry-run"
+}
+if ($PrunePlugins) {
+    $refreshArgs += "--prune-plugins"
 }
 
 Invoke-Checked `

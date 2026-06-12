@@ -13,6 +13,7 @@ Options:
   --marketplace-name NAME       Marketplace name. Defaults to my-codex.
   --git-marketplace-source URL  Git marketplace source. Defaults to remote.origin.url.
   --git-ref REF                 Git ref for first-time Git marketplace add. Defaults to main.
+  --prune-plugins               Prompt, then remove stale my-codex plugins not selected by the install manifest.
   --dry-run                     Print commands without changing Codex state.
   --skip-check                  Skip the final closure check.
   -h, --help                    Show this help.
@@ -200,6 +201,7 @@ git_marketplace_source=
 git_ref=main
 dry_run=0
 skip_check=0
+prune_plugins=0
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -270,6 +272,10 @@ while [ "$#" -gt 0 ]; do
             dry_run=1
             shift
             ;;
+        --prune-plugins)
+            prune_plugins=1
+            shift
+            ;;
         --skip-check)
             skip_check=1
             shift
@@ -298,6 +304,9 @@ else
     codex_path=$(resolve_command "Codex CLI" "$codex_path")
 fi
 require_codex_plugin_commands
+if [ "$prune_plugins" -eq 1 ]; then
+    require_codex_subcommand "plugin remove" plugin remove
+fi
 
 if [ -z "$tooling_python" ]; then
     tooling_python="$codex_home/venvs/my-codex/bin/python"
@@ -318,8 +327,21 @@ echo "PLUGIN_VALIDATOR=$PLUGIN_VALIDATOR"
 echo "BootstrapPython=$bootstrap_python"
 echo "CodexPath=$codex_path"
 echo "MarketplaceName=$marketplace_name"
+if [ "$prune_plugins" -eq 1 ]; then
+    echo "PrunePlugins=enabled"
+else
+    echo "PrunePlugins=disabled"
+fi
 
 cd "$repo_root"
+
+if [ "$prune_plugins" -eq 1 ] && [ "$dry_run" -eq 0 ]; then
+    echo "Plugin pruning removes installed or cached $marketplace_name plugins that are not selected by .agents/plugins/install-manifest.json."
+    if ! confirm_action "Prune stale $marketplace_name plugins during refresh"; then
+        echo "plugin pruning was requested but not confirmed" >&2
+        exit 1
+    fi
+fi
 
 set -- "$repo_root/scripts/refresh_my_codex.py" \
     --codex "$codex_path" \
@@ -335,6 +357,9 @@ if [ -n "$git_marketplace_source" ]; then
 fi
 if [ "$dry_run" -eq 1 ]; then
     set -- "$@" --dry-run
+fi
+if [ "$prune_plugins" -eq 1 ]; then
+    set -- "$@" --prune-plugins
 fi
 
 echo "+ $bootstrap_python $*"

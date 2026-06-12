@@ -42,8 +42,14 @@ from generate_report import (  # noqa: E402
 )
 from propose_skill_patch import build_proposal  # noqa: E402
 from redact_event import REDACTION, redact_event  # noqa: E402
-from refresh_my_codex import marketplace_source_arg  # noqa: E402
-from refresh_my_codex import default_plugin_names, selected_plugins  # noqa: E402
+from refresh_my_codex import (  # noqa: E402
+    cached_plugin_names,
+    configured_plugin_names,
+    default_plugin_names,
+    marketplace_source_arg,
+    selected_plugins,
+    stale_plugin_names,
+)
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_proposal_status import update_status  # noqa: E402
 
@@ -180,6 +186,39 @@ class SkillWatcherTests(unittest.TestCase):
                 )
 
         self.assertIn("missing-plugin", str(raised.exception))
+
+    def test_stale_plugin_detection_includes_config_and_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            codex_home = Path(tmp)
+            config = codex_home / "config.toml"
+            config.write_text(
+                "\n".join(
+                    [
+                        '[plugins."workflow@my-codex"]',
+                        "enabled = true",
+                        '[plugins."old-plugin@my-codex"]',
+                        "enabled = true",
+                        '[plugins."github@openai-curated"]',
+                        "enabled = true",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            cache_root = codex_home / "plugins" / "cache" / "my-codex"
+            (cache_root / "workflow" / "0.1.0").mkdir(parents=True)
+            (cache_root / "cached-old" / "0.1.0").mkdir(parents=True)
+
+            self.assertEqual(configured_plugin_names(codex_home, "my-codex"), {"workflow", "old-plugin"})
+            self.assertEqual(cached_plugin_names(codex_home, "my-codex"), {"workflow", "cached-old"})
+            self.assertEqual(
+                stale_plugin_names(
+                    codex_home=codex_home,
+                    marketplace_name="my-codex",
+                    desired_plugin_names=["workflow"],
+                ),
+                ["cached-old", "old-plugin"],
+            )
 
     def test_redacts_secret_keys_and_values(self) -> None:
         payload = {

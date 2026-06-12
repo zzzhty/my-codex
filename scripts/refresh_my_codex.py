@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -214,6 +215,63 @@ def selected_plugins(
     if names_to_validate:
         ensure_plugins_in_marketplace(names_to_validate, marketplace_file=marketplace_file)
     return selectors
+
+
+def configured_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
+    config_path = codex_home / "config.toml"
+    if not config_path.is_file():
+        return set()
+
+    pattern = re.compile(r'^\[plugins\."([^"]+)@([^"]+)"\]\s*$')
+    names: set[str] = set()
+    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = pattern.match(line.strip())
+        if match and match.group(2) == marketplace_name:
+            names.add(match.group(1))
+    return names
+
+
+def cached_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
+    cache_root = codex_home / "plugins" / "cache" / marketplace_name
+    if not cache_root.is_dir():
+        return set()
+    return {path.name for path in cache_root.iterdir() if path.is_dir()}
+
+
+def stale_plugin_names(
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    desired_plugin_names: list[str],
+) -> list[str]:
+    discovered = configured_plugin_names(codex_home, marketplace_name) | cached_plugin_names(codex_home, marketplace_name)
+    desired = set(desired_plugin_names)
+    return sorted(discovered - desired)
+
+
+def prune_stale_plugins(
+    codex: str,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    desired_plugin_names: list[str],
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    stale = stale_plugin_names(
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+        desired_plugin_names=desired_plugin_names,
+    )
+    if not stale:
+        print(f"No stale plugins to prune for marketplace `{marketplace_name}`.")
+        return
+
+    print("Stale plugins selected for pruning:")
+    for name in stale:
+        print(f"- {name}@{marketplace_name}")
+    for name in stale:
+        run([codex, "plugin", "remove", f"{name}@{marketplace_name}"], env=env, dry_run=dry_run)
 
 
 def tooling_python_from_args(args: argparse.Namespace, venv_path: Path) -> Path:
@@ -539,6 +597,11 @@ def main() -> None:
     parser.add_argument("--skip-bootstrap", action="store_true", help="Do not refresh the shared tooling venv.")
     parser.add_argument("--skip-marketplace", action="store_true", help="Do not refresh marketplace config/snapshot.")
     parser.add_argument("--skip-plugins", action="store_true", help="Do not run `codex plugin add`.")
+    parser.add_argument(
+        "--prune-plugins",
+        action="store_true",
+        help="Remove installed or cached marketplace plugins that are not selected for install by the manifest.",
+    )
     parser.add_argument("--skip-agents", action="store_true", help="Do not sync the subagent support file into $CODEX_HOME/agents.")
     parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Skill Watcher hooks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Do not run Skill Watcher doctor after refresh.")
@@ -576,6 +639,16 @@ def main() -> None:
     if not args.skip_plugins:
         for plugin in selected_plugins(args.plugin, args.marketplace_name, action="install"):
             run([codex, "plugin", "add", plugin], env=env, dry_run=args.dry_run)
+
+    if args.prune_plugins:
+        prune_stale_plugins(
+            codex,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            desired_plugin_names=default_plugin_names("install", marketplace_name=args.marketplace_name),
+            env=env,
+            dry_run=args.dry_run,
+        )
 
     if not args.skip_agents:
         run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)

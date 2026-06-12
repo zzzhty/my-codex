@@ -166,6 +166,8 @@ The wrappers only resolve platform-specific Python/Codex paths, set the shared e
 
 `scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
 
+Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
+
 Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
 
 Direct helper usage remains supported:
