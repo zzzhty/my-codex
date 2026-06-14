@@ -1,6 +1,6 @@
 ---
 name: long-running-goal
-description: Use when creating, upgrading, executing, resuming, evolving, or closing a long-running goal plan for a project, especially when work needs ordered milestones, review gates, checkpoint evidence, validation evidence, current-doc synchronization, failure breakpoints, plan/gate evolution, close/archive hygiene, or a decision about whether the newest user request supersedes an active goal context.
+description: Use when creating, upgrading, executing, resuming, evolving, or closing a long-running goal plan for a project, especially when work needs ordered milestones, review gates, checkpoint evidence, validation evidence, explicit Loop Blueprint/harness boundaries for triggers, inputs, orchestration, worktrees, connectors, independent verification, human escalation, current-doc synchronization, failure breakpoints, plan/gate evolution, close/archive hygiene, or a decision about whether the newest user request supersedes an active goal context.
 ---
 
 # Long Running Goal
@@ -34,9 +34,10 @@ Use the bundled template for a new goal when the project has no stronger local c
 1. Current baseline and source-of-truth evidence.
 2. Explicit owner boundaries, default behavior, compatibility surface, and non-goals.
 3. Ordered milestones with scope, gates, validation, and checkpoint expectations.
-4. Failure breakpoints and rollback/disable path.
-5. Current-doc/TODO sync requirements.
-6. Close/archive procedure and reusable execution prompt.
+4. Loop Blueprint / harness boundaries when the goal is recurring, automated, parallelized, connector-backed, or subagent-orchestrated.
+5. Failure breakpoints and rollback/disable path.
+6. Current-doc/TODO sync requirements.
+7. Close/archive procedure and reusable execution prompt.
 
 Do not mark a goal `Ready` while unresolved `<...>` placeholders remain.
 
@@ -76,12 +77,15 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
    - Split current owner, compatibility surface, and future/non-goal boundaries.
    - Define ordered milestones: usually `M0 Contract Review / Design Freeze`, implementation milestones, docs/release closeout, then `Close`.
    - Give every milestone clear scope, review gate, recommended validation, evidence slots, and checkpoint evidence expectations.
+   - Classify the execution shape as manual staged execution or Loop-shaped execution before implementation starts.
+   - For Loop-shaped goals, freeze the trigger, input sources, triage/orchestration rule, worktree/isolation strategy, connector permissions, independent verifier, human escalation breakpoint, and durable learning target.
 
 4. Add the execution contract:
    - Milestones must run sequentially.
    - Set each milestone `In Progress` before work starts.
    - Do not enter the next milestone until review gates pass.
    - Record code, behavior, test, doc, rollback, and risk evidence per milestone.
+   - If a Loop Blueprint exists, record harness evidence when the milestone changes triggers, inputs, orchestration, worktrees, connectors, subagents, or escalation behavior.
    - Stop on failures and record root cause, failing command/path, exact breakpoint when known, and next diagnostic step.
    - Do not use fallback, compatibility fake-success, alternate backend, hidden partial success, or silent degradation to bypass gates.
 
@@ -96,7 +100,27 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
 
 6. Add a reusable prompt:
    - Include the exact goal path.
-   - Repeat the sequential milestone, evidence, checkpoint, failure-handling, and close-gate rules.
+   - Repeat the sequential milestone, Loop Blueprint, evidence, checkpoint, failure-handling, and close-gate rules.
+
+## Loop Blueprint Harness
+
+A long-running goal may be manually executed. Do not force automation into small or one-off plans.
+
+When the goal is intended to run as a loop, or when it uses recurring triggers, multiple agents, worktrees, connectors, external side effects, or automated triage, make the harness explicit before implementation starts. Do not rely on the Strategy Evolution Loop or the model's judgment to discover these boundaries late.
+
+The goal plan must answer:
+
+1. Trigger: what starts or resumes the loop, and whether it is manual, scheduled, hook-driven, CI-driven, issue-driven, or goal-tool-driven.
+2. Inputs: which source-of-truth artifacts are read, such as TODO indexes, issues, CI logs, reports, runtime state, user prompts, or prior checkpoint evidence.
+3. Triage and orchestration: how findings become tasks, which tasks are in scope, how priority is assigned, and which role owns each step.
+4. Worktree and isolation strategy: whether agents share the current checkout, use separate worktrees/branches, or must serialize edits to avoid file races.
+5. Skills and context: which skills, runbooks, or project docs are mandatory inputs for each role.
+6. Connectors and permissions: which external systems may be read or mutated, and which writes require human approval.
+7. Independent verification: which subagent, script, test, reviewer, or gate checks the producer's work without trusting self-evaluation.
+8. Human escalation: the exact breakpoint where the loop stops and reports to the user instead of continuing.
+9. Durable learning: which result should be written back to a skill, TODO, report, validation log, runbook, or automation memory.
+
+If any item is not applicable, say so explicitly with the reason. If the goal claims automation, connector writes, subagent orchestration, or worktree parallelism but leaves the corresponding harness field unspecified, keep the goal in `Draft`.
 
 ## Codex Goal Tool Boundary
 
@@ -152,14 +176,14 @@ After creating or upgrading a goal:
 
 ## Strategy Evolution Loop
 
-During execution, improve the plan before continuing if evidence shows that a gate, validation rule, rollback path, milestone boundary, or skill strategy is not rigorous enough for the actual risk.
+During execution, improve the plan before continuing if evidence shows that a gate, validation rule, rollback path, milestone boundary, Loop Blueprint field, or skill strategy is not rigorous enough for the actual risk.
 
 Use this loop only for contract quality, not to avoid a hard implementation problem or bypass a failing gate:
 
 1. Pause implementation at the current breakpoint.
-2. State the gap precisely: which gate, rule, or milestone boundary is too weak and what evidence exposed it.
+2. State the gap precisely: which gate, rule, milestone boundary, or harness boundary is too weak and what evidence exposed it.
 3. Update the reusable strategy first when the gap belongs in this skill or its bundled template.
-4. Update the active goal plan next, including milestone scope, review gate, validation commands, rollback path, and checkpoint evidence expectations affected by the new rule.
+4. Update the active goal plan next, including Loop Blueprint fields, milestone scope, review gate, validation commands, rollback path, and checkpoint evidence expectations affected by the new rule.
 5. Validate the skill or plan edits with the relevant helper scripts and lightweight diff checks.
 6. Record in the goal evidence that the plan evolved before implementation continued, including changed strategy files and the reason.
 7. Resume the original milestone from the paused breakpoint and follow the stronger gate.
@@ -189,6 +213,8 @@ For each milestone:
 7. Mark milestone `Done`, review `Passed`, checkpoint `Done`.
 
 If the project uses a compact goal document without prewritten evidence slots, add a short execution evidence block for the milestone before marking it `Done`. It must include changed files, behavior impact, validation commands/results, rollback path, and remaining risk.
+
+If the milestone exercises a Loop Blueprint, the evidence block must also include the trigger/input path used, orchestration or worktree isolation evidence, connector read/write evidence, independent verification result, and any human escalation decision.
 
 Keep each checkpoint scoped. Do not wait until the end to record evidence.
 
@@ -258,3 +284,4 @@ A useful long-running goal is not a vague roadmap. It must answer:
 5. What commands prove each milestone?
 6. What counts as blocked?
 7. How does the work close and leave active docs clean?
+8. If the work is Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, escalation, and durable learning?

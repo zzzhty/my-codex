@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt Strategy Loop"
+  short_description: "Iterate prompts with independent review"
+  default_prompt: "Use $prompt-strategy-loop to improve this prompt or agent strategy using evidence, candidate variants, independent subagent review, and a bounded writeback decision."

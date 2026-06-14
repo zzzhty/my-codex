@@ -6,5 +6,6 @@ Reusable Codex workflow skills maintained from the my-codex repository.
 
 - `long-running-goal`: staged long-running goal plans with milestones, gates, validation evidence, checkpoint evidence, and close hygiene.
 - `orchestrate-subagents`: explicit Codex subagent orchestration for complex tasks that need bounded delegation, evidence consolidation, failure handling, and parent-owned integration.
+- `prompt-strategy-loop`: evidence-backed prompt and agent-strategy iteration with independent subagent evaluation and bounded writeback.
 - `sop`: deterministic standard operating procedures for recurring tasks with explicit triggers, inputs, ordered steps, outputs, validation, stop conditions, and failure handling.
 - `summary-in-html`: standalone HTML developer summaries for a project, directory, module, feature area, documentation chapter, or user-specified scope, with optional image assets when explicitly requested.

@@ -13,7 +13,7 @@
 cp <skill-folder>/templates/long_running_goal_template.md <goal-dir>/<goal_slug>_long_running_goal_plan.md
 ```
 
-3. 将标题、目标描述、目标路径、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
+3. 将标题、目标描述、目标路径、Loop Blueprint、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
 4. 执行过程中只更新复制后的 goal 文件，不更新本模板。
 5. 每个阶段完成后必须补齐代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
 6. 按任务规模增删 `M<N>` 阶段；删除不用的阶段，按顺序新增需要的阶段，并同步更新阶段状态表、Checkpoint evidence、Close Gate 和推荐 Goal Prompt。
@@ -55,6 +55,31 @@ M0 设计冻结时的当前基线：
 2. `<相关 architecture / contract / validation / runbook。>`
 3. `<现有 TODO / goal / archive / issue / PR。>`
 
+## Loop Blueprint / Harness 边界
+
+如果本 goal 是手动分阶段执行，明确写 `Not applicable: manual staged execution` 并说明原因。若本 goal 包含自动触发、重复循环、sub-agent 编排、worktree 并行、connector 读写或外部系统副作用，必须在执行前冻结以下 harness 边界，不能等执行过程中只依赖 LLM 自行判断。
+
+执行模式：`<Manual staged execution / Loop-shaped execution / Automated loop>`
+
+1. Trigger / 心跳：
+   - `<什么事件启动或恢复循环；例如用户命令、schedule、hook、CI、issue、goal-tool。>`
+2. Inputs / 输入源：
+   - `<循环读取哪些事实源；例如 TODO index、issue、CI log、report、runtime state、checkpoint evidence。>`
+3. Triage and orchestration / 分拣与编排：
+   - `<finding 如何变成任务，优先级如何确定，哪些角色或 agent 负责探索、实现、验收。>`
+4. Worktree and isolation / 隔离策略：
+   - `<是否使用当前 checkout、独立 worktree、独立 branch、串行锁定文件，或其他防撞策略。>`
+5. Skills and context / 必读上下文：
+   - `<每个角色必须读取的 skill、runbook、project doc、spec 或历史决策。>`
+6. Connectors and permissions / 外部系统权限：
+   - `<可读/可写的 connector、API、ticket、PR、CI、Slack 等；哪些写入必须人工批准。>`
+7. Independent verification / 独立验收：
+   - `<由哪个 sub-agent、脚本、测试、reviewer 或 gate 检查 producer 的输出；不得只信自评。>`
+8. Human escalation / 人工升级点：
+   - `<什么失败、歧义、权限、隐私、破坏性动作或连续阻塞会停止循环并报告用户。>`
+9. Durable learning / 经验沉淀：
+   - `<哪些结果要写回 skill、TODO、report、validation log、runbook、automation memory 或 current doc。>`
+
 ## Goal 执行合同
 
 如果本计划被作为 long-running goal 执行，必须按以下合同推进：
@@ -63,13 +88,14 @@ M0 设计冻结时的当前基线：
 2. 每个阶段开始前必须把阶段状态改为 `In Progress`。
 3. 每个阶段完成后必须记录 review 结论、运行命令、通过证据、失败断点和未解决风险。
 4. 每个阶段必须有 checkpoint evidence。若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，优先使用本计划中记录的 `<goal_slug> M<N>: <summary>` 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-5. 未满足当前阶段 Review gate 时，不得进入下一阶段。
-6. 任何阶段失败必须停在失败点，记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议。
-7. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
-8. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
-9. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界或 long-running-goal 策略不够严谨，必须先暂停实现，记录暴露该问题的证据，更新 reusable strategy 或本计划合同，再完成相关验证后回到原阶段继续；不得在实现完成后静默放宽验收标准。
-10. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求重新确认是否继续本 goal；若最新请求转为 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，不得继续旧阶段执行，也不得更新旧 goal 证据。
-11. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
+5. 若本 goal 存在 Loop Blueprint，每个触及 trigger、input、orchestration、worktree、connector、verification、escalation 或 durable learning 的阶段必须记录 harness evidence。
+6. 未满足当前阶段 Review gate 时，不得进入下一阶段。
+7. 任何阶段失败必须停在失败点，记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议。
+8. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
+9. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
+10. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界、Loop Blueprint 或 long-running-goal 策略不够严谨，必须先暂停实现，记录暴露该问题的证据，更新 reusable strategy 或本计划合同，再完成相关验证后回到原阶段继续；不得在实现完成后静默放宽验收标准。
+11. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求重新确认是否继续本 goal；若最新请求转为 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，不得继续旧阶段执行，也不得更新旧 goal 证据。
+12. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
 
 ## 状态定义
 
@@ -93,6 +119,7 @@ M0 设计冻结时的当前基线：
 4. 文档证据：同步更新本文件状态表，并按需更新 active current docs。
 5. 回滚证据：说明该阶段如何回滚，migration 阶段必须说明正反向策略。
 6. 风险证据：列出仍保留的 legacy compatibility、未解决风险和下一阶段要消除的部分。
+7. Harness 证据：若本阶段触及 Loop Blueprint，记录实际 trigger/input 路径、编排或 worktree 隔离证据、connector 读写结果、独立验收结果和人工升级结论。
 
 默认验证命令：
 
@@ -178,6 +205,8 @@ Review gate：
    - `<完成后填写回滚方式。>`
 6. 剩余风险：
    - `<完成后填写残留风险。>`
+7. Harness evidence：
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和升级证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -222,6 +251,8 @@ Review gate：
    - `<完成后填写回滚方式。>`
 6. 剩余风险：
    - `<完成后填写残留风险。>`
+7. Harness evidence：
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和升级证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -266,6 +297,8 @@ Review gate：
    - `<完成后填写回滚方式。>`
 6. 剩余风险：
    - `<完成后填写残留风险。>`
+7. Harness evidence：
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和升级证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -300,8 +333,9 @@ Close 前必须满足：
 5. 所有必须执行的测试命令均记录实际结果。
 6. `git diff --check -- <changed-paths>` 通过。
 7. Markdown 链接检查按需通过。
-8. 未解决风险已记录，并明确是否进入 Future。
-9. close checkpoint evidence 已记录；若项目已有 Git / version-control 工作流且要求 close commit，使用 `<goal_slug> close: <summary>` 或本项目约定格式。
+8. 若存在 Loop Blueprint，所有触及 harness 的阶段都已记录对应证据。
+9. 未解决风险已记录，并明确是否进入 Future。
+10. close checkpoint evidence 已记录；若项目已有 Git / version-control 工作流且要求 close commit，使用 `<goal_slug> close: <summary>` 或本项目约定格式。
 
 Close 执行证据：
 
@@ -317,6 +351,8 @@ Close 执行证据：
    - `<Close 时填写整体回滚策略。>`
 6. 剩余风险：
    - `<Close 时填写 Future / residual risk。>`
+7. Harness evidence：
+   - `<Close 时填写 Loop Blueprint 最终结论；手动 goal 写 Not applicable。>`
 
 Checkpoint evidence：
 
@@ -338,10 +374,11 @@ Checkpoint evidence：
 执行要求：
 1. 阶段必须顺序执行，不得跳过 gate。
 2. 每个阶段开始前把该阶段状态改为 In Progress，完成后记录代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
-3. 每个阶段都必须有 checkpoint evidence；若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，使用本 goal 记录的 <goal_slug> M<N>: <summary> 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-4. 失败时停在失败点，报告 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议。
-5. 不允许使用 fallback、兼容假成功、alternate backend、部分成功包装、隐藏错误或 silent degradation 来绕过 gate。
-6. Close 前必须运行并记录 git diff --check -- <changed-paths> 以及本 goal 指定的所有验证命令。
+3. 若本 goal 存在 Loop Blueprint，执行前先确认 trigger、inputs、orchestration、worktree isolation、connectors、independent verification、human escalation 和 durable learning 均已冻结；每个触及这些字段的阶段都必须记录 harness evidence。
+4. 每个阶段都必须有 checkpoint evidence；若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，使用本 goal 记录的 <goal_slug> M<N>: <summary> 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
+5. 失败时停在失败点，报告 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议。
+6. 不允许使用 fallback、兼容假成功、alternate backend、部分成功包装、隐藏错误或 silent degradation 来绕过 gate。
+7. Close 前必须运行并记录 git diff --check -- <changed-paths> 以及本 goal 指定的所有验证命令。
 ```
 
 ## 相关文档
