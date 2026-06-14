@@ -27,6 +27,7 @@ DEFAULT_MONITORED_SKILLS = (
     "doc-watcher:housekeeping",
     "workflow:long-running-goal",
     "workflow:orchestrate-subagents",
+    "workflow:prompt-strategy-loop",
     "workflow:sop",
     "workflow:summary-in-html",
     "mattpocock-skills:caveman",
@@ -50,6 +51,12 @@ DEFAULT_SKILL_ALIASES = {
     "doc-watcher:housekeeping": ("housekeeping", "cleanup", "clean up", "repo cleanup"),
     "workflow:long-running-goal": ("long-running-goal", "long running goal", "long-running goal"),
     "workflow:orchestrate-subagents": ("orchestrate-subagents", "orchestrate subagents"),
+    "workflow:prompt-strategy-loop": (
+        "prompt-strategy-loop",
+        "prompt strategy loop",
+        "prompt loop",
+        "strategy loop",
+    ),
     "workflow:summary-in-html": ("summary-in-html", "summary in html", "html summary", "developer summary"),
     "workflow:sop": (
         "sop",

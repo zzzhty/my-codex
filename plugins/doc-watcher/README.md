@@ -124,11 +124,15 @@ Repo 配置使用 JSON，避免给个人工作流增加额外依赖：
         "plugins/doc-watcher/AGENTS.md",
         "plugins/skill-watcher/README.md",
         "plugins/skill-watcher/hooks/codex/README.md",
-        "plugins/skill-watcher/todo.md"
+        "plugins/skill-watcher/todo.md",
+        "plugins/workflow/README.md",
+        "plugins/workflow/.codex-plugin/plugin.json",
+        "plugins/workflow/skills"
       ],
       "source_of_truth": [
         "README.md",
-        "AGENTS.md"
+        "AGENTS.md",
+        "plugins/workflow/README.md"
       ],
       "watch_terms": [],
       "commit_threshold": 5

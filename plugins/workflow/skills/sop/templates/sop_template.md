@@ -43,6 +43,54 @@ Owner：`<owner / team / agent>`
 |---|---:|---|---|
 | `<input>` | 是/否 | `<user / file / command>` | `<validation>` |
 
+## Execution Harness
+
+简单手动 SOP 可在不适用字段写 `Not applicable: <原因>`。Agent-executed 或 automated SOP 必须明确以下执行约束，不能只依赖执行模型自行判断。
+
+执行模式：`<manual / agent-executed / automated / report-only / validation>`
+
+Prompt / strategy inputs：
+
+```text
+<本 SOP 依赖的 prompt、rubric、agent instruction、reviewer instruction 或 strategy；若无则写 Not applicable: no prompt or strategy input.>
+```
+
+Orchestration：
+
+```text
+<是否使用 subagent；每个 subagent 的单任务边界；父 agent 保留的最终判断；若无则写 Not applicable。>
+```
+
+Isolation：
+
+```text
+<使用当前 checkout、只读模式、独立 worktree、串行锁定文件、禁止并行写等隔离策略。>
+```
+
+Connector permissions：
+
+```text
+<允许读取或写入的外部系统、API、ticket、PR、CI、通知渠道；哪些写入必须人工批准。>
+```
+
+Independent verification：
+
+```text
+<由脚本、测试、reviewer、subagent 或人工检查 producer 输出；若不需要独立验证，写 Not applicable 并说明原因。>
+```
+
+Human escalation：
+
+```text
+<缺少输入、权限不足、验证失败、破坏性动作、隐私风险、外部写入、连续失败或事实源冲突时如何停下并报告。>
+```
+
+Durable writeback：
+
+```text
+<结果写回 report、SOP、skill、runbook、TODO、automation memory、validation log 或不写回的规则。>
+```
+
 ## 允许动作
 
 1. `<允许读取哪些文件。>`
@@ -133,10 +181,12 @@ Owner：`<owner / team / agent>`
 1. 保留当前已验证命令，除非有新证据替代。
 2. 记录为什么流程变化。
 3. 同步相关 README、runbook、automation memory 或 skill 文档。
-4. 重新运行 SOP ready/link 检查。
+4. 修改 prompt、rubric、agent strategy、connector permissions、automation trigger 或 independent verification rules 前，必须先有 evidence-backed review；未稳定时使用 `prompt-strategy-loop`。
+5. 同步更新 Execution Harness、允许动作、禁止动作、验证标准和停止条件中受影响的部分。
+6. 重新运行 SOP ready/link 检查。
 
 ## 复用 Prompt
 
 ```text
-Use $sop to execute <SOP Name> at <sop-path>. Follow the SOP exactly, stop on failed required validation, do not perform forbidden actions, and report commands, outputs, changed paths, generated artifacts, and unresolved blockers.
+Use $sop to execute <SOP Name> at <sop-path>. Follow the SOP exactly, honor the Execution Harness, stop on failed required validation or stop conditions, do not perform forbidden actions, and report commands, outputs, changed paths, generated artifacts, validation evidence, and unresolved blockers.
 ```

@@ -38,7 +38,7 @@ export default function Layout() {
           ))}
         </nav>
         <div className="hidden border-t border-gray-100 p-4 text-xs text-gray-400 md:block">
-          DocWatcher v0.1.0
+          Audit cockpit
         </div>
       </aside>
       <main className="min-w-0 flex-1 md:pl-56">

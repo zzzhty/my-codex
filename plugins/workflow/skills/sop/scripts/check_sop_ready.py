@@ -52,6 +52,7 @@ def main() -> int:
         "preconditions": r"(?m)^##\s*(前置条件|Preconditions)\b",
         "working directory": r"(?m)^##\s*(工作目录|Working Directory)\b",
         "inputs": r"(?m)^##\s*(输入|Inputs)\b",
+        "execution harness": r"(?m)^##\s*(Execution Harness|执行 Harness|执行约束)\b",
         "allowed actions": r"(?m)^##\s*(允许动作|Allowed Actions)\b",
         "forbidden actions": r"(?m)^##\s*(禁止动作|Forbidden Actions)\b",
         "steps": r"(?m)^##\s*(标准步骤|Steps)\b",

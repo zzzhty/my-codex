@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Workflow",
     "shortDescription": "Use reusable workflow skills maintained in my-codex.",
-    "longDescription": "Workflow packages reusable Codex procedures for long-running goals, SOPs, explicit subagent orchestration, and other repeatable agent workflows so they can be installed from the my-codex marketplace instead of being maintained directly under $CODEX_HOME/skills.",
+    "longDescription": "Workflow packages reusable Codex procedures for long-running goals, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and other repeatable agent workflows so they can be installed from the my-codex marketplace instead of being maintained directly under $CODEX_HOME/skills.",
     "developerName": "Max",
     "category": "Productivity",
     "capabilities": [

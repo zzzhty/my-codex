@@ -19,6 +19,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from codex_hook_adapter import (  # noqa: E402
     DEFAULT_MONITORED_SKILLS,
+    DEFAULT_SKILL_ALIASES,
     discover_packaged_skills,
     load_dynamic_monitored_skills,
     normalize_hook_payload,
@@ -253,6 +254,8 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertTrue(DEFAULT_MONITORED_SKILLS)
         self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
         self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
+        self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
+        self.assertIn("workflow:prompt-strategy-loop", DEFAULT_SKILL_ALIASES)
         self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
 
         normalized = normalize_hook_payload(
