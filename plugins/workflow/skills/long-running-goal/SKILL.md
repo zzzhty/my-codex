@@ -83,10 +83,10 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
 4. Add the execution contract:
    - Milestones must run sequentially.
    - Set each milestone `In Progress` before work starts.
-   - Do not enter the next milestone until review gates pass.
+   - Do not enter the next milestone until review gates pass, but continue automatically after a passed gate unless the gate explicitly requires human approval.
    - Record code, behavior, test, doc, rollback, and risk evidence per milestone.
    - If a Loop Blueprint exists, record harness evidence when the milestone changes triggers, inputs, orchestration, worktrees, connectors, subagents, or escalation behavior.
-   - Stop on failures and record root cause, failing command/path, exact breakpoint when known, and next diagnostic step.
+   - Diagnose and fix ordinary failures inside the milestone scope; stop only at the permission boundary below, and record root cause, failing command/path, exact breakpoint when known, and next diagnostic step.
    - Do not use fallback, compatibility fake-success, alternate backend, hidden partial success, or silent degradation to bypass gates.
 
 5. Add close criteria:
@@ -121,6 +121,24 @@ The goal plan must answer:
 9. Durable learning: which result should be written back to a skill, TODO, report, validation log, runbook, or automation memory.
 
 If any item is not applicable, say so explicitly with the reason. If the goal claims automation, connector writes, subagent orchestration, or worktree parallelism but leaves the corresponding harness field unspecified, keep the goal in `Draft`.
+
+## Continuation And Permission Boundary
+
+Long-running goals are meant to preserve momentum across milestones. Do not pause to ask for permission merely because a milestone boundary, review gate, checkpoint, or routine uncertainty exists.
+
+Default behavior during execution:
+
+1. Continue through sequential milestones after required validations and review gates pass.
+2. Diagnose and fix ordinary failures when the next useful step is clear and inside the goal scope.
+3. Record assumptions, risk, validation evidence, and checkpoint evidence in the goal document instead of interrupting for confirmation.
+4. Ask the user only at a true stop condition:
+   - the goal or user explicitly names a human approval gate
+   - the next step is destructive, irreversible, privacy-sensitive, externally visible, or writes to an external connector without pre-approved permission
+   - required credentials, files, tools, or source-of-truth inputs are missing and cannot be obtained locally
+   - evidence contradicts the goal semantics and continuing would change scope or product behavior
+   - the same blocker has repeated and no meaningful local diagnostic or implementation step remains
+
+Human escalation is a stop condition, not a routine status checkpoint. If the plan says "report" or "record evidence", do that in the goal evidence and continue unless one of the stop conditions above applies.
 
 ## Codex Goal Tool Boundary
 
@@ -220,7 +238,7 @@ Keep each checkpoint scoped. Do not wait until the end to record evidence.
 
 Use a Git commit as checkpoint evidence only when the project already uses Git/version control and the user or local workflow expects checkpoint commits. Do not initialize Git, create artificial commits, or fabricate checkpoint success just to satisfy the template. In non-VCS contexts, record an equivalent checkpoint such as issue/task history, document revision, saved artifact path, signed-off review note, or `Not applicable: no VCS in this workspace`.
 
-When a milestone has an explicit review gate, stop after recording evidence and report the exact pass/fail state. Enter the next milestone only after the user accepts the gate or the goal document states that automatic continuation is allowed.
+When a milestone has a review gate, record evidence and the exact pass/fail state. If the gate passes, enter the next milestone automatically unless the gate explicitly says human approval is required. If the gate fails, continue with in-scope fixes and diagnostics when the next useful step is clear; stop only at the permission boundary above.
 
 ## Close Workflow
 
@@ -283,5 +301,6 @@ A useful long-running goal is not a vague roadmap. It must answer:
 4. What milestones must happen in order?
 5. What commands prove each milestone?
 6. What counts as blocked?
-7. How does the work close and leave active docs clean?
-8. If the work is Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, escalation, and durable learning?
+7. Which actions require human permission, and which passed gates may continue automatically?
+8. How does the work close and leave active docs clean?
+9. If the work is Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, escalation, and durable learning?
