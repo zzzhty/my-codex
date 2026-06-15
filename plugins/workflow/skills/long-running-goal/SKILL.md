@@ -1,13 +1,13 @@
 ---
 name: long-running-goal
-description: Use when creating, upgrading, executing, resuming, evolving, or closing a long-running goal plan for a project, especially when work needs ordered milestones, review gates, checkpoint evidence, validation evidence, explicit Loop Blueprint/harness boundaries for triggers, inputs, orchestration, worktrees, connectors, independent verification, human escalation, current-doc synchronization, failure breakpoints, plan/gate evolution, close/archive hygiene, or a decision about whether the newest user request supersedes an active goal context.
+description: Use when creating, upgrading, executing, resuming, continuing, evolving, or closing a continuation-ready long-running goal plan for a project, especially when work needs ordered milestones, review gates, checkpoint evidence, validation evidence, autonomous continuation after passed gates, explicit permission stop conditions, Loop Blueprint/harness boundaries for triggers, inputs, orchestration, worktrees, connectors, independent verification, current-doc synchronization, failure breakpoints, plan/gate evolution, close/archive hygiene, or a decision about whether the newest user request supersedes an active goal context.
 ---
 
 # Long Running Goal
 
-Use this skill when a task should become an executable long-running goal in the project's planning area, or when an existing checklist/TODO needs to be upgraded into a staged goal contract.
+Use this skill when a task should become an executable, continuation-ready long-running goal in the project's planning area, or when an existing checklist/TODO needs to be upgraded into a staged goal contract.
 
-Do not use it for a short one-off implementation plan. A long-running goal is appropriate when the work needs ordered milestones, milestone gates, validation evidence, checkpoint evidence, and a close step that leaves active docs clean.
+Do not use it for a short one-off implementation plan. A long-running goal is appropriate when the work needs ordered milestones, milestone gates, validation evidence, checkpoint evidence, a reusable continuation contract, and a close step that leaves active docs clean.
 
 ## Request Supersession Guard
 
@@ -37,7 +37,7 @@ Use the bundled template for a new goal when the project has no stronger local c
 4. Loop Blueprint / harness boundaries when the goal is recurring, automated, parallelized, connector-backed, or subagent-orchestrated.
 5. Failure breakpoints and rollback/disable path.
 6. Current-doc/TODO sync requirements.
-7. Close/archive procedure and reusable execution prompt.
+7. Close/archive procedure and reusable continuation execution prompt.
 
 Do not mark a goal `Ready` while unresolved `<...>` placeholders remain.
 
@@ -78,14 +78,14 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
    - Define ordered milestones: usually `M0 Contract Review / Design Freeze`, implementation milestones, docs/release closeout, then `Close`.
    - Give every milestone clear scope, review gate, recommended validation, evidence slots, and checkpoint evidence expectations.
    - Classify the execution shape as manual staged execution or Loop-shaped execution before implementation starts.
-   - For Loop-shaped goals, freeze the trigger, input sources, triage/orchestration rule, worktree/isolation strategy, connector permissions, independent verifier, human escalation breakpoint, and durable learning target.
+   - For Loop-shaped goals, freeze the trigger, input sources, triage/orchestration rule, worktree/isolation strategy, connector read/write boundaries, independent verifier, permission stop conditions, and durable learning target.
 
 4. Add the execution contract:
    - Milestones must run sequentially.
    - Set each milestone `In Progress` before work starts.
    - Do not enter the next milestone until review gates pass, but continue automatically after a passed gate unless the gate explicitly requires human approval.
    - Record code, behavior, test, doc, rollback, and risk evidence per milestone.
-   - If a Loop Blueprint exists, record harness evidence when the milestone changes triggers, inputs, orchestration, worktrees, connectors, subagents, or escalation behavior.
+   - If a Loop Blueprint exists, record harness evidence when the milestone changes triggers, inputs, orchestration, worktrees, connectors, subagents, independent verification, permission stop conditions, or durable learning.
    - Diagnose and fix ordinary failures inside the milestone scope; stop only at the permission boundary below, and record root cause, failing command/path, exact breakpoint when known, and next diagnostic step.
    - Do not use fallback, compatibility fake-success, alternate backend, hidden partial success, or silent degradation to bypass gates.
 
@@ -100,6 +100,7 @@ Use `<goal-dir>` for the directory that directly contains active goal plan files
 
 6. Add a reusable prompt:
    - Include the exact goal path.
+   - Make the prompt continuation-ready: the same or another agent should be able to resume from the plan without chat history.
    - Repeat the sequential milestone, Loop Blueprint, evidence, checkpoint, failure-handling, and close-gate rules.
 
 ## Loop Blueprint Harness
@@ -115,9 +116,9 @@ The goal plan must answer:
 3. Triage and orchestration: how findings become tasks, which tasks are in scope, how priority is assigned, and which role owns each step.
 4. Worktree and isolation strategy: whether agents share the current checkout, use separate worktrees/branches, or must serialize edits to avoid file races.
 5. Skills and context: which skills, runbooks, or project docs are mandatory inputs for each role.
-6. Connectors and permissions: which external systems may be read or mutated, and which writes require human approval.
+6. Connector read/write boundaries: which external systems may be read or mutated, and which writes require human approval.
 7. Independent verification: which subagent, script, test, reviewer, or gate checks the producer's work without trusting self-evaluation.
-8. Human escalation: the exact breakpoint where the loop stops and reports to the user instead of continuing.
+8. Permission stop conditions: the exact breakpoint where the loop stops and asks the user instead of continuing.
 9. Durable learning: which result should be written back to a skill, TODO, report, validation log, runbook, or automation memory.
 
 If any item is not applicable, say so explicitly with the reason. If the goal claims automation, connector writes, subagent orchestration, or worktree parallelism but leaves the corresponding harness field unspecified, keep the goal in `Draft`.
@@ -125,6 +126,8 @@ If any item is not applicable, say so explicitly with the reason. If the goal cl
 ## Continuation And Permission Boundary
 
 Long-running goals are meant to preserve momentum across milestones. Do not pause to ask for permission merely because a milestone boundary, review gate, checkpoint, or routine uncertainty exists.
+
+A continuation contract means the plan contains enough current state, next milestone, gates, evidence requirements, and stop conditions for execution to resume from the document without chat history. It is not a chat-transfer artifact.
 
 Default behavior during execution:
 
@@ -138,7 +141,7 @@ Default behavior during execution:
    - evidence contradicts the goal semantics and continuing would change scope or product behavior
    - the same blocker has repeated and no meaningful local diagnostic or implementation step remains
 
-Human escalation is a stop condition, not a routine status checkpoint. If the plan says "report" or "record evidence", do that in the goal evidence and continue unless one of the stop conditions above applies.
+Permission stop conditions are true stop conditions, not routine status checkpoints. If the plan says "report" or "record evidence", do that in the goal evidence and continue unless one of the stop conditions above applies.
 
 ## Codex Goal Tool Boundary
 
@@ -198,7 +201,7 @@ During execution, improve the plan before continuing if evidence shows that a ga
 
 Use this loop only for contract quality, not to avoid a hard implementation problem or bypass a failing gate:
 
-1. Pause implementation at the current breakpoint.
+1. Pause mutation only long enough to update the contract at the current breakpoint; do not ask for permission unless the permission boundary applies.
 2. State the gap precisely: which gate, rule, milestone boundary, or harness boundary is too weak and what evidence exposed it.
 3. Update the reusable strategy first when the gap belongs in this skill or its bundled template.
 4. Update the active goal plan next, including Loop Blueprint fields, milestone scope, review gate, validation commands, rollback path, and checkpoint evidence expectations affected by the new rule.
@@ -232,7 +235,7 @@ For each milestone:
 
 If the project uses a compact goal document without prewritten evidence slots, add a short execution evidence block for the milestone before marking it `Done`. It must include changed files, behavior impact, validation commands/results, rollback path, and remaining risk.
 
-If the milestone exercises a Loop Blueprint, the evidence block must also include the trigger/input path used, orchestration or worktree isolation evidence, connector read/write evidence, independent verification result, and any human escalation decision.
+If the milestone exercises a Loop Blueprint, the evidence block must also include the trigger/input path used, orchestration or worktree isolation evidence, connector read/write evidence, independent verification result, and any permission stop-condition decision.
 
 Keep each checkpoint scoped. Do not wait until the end to record evidence.
 
@@ -303,4 +306,4 @@ A useful long-running goal is not a vague roadmap. It must answer:
 6. What counts as blocked?
 7. Which actions require human permission, and which passed gates may continue automatically?
 8. How does the work close and leave active docs clean?
-9. If the work is Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, escalation, and durable learning?
+9. If the work is Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, permission stop conditions, and durable learning?

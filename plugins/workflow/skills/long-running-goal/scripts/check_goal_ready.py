@@ -56,6 +56,7 @@ def main() -> int:
         "close/archive procedure": r"(?i)\b(close|archive)\b|关闭|归档",
         "validation evidence": r"(?i)\b(validation|verify|test)\b|验证|测试",
         "failure handling": r"(?i)\b(fail|failure|breakpoint|blocked)\b|失败|断点|阻塞",
+        "continuation contract": r"(?i)\bcontinuation\s+contract\b|Continuation contract|继续执行的关键约束",
         "reusable prompt": r"(?i)\b(prompt)\b|推荐.*Prompt",
     }
     for label, pattern in required_patterns.items():
