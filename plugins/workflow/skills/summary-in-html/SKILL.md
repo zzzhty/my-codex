@@ -5,78 +5,51 @@ description: Use when generating a standalone HTML reference summary for a proje
 
 # Summary In HTML
 
-Use this skill to turn a bounded scope into a standalone HTML reference artifact
-for developers. The scope may be an entire project, one directory, a module, a
-feature area, a documentation chapter, or source material named by the user.
+Use this skill to turn a bounded scope into a standalone HTML developer reference. Scope may be a project, directory, module, feature area, documentation chapter, or user-provided source material.
 
-Do not treat this as a documentation drift audit. Use `doc-alignment` or
-DocWatcher when the task is to find stale or contradictory documentation.
+Do not use it for documentation drift audits; use `doc-alignment` or DocWatcher when the task is to find stale or contradictory docs.
 
 ## Output Contract
 
-Produce an inspectable HTML artifact and report:
+Produce an inspectable HTML artifact and report scope, output path, supporting asset paths, evidence collection files/commands, validation result, and blind spots.
 
-1. Scope summarized.
-2. Output HTML path.
-3. Supporting asset paths, if any.
-4. Evidence collection command or files inspected.
-5. Validation command and result.
-6. Any important blind spots.
-
-Default output location:
+Defaults:
 
 ```text
 docs/summaries/<scope-slug>.html
-```
-
-Put project-bound generated images under:
-
-```text
 docs/summaries/assets/
 ```
 
-If the user provides an output path, use that path and place assets in a sibling
-`assets/` directory unless the user says otherwise.
+If the user provides an output path, use it and place assets in a sibling `assets/` directory unless told otherwise.
 
-## Scope Workflow
+## Workflow
 
-1. Determine the requested scope:
-   - whole project or repository
-   - directory or package
-   - module or feature area
-   - documentation chapter
-   - user-provided source material
-2. Read `references/scope_contract.md` if scope boundaries are ambiguous.
-3. Collect read-only evidence before drafting:
+1. Determine scope: whole repo, directory/package, module/feature, documentation chapter, or user-provided material. Read `references/scope_contract.md` when boundaries are ambiguous.
+2. Collect read-only evidence:
 
 ```bash
 python <skill-folder>/scripts/collect_summary_inputs.py --root <repo-root> --scope <scope-path> --out <artifact>.inputs.json
 ```
 
-4. Inspect the most relevant files from the collected inventory. Prefer source
-   entry points, README/AGENTS files, package config, tests, scripts, and docs
-   near the requested scope.
-5. Draft a chapter plan. Read `references/chapter_contract.md` when choosing
-   chapters for anything other than a trivial one-file summary.
-6. Write a structured summary JSON next to the target HTML, then render it:
+3. Inspect relevant source entry points, README/AGENTS files, package config, tests, scripts, and nearby docs.
+4. Draft a chapter plan. Read `references/chapter_contract.md` unless the summary is trivial.
+5. Write structured summary JSON next to the target HTML and render:
 
 ```bash
 python <skill-folder>/scripts/render_summary_html.py --input <summary>.json --out <summary>.html
 ```
 
-7. Validate the artifact:
+6. Validate:
 
 ```bash
 python <skill-folder>/scripts/check_summary_html.py <summary>.html
 ```
 
-Stop and report the blocker if required source paths are missing, evidence
-collection fails, rendering fails, image assets are missing, or validation fails.
+Stop and report the blocker if required paths are missing, evidence collection fails, rendering fails, requested image assets are missing, or validation fails.
 
 ## Summary JSON Shape
 
-Use this shape as the renderer input. Include only fields that are useful for
-the current artifact.
+Include only useful fields:
 
 ```json
 {
@@ -84,16 +57,8 @@ the current artifact.
   "subtitle": "Developer reference for plugins/workflow",
   "scope_label": "plugins/workflow",
   "source_root": "/absolute/repo/path",
-  "evidence": [
-    {"label": "Inventory", "path": "docs/summaries/workflow.inputs.json"}
-  ],
-  "assets": [
-    {
-      "path": "assets/workflow-architecture.png",
-      "alt": "Architecture overview",
-      "caption": "Workflow plugin summary architecture"
-    }
-  ],
+  "evidence": [{"label": "Inventory", "path": "docs/summaries/workflow.inputs.json"}],
+  "assets": [{"path": "assets/workflow-architecture.png", "alt": "Architecture overview", "caption": "Workflow plugin summary architecture"}],
   "sections": [
     {
       "title": "Purpose",
@@ -108,27 +73,14 @@ the current artifact.
 
 ## Visual Assets
 
-Only generate images when the user explicitly asks for them. Read
-`references/visual_asset_contract.md` before creating or placing image assets.
+Generate or place images only when the user explicitly asks for visuals. Read `references/visual_asset_contract.md` before creating or placing image assets.
 
-For exact architecture, sequence, module, or dependency diagrams, prefer
-deterministic HTML-native diagrams such as Mermaid, SVG, or styled HTML unless
-the user explicitly wants an AI-generated raster image or illustration.
+Prefer deterministic Mermaid, SVG, or styled HTML for exact architecture, sequence, module, dependency, or state diagrams. Use `imagegen` only for requested raster images, illustrative visuals, infographics, conceptual graphics, or user-specified generated images. Move selected project-bound images into the HTML asset directory and reference that local path; never leave referenced project assets only under `$CODEX_HOME/generated_images/`.
 
-When the user explicitly asks for generated raster visuals, use the `imagegen`
-skill after extracting a concise visual brief. Move the final selected asset
-into the HTML artifact's asset directory and reference that local path in the
-summary JSON. Never leave a project-referenced image only under
-`$CODEX_HOME/generated_images/`.
+## HTML Rules
 
-## HTML Quality Rules
-
-- Keep the HTML standalone: inline CSS, no remote fonts, no external scripts.
-- Make the artifact skimmable: navigation, short sections, file references, and
-  explicit blind spots.
-- Preserve developer usefulness over polish. Do not invent architecture that is
-  not supported by inspected files.
-- Keep generated summaries separate from source docs unless the user explicitly
-  asks to replace existing documentation.
-- Do not overwrite an existing summary unless the user asks for replacement;
-  otherwise create a versioned or more specific filename.
+- Keep HTML standalone: inline CSS, no remote fonts, no external scripts.
+- Make it skimmable: navigation, short sections, file references, blind spots.
+- Preserve developer usefulness over polish; do not invent unsupported architecture.
+- Keep generated summaries separate from source docs unless replacement is requested.
+- Do not overwrite existing summaries unless requested; otherwise create a versioned or more specific filename.

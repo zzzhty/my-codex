@@ -78,7 +78,7 @@ DocWatcher 现在包含一个本地 audit cockpit，用来查看配置仓库、c
 - Backend 读取 `config/repos*.json`、`$CODEX_HOME/doc-watcher/repo-state.json`、`$CODEX_HOME/doc-watcher/reports/` 和 `runs/` 记录。
 - Frontend 默认进入 `/audit`，报告详情在 `/audit/reports/:reportId`，finding 详情在 `/audit/repos/:repoName/findings/:findingId`。
 - 手动按钮调用同一组脚本：`commit_counter.py`、`generate_report.py`、`audit_repo.py`。
-- Cockpit 不写目标仓库，不生成补丁，不创建远端 PR；需要修改文档时，复制 handoff prompt 后显式进入 `doc-alignment` implementation mode。
+- Cockpit 不写目标仓库，不生成补丁，不创建远端 PR；需要修改文档时，复制 implementation prompt 后显式进入 `doc-alignment` implementation mode。
 
 主要 API：
 

@@ -9,9 +9,15 @@ This plugin is installed from the `my-codex` marketplace. It observes and propos
 ```text
 .codex-plugin/plugin.json
 skills/skill-maintainer/
+skills/skill-compressor/
 hooks/codex/
 scripts/
 ```
+
+Packaged skills:
+
+- `skill-maintainer`: analyze Skill Watcher logs and propose bounded, evidence-backed `SKILL.md` maintenance updates without automatic source mutation.
+- `skill-compressor`: reduce skill or plugin instruction footprint while preserving operational semantics with snapshots, validation, and independent review.
 
 Runtime state is written under `$CODEX_HOME/skill-watcher/`:
 

@@ -8,9 +8,9 @@ This repository is the development mainline for the plugins and personal Codex c
 
 ## Plugins
 
-- `skill-watcher`: observes Codex skill usage and produces report/proposal artifacts.
-- `doc-watcher`: audits configured local repositories for documentation semantic drift and exposes a local audit cockpit backed by plugin reports/state.
-- `workflow`: packages reusable workflow skills, including continuation-ready long-running goal plans, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and standalone summaries.
+- `skill-watcher`: observes Codex skill usage, produces report/proposal artifacts, and packages evidence-backed maintenance and semantic-compression skills.
+- `doc-watcher`: audits configured local repositories for documentation semantic drift, exposes a local audit cockpit, and packages `doc-alignment` plus `housekeeping` workflows.
+- `workflow`: packages reusable workflow skills, including continuation-ready long-running goal plans with frozen YOLO non-stops and runtime hard stops, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and standalone summaries.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
 
 ## Orchestration Workflow

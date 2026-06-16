@@ -253,6 +253,8 @@ class SkillWatcherTests(unittest.TestCase):
         )
         self.assertTrue(DEFAULT_MONITORED_SKILLS)
         self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
+        self.assertIn("skill-watcher:skill-compressor", DEFAULT_MONITORED_SKILLS)
+        self.assertIn("skill-watcher:skill-compressor", DEFAULT_SKILL_ALIASES)
         self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_SKILL_ALIASES)

@@ -2,13 +2,13 @@
 
 React + TypeScript + Vite frontend for the DocWatcher audit cockpit.
 
-The frontend is a presentation adapter for DocWatcher plugin state. It reads the backend `/api/v1/audit/*` endpoints, shows configured repositories, due status, report history, finding backlog, and recent manual runs, then offers handoff prompts for explicit `doc-alignment` implementation mode.
+The frontend is a presentation adapter for DocWatcher plugin state. It reads the backend `/api/v1/audit/*` endpoints, shows configured repositories, due status, report history, finding backlog, and recent manual runs, then offers implementation prompts for explicit `doc-alignment` implementation mode.
 
 Current routes:
 
 - `/audit`: audit cockpit dashboard.
-- `/audit/reports/:reportId`: Markdown report detail plus copyable handoff prompt.
-- `/audit/repos/:repoName/findings/:findingId`: finding evidence detail plus copyable handoff prompt.
+- `/audit/reports/:reportId`: Markdown report detail plus copyable implementation prompt.
+- `/audit/repos/:repoName/findings/:findingId`: finding evidence detail plus copyable implementation prompt.
 - `/dashboard`: redirects to `/audit`.
 
 Legacy Projects, Changes, Patches, and Doc PR page files are not mounted as current product navigation.

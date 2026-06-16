@@ -43,7 +43,7 @@ export default function ReportDetail() {
           className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           <Copy size={16} />
-          Copy Handoff
+          Copy Prompt
         </button>
       </div>
 
@@ -65,7 +65,7 @@ export default function ReportDetail() {
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-900">Codex Handoff</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Codex Implementation Prompt</h2>
         <textarea
           readOnly
           value={prompt}

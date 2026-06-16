@@ -1,15 +1,15 @@
 {
   "name": "skill-watcher",
   "version": "0.1.0+codex.20260611030501",
-  "description": "Observe Codex skill usage logs and propose evidence-backed skill maintenance updates.",
+  "description": "Observe Codex skill usage logs and support evidence-backed skill maintenance and compression.",
   "author": {
     "name": "Local developer"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Skill Watcher",
-    "shortDescription": "Maintain skills from observed usage evidence",
-    "longDescription": "Skill Watcher provides a local Codex plugin MVP for collecting redacted skill usage events, summarizing repeated outcomes, and proposing bounded SKILL.md maintenance updates without automatically modifying source skills.",
+    "shortDescription": "Maintain and compress skills from evidence",
+    "longDescription": "Skill Watcher collects redacted skill usage events, summarizes repeated outcomes, proposes bounded SKILL.md maintenance updates, and provides a skill-compressor workflow for reducing instruction footprint without semantic drift.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
@@ -17,7 +17,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Analyze recent skill usage and propose a maintenance update"
+      "Analyze skill evidence for a maintenance proposal, or use skill-compressor for semantic-preserving instruction compression"
     ]
   }
 }

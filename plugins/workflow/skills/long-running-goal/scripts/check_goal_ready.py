@@ -57,6 +57,9 @@ def main() -> int:
         "validation evidence": r"(?i)\b(validation|verify|test)\b|验证|测试",
         "failure handling": r"(?i)\b(fail|failure|breakpoint|blocked)\b|失败|断点|阻塞",
         "continuation contract": r"(?i)\bcontinuation\s+contract\b|Continuation contract|继续执行的关键约束",
+        "pre-approval boundary": r"(?im)^##\s+Pre-Approval\s*/\s*YOLO\b",
+        "runtime hard stops": r"(?i)\bruntime\s+hard\s*stops?\b|运行时硬停止",
+        "non-stops": r"(?i)\bnon[- ]?stops?\b|不应中断",
         "reusable prompt": r"(?i)\b(prompt)\b|推荐.*Prompt",
     }
     for label, pattern in required_patterns.items():

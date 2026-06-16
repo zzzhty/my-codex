@@ -1,431 +1,138 @@
 # Subagent Recipes
 
-Use these recipes with `$orchestrate-subagents` when the user explicitly asks
-for subagents. Use built-in Codex roles with task-local assignment labels. The
-parent agent remains responsible for final judgment, integration, validation,
-and user-facing reporting.
+Use these recipes with `$orchestrate-subagents` only when the user explicitly asks for subagents. Use built-in roles with task-local assignment labels. The parent owns final judgment, integration, validation, and user-facing reporting.
 
-Single-task rule: each subagent must have exactly one outcome-oriented
-assignment. Split mapping, review, implementation, validation, and docs checks
-into separate subagents instead of bundling them into one prompt.
+Single-task rule: each subagent gets one outcome-oriented assignment. Split mapping, review, implementation, validation, and docs checks into separate subagents.
 
-## Atomic Assignment Checklist
+## Shared Contract
 
-Before spawning, check every subagent assignment:
+Before spawning, check every assignment:
 
-- One primary verb: map, review, reproduce, identify, inspect, implement, or
-  validate.
-- One bounded scope: branch diff, failure log, module, schema surface, docs
-  root, or implementation slice.
-- One expected output: map, finding list, reproduction result, compatibility
-  assessment, changed slice, or validation gap list.
-- Evidence requirements do not create a second task. A worker can run tests for
-  its own slice, but separate test strategy or cross-slice validation belongs
-  to another subagent.
-- If the assignment needs "and then", split it.
+- one primary verb: map, review, reproduce, identify, inspect, implement, or validate
+- one bounded scope: branch diff, failure log, module, schema surface, docs root, or implementation slice
+- one expected output: map, finding list, reproduction result, compatibility assessment, changed slice, or validation gap list
+- evidence requirements do not become a second task; a worker can run tests for its slice, but test strategy or cross-slice validation is separate
+- if the assignment needs "and then", split it
 
-## Shared Output Contract
+Every subagent should return assignment label, single-task statement, status (`done`, `partial`, `blocked`), paths inspected/changed, commands and results, evidence-tied findings, blockers, unknowns, and stop-condition status.
 
-Every subagent should return:
+Parent prompt skeletons below describe the whole orchestration request. When spawning a specific subagent, expand it with the full prompt template from `../SKILL.md`: assignment label, single task, context, ownership, expected output, stop condition, and boundaries.
 
-- assignment label and single-task statement
-- status: `done`, `partial`, or `blocked`
-- paths inspected or changed
-- commands run and results
-- findings tied to evidence
-- blockers, unknowns, and stop-condition status
+Reusable parent prompt spine:
 
-## Prompt Skeleton Rule
+```text
+Use $orchestrate-subagents.
+Task: <parent task>.
+Spawn bounded subagents:
+- <role as label>: <single task; ownership; evidence required>.
+Context: <base/head, paths, commands, constraints, unknowns>.
+Boundaries: <no edits or exact write scope; one task each; evidence required>.
+Wait for selected subagents, then consolidate blockers, risks, evidence, gaps, and next action.
+```
 
-The parent prompt skeletons below describe the whole orchestration request. When
-actually spawning each subagent, expand that subagent into the full prompt
-template from `../SKILL.md`, including assignment label, single task, context,
-ownership, expected output, stop condition, and boundaries.
-
-## Recipe Selection Matrix
+## Recipe Matrix
 
 | User intent | Recipe |
 | --- | --- |
-| Review a branch, PR, or diff | PR Or Branch Review |
-| Diagnose a failing command, test, run, or report | Debugging Or Failure Triage |
+| Review a branch, PR, diff, or planned merge | PR Or Branch Review |
+| Diagnose a failing command, test, run, CI job, report, log, or symptom | Debugging Or Failure Triage |
 | Plan a feature, migration, refactor, or architecture change | Implementation Planning |
-| Implement disjoint slices in parallel | Bounded Parallel Implementation |
-| Inspect API, schema, serialization, migration, or client compatibility | API Or Schema Inspection |
-| Align docs, runbooks, skills, plans, or stale terms | Documentation Alignment |
+| Implement disjoint write slices in parallel | Bounded Parallel Implementation |
+| Inspect API, schema, serialization, migration, fixture, client, or wire compatibility | API Or Schema Inspection |
+| Align docs, runbooks, skills, plans, scripts, entry points, or stale terms | Documentation Alignment |
 
 ## PR Or Branch Review
 
-Use when:
-
-- the user asks to review a branch, PR, local diff, or planned merge
-- the work is read-only and can be split into mapping, risk review, and test
-  review
-
-Do not use when:
-
-- there is no meaningful diff or base/head context and the user only needs a
-  narrow file review
-- the user asked for implementation, not review
+Use for read-only branch/PR/diff review when work can split into mapping, risk review, and test review. Avoid when there is no meaningful diff/base/head context, the user only needs a narrow file review, or the user asked for implementation.
 
 Suggested subagents:
 
-- `explorer` as `code-mapper`: map changed files, affected symbols, call paths,
-  config changes, and risky areas.
-- `default` as `implementation-reviewer`: review correctness, security,
-  regression, compatibility, and contract risks.
-- `default` as `test-verifier`: identify missing tests and validation gaps.
+- `explorer as code-mapper`: changed files, affected symbols, call paths, config changes, risky areas.
+- `default as implementation-reviewer`: correctness, security, regression, compatibility, contract risks.
+- `default as test-verifier`: missing tests and validation gaps.
 
-Required evidence:
+Required evidence: base/head or exact diff scope, paths inspected, commands run when available, blocking issues with file paths/evidence, and coverage gaps.
 
-- base and head refs, or exact diff scope if no branch base exists
-- paths inspected by each subagent
-- commands run, including diff, tests, lint, or static checks when available
-- blocking issues with file paths and evidence
-- coverage gaps if any subagent could not inspect required context
-
-Parent prompt skeleton:
-
-```text
-Use $orchestrate-subagents.
-
-Task: Review this branch against <base>.
-
-Spawn bounded read-only subagents:
-- explorer as code-mapper: identify changed files, affected symbols, call paths,
-  config changes, and risky areas.
-- default as implementation-reviewer: review correctness, security,
-  regression, compatibility, and contract risks.
-- default as test-verifier: identify missing tests and validation gaps.
-
-Context:
-- base/head: <base>...<head>
-- commands already run: <commands or none>
-- important constraints: <constraints>
-
-Boundaries:
-- Do not edit files.
-- Each subagent has one task only.
-- Do not report success without paths, commands, and evidence.
-
-Wait for all selected subagents. Consolidate blocking issues, non-blocking
-risks, missing tests, evidence, coverage gaps, and recommended next action.
-```
+Parent prompt must include: `Use $orchestrate-subagents`, task `Review this branch against <base>`, bounded read-only subagents above, base/head and constraints, no edits, one task per subagent, no success without paths/commands/evidence, wait for all selected subagents, then consolidate blockers, risks, missing tests, evidence, gaps, and next action.
 
 ## Debugging Or Failure Triage
 
-Use when:
-
-- the user gives a failing command, error, test, CI job, log, or reproducible
-  symptom
-- evidence can be split into reproduction, nearby code inspection, and test or
-  diagnostic planning
-
-Do not use when:
-
-- no failing command, log, error text, or affected path is available
-- the problem requires sequential interactive debugging where parallel work
-  would duplicate effort
+Use when the user provides a failing command, error, test, CI job, log, report, or reproducible symptom and evidence can split into reproduction/classification, nearby code inspection, and diagnostic planning. Avoid when no failure evidence or affected path is available, or the problem needs sequential interactive debugging.
 
 Suggested subagents:
 
-- `default` as `failure-classifier`: reproduce or classify the failure from
-  logs and commands.
-- `explorer` as `code-path-mapper`: inspect nearby code paths, configuration,
-  and recent changes.
-- `default` as `test-diagnostic-planner`: propose focused regression tests or
-  diagnostics.
+- `default as failure-classifier`: reproduce or classify from logs and commands.
+- `explorer as code-path-mapper`: inspect nearby code paths, config, recent changes.
+- `default as test-diagnostic-planner`: propose focused regression tests or diagnostics.
 
-Required evidence:
+Required evidence: failing command/log/error, reproduction result or why unavailable, likely failing path/boundary, and diagnostic commands/tests that distinguish hypotheses.
 
-- failing command, test name, CI job, log path, or error excerpt
-- reproduction result or explicit reason reproduction was not possible
-- likely failing path or boundary, with file paths
-- diagnostic commands or regression tests that would distinguish hypotheses
-
-Parent prompt skeleton:
-
-```text
-Use $orchestrate-subagents.
-
-Task: Diagnose <failure>.
-
-Spawn bounded subagents:
-- default as failure-classifier: reproduce or classify the failure using the
-  provided command/log/error.
-- explorer as code-path-mapper: inspect nearby code paths, configuration, and
-  recent changes that could explain the failure.
-- default as test-diagnostic-planner: propose focused regression tests or
-  diagnostics.
-
-Context:
-- failing command/log/error: <exact command, log path, or error text>
-- affected files or area: <paths or unknown>
-- recent changes: <refs, files, or unknown>
-
-Boundaries:
-- Do not guess when required evidence is missing.
-- Do not edit files unless the parent later authorizes a fix.
-- Each subagent has one task only.
-
-Stop if no subagent can access the failing command, log, or relevant files.
-Wait for all selected subagents and consolidate root-cause candidates,
-blocking evidence, missing diagnostics, and next action.
-```
+Parent prompt must include: `Use $orchestrate-subagents`, task `Diagnose <failure>`, the bounded subagents above, exact failure evidence, affected files or unknowns, recent changes, no guessing when evidence is missing, no edits unless later authorized, one task per subagent, stop if no subagent can access required failure context, then consolidate root-cause candidates, blocking evidence, missing diagnostics, and next action.
 
 ## Implementation Planning
 
-Use when:
-
-- the user asks for a plan before implementation
-- the work may affect multiple modules, contracts, tests, or docs
-
-Do not use when:
-
-- the user has already approved a narrow implementation and no architectural
-  uncertainty remains
-- the work needs immediate sequential diagnosis before planning
+Use when the user asks for a plan before implementation and the work may affect multiple modules, contracts, tests, or docs. Avoid when a narrow implementation is already approved or immediate sequential diagnosis is needed first.
 
 Suggested subagents:
 
-- `explorer` as `architecture-mapper`: map existing architecture, ownership
-  boundaries, and related tests.
-- `default` as `option-reviewer`: compare implementation options and risks.
-- `default` as `validation-planner`: identify validation gates and rollback
-  paths.
+- `explorer as architecture-mapper`: architecture, ownership boundaries, entry points, related tests.
+- `default as option-reviewer`: implementation options, tradeoffs, risks.
+- `default as validation-planner`: validation gates, missing tests, rollback paths.
 
-Required evidence:
+Required evidence: relevant modules and owners, current entry points, existing tests/commands, recommended option and rejected alternatives, rollback/containment strategy.
 
-- relevant modules, ownership boundaries, and current entry points
-- existing tests or validation commands
-- recommended option with tradeoffs and rejected alternatives
-- rollback or containment strategy for risky changes
-
-Parent prompt skeleton:
-
-```text
-Use $orchestrate-subagents.
-
-Task: Plan <feature, migration, refactor, or architecture change>.
-
-Spawn bounded read-only subagents:
-- explorer as architecture-mapper: map current architecture, ownership
-  boundaries, entry points, and related tests.
-- default as option-reviewer: compare viable implementation options and risks.
-- default as validation-planner: identify validation gates, missing tests, and
-  rollback paths.
-
-Context:
-- goal: <goal>
-- known constraints: <constraints>
-- likely affected areas: <paths or unknown>
-
-Boundaries:
-- Do not edit files.
-- Do not spawn workers until write scopes are explicit and implementation is
-  requested.
-- Each subagent has one task only.
-
-Wait for all selected subagents. Consolidate the recommended plan, alternatives
-rejected, validation gates, rollback path, and unresolved decisions.
-```
+Parent prompt must include: `Use $orchestrate-subagents`, task `Plan <feature/migration/refactor/architecture change>`, bounded read-only subagents above, goal, constraints, affected areas or unknowns, no edits, no workers until write scopes are explicit and implementation requested, one task per subagent, then consolidate plan, rejected alternatives, validation gates, rollback path, and unresolved decisions.
 
 ## Bounded Parallel Implementation
 
-Use when:
-
-- the user authorized implementation
-- work can be split into disjoint write scopes
-- shared files, final integration, and final validation can remain parent-owned
-
-Do not use when:
-
-- two workers would need to edit the same file or generated artifact
-- the task depends on a single sequential debugging loop
-- local mutation boundaries or user approval are unclear
+Use when implementation is authorized, write scopes are disjoint, and shared files plus final integration/validation stay parent-owned. Avoid when workers would edit the same file, lockfile, generated artifact, or shared config; the task is a single sequential debugging loop; or mutation/approval boundaries are unclear.
 
 Suggested subagents:
 
-- `worker` as `slice-a-implementer`: implement one disjoint module, file group,
-  or adapter.
-- `worker` as `slice-b-implementer`: implement another disjoint module, file
-  group, or adapter.
-- `default` as `integration-risk-reviewer`: review integration risks without
-  editing files.
+- `worker as slice-a-implementer`: implement one disjoint module/file group/adapter.
+- `worker as slice-b-implementer`: implement another disjoint module/file group/adapter.
+- `default as integration-risk-reviewer`: read-only integration risk review.
 
-Required evidence:
+Required evidence: exact owned files/directories, files each worker must not edit, commands and results, changed files and behavior impact, conflicts, skipped scope, rollback notes.
 
-- exact files or directories owned by each worker
-- files each worker must not edit
-- commands run by each worker and results
-- changed files and behavior impact for each implementation slice
-- conflicts, skipped scope, or rollback notes
-
-Parent prompt skeleton:
-
-```text
-Use $orchestrate-subagents.
-
-Task: Implement <task> using disjoint worker scopes.
-
-Parent-owned shared files:
-- <shared files, docs, config, lockfiles, or generated artifacts>
-
-Spawn bounded subagents:
-- worker as slice-a-implementer:
-  Ownership: may edit only <scope-a>.
-  Single task: implement <scope-a>.
-  Must not edit <blocked-files>.
-  Validation evidence: <commands or dry-runs for scope-a>.
-- worker as slice-b-implementer:
-  Ownership: may edit only <scope-b>.
-  Single task: implement <scope-b>.
-  Must not edit <blocked-files>.
-  Validation evidence: <commands or dry-runs for scope-b>.
-- default as integration-risk-reviewer:
-  Ownership: read-only.
-  Single task: review integration risks.
-  Inspect integration risks across the planned scopes.
-
-Boundaries:
-- Each worker has one implementation slice only.
-- Validation commands are evidence for that slice, not a second task.
-- Workers must not revert edits made by others.
-- Workers must stop if their required edits leave their owned scope.
-- Workers must report changed files, commands run, blockers, and rollback
-  notes.
-
-Wait for all selected subagents. The parent owns conflict resolution, shared
-files, final integration, final validation, and user-facing summary.
-```
+Parent prompt must include: `Use $orchestrate-subagents`, task `Implement <task> using disjoint worker scopes`, parent-owned shared files, each worker's allowed scope, blocked files, single implementation task, validation evidence for its slice, integration reviewer read-only scope, no cross-scope edits, tests as evidence not second tasks, no reverting others, stop if required edits leave owned scope, parent owns conflict resolution, shared files, final integration, final validation, and final summary.
 
 ## API Or Schema Inspection
 
-Use when:
-
-- the task depends on API compatibility, schema shape, serializers, migrations,
-  clients, fixtures, or wire contracts
-- claims need exact paths and command evidence before implementation or review
-
-Do not use when:
-
-- the task is only a UI or docs change with no contract surface
-- the relevant schema or API source cannot be accessed
+Use when work depends on API compatibility, schema shape, serializers, migrations, clients, fixtures, or wire contracts, and claims need exact paths plus command evidence. Avoid for UI/docs-only changes without contract surface or when relevant schema/API sources cannot be accessed.
 
 Suggested subagents:
 
-- `explorer` as `schema-mapper`: locate schema definitions, serializers,
-  migrations, clients, and tests.
-- `default` as `compatibility-reviewer`: review compatibility and contract
-  risks.
-- `default` as `docs-verifier`: verify official API, configuration, version, or
-  migration assumptions when relevant.
-- `default` as `fixture-verifier`: identify validation commands and fixture
-  gaps.
+- `explorer as schema-mapper`: schemas, serializers, migrations, clients, tests.
+- `default as compatibility-reviewer`: compatibility and contract risks.
+- `default as docs-verifier`: official API/config/version/migration assumptions when relevant.
+- `default as fixture-verifier`: validation commands and fixture gaps.
 
-Required evidence:
+Required evidence: schema/migration/serializer/client/test paths, known consumers, compatibility boundaries, validation commands, fixture gaps, backward/forward compatibility risks.
 
-- schema, migration, serializer, client, and test paths inspected
-- known consumers or compatibility boundaries
-- validation commands and fixture gaps
-- explicit compatibility risks, including backward/forward compatibility when
-  relevant
-
-Parent prompt skeleton:
-
-```text
-Use $orchestrate-subagents.
-
-Task: Inspect API or schema compatibility for <change>.
-
-Spawn bounded read-only subagents:
-- explorer as schema-mapper: locate schema definitions, serializers,
-  migrations, clients, and tests.
-- default as compatibility-reviewer: review compatibility and contract risks.
-- default as docs-verifier: verify official API, configuration, version, or
-  migration assumptions when relevant.
-- default as fixture-verifier: identify validation commands and fixture gaps.
-
-Context:
-- suspected contract surface: <paths, endpoints, schemas, or unknown>
-- consumers: <known consumers or unknown>
-- proposed or observed change: <change>
-
-Boundaries:
-- Do not edit files.
-- Each subagent has one task only.
-- Do not accept compatibility claims without exact paths and command evidence.
-
-Wait for all selected subagents. Consolidate contract surfaces, compatibility
-risks, missing fixtures, validation commands, and unresolved unknowns.
-```
+Parent prompt must include: `Use $orchestrate-subagents`, task `Inspect API or schema compatibility for <change>`, bounded read-only subagents above, suspected contract surface, consumers or unknowns, proposed/observed change, no edits, one task per subagent, no compatibility claims without exact paths and command evidence, then consolidate surfaces, risks, fixtures, validation commands, and unknowns.
 
 ## Documentation Alignment
 
-Use when:
-
-- the task is to audit or align current docs, runbooks, plans, skills, scripts,
-  entry points, or terminology
-- active guidance may have drifted from current source of truth
-
-Do not use when:
-
-- the user only asks for a narrow wording edit
-- archive or historical docs should remain unchanged and are the only hits
+Use to audit or align current docs, runbooks, plans, skills, scripts, entry points, or terminology when active guidance may drift from source of truth. Avoid narrow wording edits and archive-only historical hits unless the user explicitly asks to edit history.
 
 Suggested subagents:
 
-- `explorer` as `doc-inventory-mapper`: inventory active docs, indexes, entry
-  points, and stale terms.
-- `default` as `doc-drift-reviewer`: classify findings by severity and
-  recommend edits.
-- `default` as `link-validation-reviewer`: check validation and link coverage.
+- `explorer as doc-inventory-mapper`: active docs, indexes, entry points, stale terms.
+- `default as doc-drift-reviewer`: semantic drift severity and recommended edits.
+- `default as link-validation-reviewer`: validation and link coverage.
 
-Required evidence:
+Required evidence: active docs/indexes inspected, source-of-truth files, stale terms/broken links/missing entry points/outdated commands, and active-vs-archive distinction.
 
-- active docs and indexes inspected
-- source-of-truth files used for comparison
-- stale terms, broken links, missing entry points, or outdated commands
-- distinction between active current guidance and archive/historical material
+Parent prompt must include: `Use $orchestrate-subagents`, task `Align documentation for <area>`, bounded read-only subagents above, docs root/scope, source of truth, terms/commands to audit, no archive edits unless requested, no archive-only hit as current guidance, one task per subagent, then consolidate active-doc findings, severity, edits, validation commands, link coverage, and unresolved gaps.
 
-Parent prompt skeleton:
+## Anti-Patterns
 
-```text
-Use $orchestrate-subagents.
-
-Task: Align documentation for <area>.
-
-Spawn bounded read-only subagents:
-- explorer as doc-inventory-mapper: inventory active docs, indexes, entry
-  points, and stale terms.
-- default as doc-drift-reviewer: classify semantic drift by severity and
-  recommend edits.
-- default as link-validation-reviewer: check validation and link coverage.
-
-Context:
-- docs root or scope: <paths>
-- source of truth: <code, scripts, manifests, skills, or plans>
-- terms or commands to audit: <terms or commands>
-
-Boundaries:
-- Do not edit archive or historical docs unless explicitly requested.
-- Do not treat an archive-only hit as current user guidance.
-- Each subagent has one task only.
-
-Wait for all selected subagents. Consolidate active-doc findings, severity,
-recommended edits, validation commands, link coverage, and unresolved gaps.
-```
-
-## Anti-patterns
-
-- Do not spawn subagents for tiny tasks that one agent can inspect faster.
+- Do not spawn subagents for tiny tasks.
 - Do not send the whole parent task to every subagent.
-- Do not combine mapping, review, implementation, validation, and docs checks in
-  one subagent.
-- Do not let multiple workers edit the same file, lockfile, generated artifact,
-  or shared config.
-- Do not let a subagent make the final product or merge decision.
-- Do not report success when paths, commands, or evidence are missing.
-- Do not use subagents to bypass user authorization, sandbox limits, or local
-  mutation boundaries.
-- Do not hide timeouts, missing tools, incomplete findings, or conflicting
-  claims.
+- Do not combine mapping, review, implementation, validation, and docs checks in one subagent.
+- Do not let multiple workers edit the same file, lockfile, generated artifact, or shared config.
+- Do not let a subagent make final product or merge decisions.
+- Do not report success without paths, commands, and evidence.
+- Do not use subagents to bypass user authorization, sandbox limits, or mutation boundaries.
+- Do not hide timeouts, missing tools, incomplete findings, or conflicting claims.

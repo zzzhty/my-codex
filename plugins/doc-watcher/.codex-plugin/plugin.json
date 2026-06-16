@@ -1,7 +1,7 @@
 {
   "name": "doc-watcher",
   "version": "0.2.0+codex.20260611033901",
-  "description": "Audit configured local repositories for documentation semantic drift and produce operator-reviewed summaries.",
+  "description": "Audit configured local repositories for documentation semantic drift and support operator-reviewed alignment or cleanup.",
   "author": {
     "name": "Local developer"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "DocWatcher",
     "shortDescription": "Audit docs for semantic drift",
-    "longDescription": "DocWatcher monitors configured local repositories, collects read-only evidence about documentation, commits, links, and terminology drift, and produces audit summaries for operator review without automatically modifying target repositories.",
+    "longDescription": "DocWatcher monitors configured local repositories, collects read-only evidence about documentation, commits, links, and terminology drift, produces audit summaries for operator review, and packages doc-alignment plus housekeeping workflows for explicit implementation or cleanup requests.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
@@ -17,7 +17,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Audit configured repositories for documentation semantic drift"
+      "Audit configured repositories for documentation semantic drift, or use doc-alignment/housekeeping after explicit implementation scope is accepted"
     ]
   }
 }

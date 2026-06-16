@@ -1,85 +1,44 @@
 ---
 name: orchestrate-subagents
-description: Use for complex Codex tasks that should explicitly spawn subagents, including PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection, and multi-file implementation planning.
+description: Use for complex Codex tasks that should explicitly spawn subagents, including PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection, documentation alignment, and multi-file implementation planning.
 ---
 
 # Orchestrate Subagents
 
-Use this skill when the user explicitly invokes `$orchestrate-subagents` or
-explicitly asks to use subagents for a complex Codex task.
-
-Do not use this skill to justify implicit delegation. If the user did not
-invoke the skill or clearly ask for subagents, follow the active environment's
-normal subagent policy.
+Use this skill only when the user invokes `$orchestrate-subagents` or explicitly asks to use subagents. Do not use it to justify implicit delegation; otherwise follow the active environment's normal subagent policy.
 
 ## Core Contract
 
-1. Decide whether the task is genuinely parallelizable before spawning.
-2. Keep the parent agent responsible for planning, final decisions,
-   integration, verification, and user-facing conclusions.
-3. Give each subagent one task only. Do not combine mapping, review,
-   implementation, and validation in the same subagent prompt.
-4. Spawn only bounded subagents with clear ownership, expected outputs, stop
-   conditions, and file/write boundaries.
-5. Do not rely on subagents implicitly inheriting this skill, parent context,
-   local plans, or unstated requirements. Put the needed instructions directly
-   in each subagent prompt.
-6. Wait for all selected subagents, or record exactly which subagent did not
-   return and why.
-7. Treat subagent failure, timeout, missing tools, incomplete findings,
-   conflicting results, and unsafe file overlap as first-class failures.
-8. Consolidate evidence before acting. Do not let subagent output replace
-   parent review.
+1. Spawn only when the task is genuinely parallelizable and materially useful.
+2. Keep the parent agent responsible for planning, final decisions, integration, verification, and user-facing conclusions.
+3. Give each subagent one task: one primary verb, one bounded scope, one expected output. Split mapping, review, implementation, validation, and docs checks when they are separate jobs.
+4. Give every subagent explicit task-local instructions, ownership, expected output, stop condition, and file/write boundaries. Do not rely on inherited context or unstated requirements.
+5. Use `worker` only for implementation with disjoint write ownership and clear authorization to edit; otherwise prefer read-only `explorer` or `default`.
+6. Continue only non-overlapping parent work while subagents run.
+7. Wait for selected subagents, or record exactly which one did not return and why.
+8. Treat timeout, missing tools, incomplete findings, conflicting results, unsafe file overlap, and missing validation evidence as first-class failures.
+9. Consolidate evidence before acting; subagent output does not replace parent review.
 
-## Role Selection
+## Roles And Recipes
 
-Use the built-in roles available in the current Codex environment:
+- `explorer`: read-only mapping, impact analysis, test discovery, schema inspection, evidence collection.
+- `worker`: implementation slices with disjoint write scope and explicit edit authorization.
+- `default`: review, triage, planning, validation, and evaluator work when no narrower role fits.
 
-- `explorer` for read-only codebase mapping, impact analysis, test discovery,
-  schema inspection, and evidence collection.
-- `worker` only for implementation subtasks with disjoint write ownership and
-  explicit user authorization to edit files.
-- `default` for review, triage, and planning when no narrower role is
-  available.
+When using multiple subagents with the same role, add assignment labels such as `default as test-verifier` or `worker as api-adapter`. Do not request custom-agent names in recipes; encode behavior in the prompt, label, ownership block, expected output, and stop condition.
 
-When spawning multiple subagents with the same role, add an assignment label in
-the prompt, such as `default as test-verifier` or `worker as api-adapter`.
-
-Do not request custom-agent names in orchestration recipes. Keep role-specific
-behavior in the task-local prompt, assignment label, ownership block, expected
-output, and stop condition.
-
-For common patterns, read `references/subagent-recipes.md`.
-
-## Single-Task Fit Check
-
-Before spawning, rewrite each assignment until it has one primary verb, one bounded scope, and one expected output.
-Split any assignment that asks a subagent to both map and review, review and
-implement, implement and plan, or validate unrelated work.
-
-Validation commands may be required as evidence for an implementation task, but
-separate test strategy, missing-test discovery, or cross-slice validation should
-be a separate subagent task.
+Read `references/subagent-recipes.md` for PR/branch review, debugging, implementation planning, bounded parallel implementation, API/schema inspection, and documentation alignment patterns.
 
 ## Parent Workflow
 
-1. Restate the task, success criteria, and non-goals in one short block.
-2. Identify parallelizable slices and any shared files that must stay parent
-   owned.
-3. Choose the minimum useful subagents, with one task per subagent. Do not
-   delegate tiny tasks or tightly coupled sequential debugging steps.
-4. Spawn selected subagents with task-local prompts.
-5. Continue only non-overlapping parent work while subagents run.
-6. Wait for all selected subagents before final consolidation unless a failure
-   policy in the user request says otherwise.
-7. Reject or qualify incomplete outputs. If a subagent lacks paths, commands,
-   evidence, blockers, or stop-condition status, mark that coverage partial.
-8. Consolidate coverage, blocking issues, non-blocking risks, missing tests,
-   evidence, unresolved blockers, and recommended next action.
+1. Restate task, success criteria, and non-goals briefly.
+2. Identify parallel slices and shared files/artifacts that remain parent-owned.
+3. Choose the minimum useful subagents. Do not delegate tiny tasks or tightly coupled sequential debugging.
+4. Spawn each subagent with the prompt template below.
+5. Qualify incomplete coverage: missing paths, commands, evidence, blockers, or stop-condition status means partial coverage.
+6. Consolidate coverage, blocking issues, non-blocking risks, validation gaps, evidence, unresolved blockers, and next action.
 
 ## Subagent Prompt Template
-
-Use this structure when spawning:
 
 ```text
 Task:
@@ -114,35 +73,20 @@ Boundaries:
 - Do not fabricate success if tools or evidence are missing.
 ```
 
-For worker subagents, include a clear statement that they are not alone in the
-codebase and must accommodate concurrent or parent edits.
+For workers, also state that they are not alone in the codebase and must accommodate concurrent or parent edits.
 
-## Consolidation Format
+## Consolidation And Failure
 
-Return a concise parent summary with these fields:
+Parent summary fields:
 
-1. Subagent coverage: role, assignment, status, paths, and commands.
-2. Blocking issues: failures that prevent safe completion.
-3. Non-blocking risks: issues to carry forward.
+1. Subagent coverage: role, assignment, status, paths, commands.
+2. Blocking issues.
+3. Non-blocking risks.
 4. Missing tests or validation gaps.
-5. Evidence: command output, files, diffs, screenshots, reports, or logs.
+5. Evidence: command output, files, diffs, screenshots, reports, logs.
 6. Unresolved blockers and partial coverage.
 7. Recommended next action.
 
-If implementation happened, include changed files, behavior impact, validation
-results, rollback path, and remaining risk.
+If implementation happened, include changed files, behavior impact, validation results, rollback path, and remaining risk.
 
-## Failure Handling
-
-Stop or report partial coverage when:
-
-- subagent tools are unavailable or policy blocks spawning
-- a subagent times out, fails, or cannot access required files/tools
-- a subagent returns only a generic conclusion without evidence
-- two subagents produce conflicting claims that the parent cannot reconcile
-- write scopes overlap or create race risk
-- validation evidence is missing for a required gate
-
-Do not hide the failure by doing unrelated work, changing scope, or reporting
-success with weaker evidence. The parent may run minimal diagnostics to narrow
-the blocker, but the original subagent failure must remain visible.
+Stop or report partial coverage when tools are unavailable, policy blocks spawning, a subagent fails or cannot access required context, claims lack evidence, results conflict and cannot be reconciled, write scopes overlap, or required validation evidence is missing. The parent may run minimal diagnostics, but the original subagent failure must remain visible.

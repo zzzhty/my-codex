@@ -1,4 +1,4 @@
 interface:
   display_name: "Long Running Goal"
   short_description: "Create, execute, or close continuation-ready staged goals"
-  default_prompt: "Use $long-running-goal to create, execute, resume, continue, evolve, or close a staged goal with a reusable continuation contract, milestones, Loop Blueprint harness boundaries, validation gates, checkpoint evidence, autonomous continuation after passed gates, explicit permission stop conditions, request-supersession checks, strategy/plan evolution, active goal-state hygiene, and clean active/archive sync."
+  default_prompt: "Use $long-running-goal to create, resume, execute, evolve, or close a continuation-ready staged goal with milestones, Loop harness, validation/checkpoint evidence, frozen YOLO non-stops, runtime hard stops, and close/archive hygiene."

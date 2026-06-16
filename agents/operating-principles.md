@@ -49,6 +49,7 @@ Default posture:
 - Browser, Chrome, or Computer Use only when the surface itself matters
 - repo-local helpers before new ad hoc implementations
 - no destructive, privacy-sensitive, external-send, or irreversible action without explicit user intent
+- for a `Ready` long-running-goal continuation contract, execute planned non-destructive local mutation directly inside the frozen goal scope; local rebuilds, refreshes, reinstalls, tests, lint, formatting, docs sync, code edits, source skill edits, and generated-artifact cleanup are YOLO non-stops and should not become mid-run approval prompts
 
 When implementation is requested, act directly after enough context is known. When the root cause is unclear, collect minimal diagnostics and report the concrete blocker instead of routing around it.
 
@@ -108,7 +109,7 @@ A monitor must define:
 - exact command, script, or tool path
 - working directory
 - output contract
-- stop condition when applicable
+- stop condition when applicable; for `long-running-goal`, use the narrower runtime hard-stop boundary
 - allowed actions
 - forbidden actions
 - report or memory location
@@ -156,7 +157,7 @@ Use this template when a repeated workflow becomes important enough to document 
 - Allowed actions:
 - Forbidden actions:
 - Validation:
-- Stop condition:
+- Stop condition or runtime hard stop:
 ```
 
 Workflow contracts should stay small and operational. They are not product strategy documents; they define how an agent should run the workflow without expanding scope.

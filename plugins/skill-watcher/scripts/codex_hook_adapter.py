@@ -23,6 +23,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST_FILE = "monitored-skills.json"
 DEFAULT_MONITORED_SKILLS = (
     "skill-watcher:skill-maintainer",
+    "skill-watcher:skill-compressor",
     "doc-watcher:doc-alignment",
     "doc-watcher:housekeeping",
     "workflow:long-running-goal",
@@ -47,6 +48,7 @@ DEFAULT_MONITORED_SKILLS = (
 )
 DEFAULT_SKILL_ALIASES = {
     "skill-watcher:skill-maintainer": ("skill-maintainer", "skill maintainer", "skill watcher"),
+    "skill-watcher:skill-compressor": ("skill-compressor", "skill compressor", "skill compression"),
     "doc-watcher:doc-alignment": ("doc-alignment", "doc watcher", "documentation alignment"),
     "doc-watcher:housekeeping": ("housekeeping", "cleanup", "clean up", "repo cleanup"),
     "workflow:long-running-goal": ("long-running-goal", "long running goal", "long-running goal"),

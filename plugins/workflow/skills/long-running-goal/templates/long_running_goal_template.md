@@ -74,13 +74,26 @@ M0 设计冻结时的当前基线：
 5. Skills and context / 必读上下文：
    - `<每个角色必须读取的 skill、runbook、project doc、spec 或历史决策。>`
 6. Connector read/write boundaries / 外部系统读写边界：
-   - `<可读/可写的 connector、API、ticket、PR、CI、Slack 等；哪些写入必须人工批准。>`
+   - `<可读/可写的 connector、API、ticket、PR、CI、Slack 等；哪些写入已预授权；哪些未预授权写入会让本 goal 保持 Draft。>`
 7. Independent verification / 独立验收：
    - `<由哪个 sub-agent、脚本、测试、reviewer 或 gate 检查 producer 的输出；不得只信自评。>`
-8. Permission stop conditions / 权限停止条件：
-   - `<只有哪些失败、歧义、权限、隐私、破坏性动作或连续阻塞会真正停止循环并询问用户；普通 gate / checkpoint / 可本地修复失败不应列为升级点。>`
+8. Runtime hard stops / 运行时硬停止：
+   - `<只有哪些技术失败、缺失凭据/事实源、隐私、破坏性动作、未预授权外部写入或连续阻塞会真正停止循环并询问用户；普通 gate / checkpoint / rebuild / refresh / 可本地修复失败不应列为停止点。>`
 9. Durable learning / 经验沉淀：
    - `<哪些结果要写回 skill、TODO、report、validation log、runbook、automation memory 或 current doc。>`
+
+## Pre-Approval / YOLO 边界
+
+Ready 前必须冻结 approval 模型；若存在可预见但未确认的 approval 点，本 goal 保持 `Draft`，不得执行到中途再询问。
+
+1. Pre-approved YOLO local operations / 预授权本地操作：
+   - `<本 goal 范围内默认允许的非破坏性本地动作，例如 code/docs/source skill edits、rebuild、refresh、reinstall、dependency restore、tests、lint、formatting、link checks、plugin/cache refresh、generated-artifact cleanup。>`
+2. Pre-approved external reads/writes / 预授权外部读写：
+   - `<已允许读取或写入的 connector、API、issue、PR、CI、automation、hook、message surface；无外部写入时写 Not applicable。>`
+3. Runtime hard stops / 运行时硬停止：
+   - `<仅列真正会停止执行的条件：本地诊断/修复至少三次或三种方式后仍无法继续、缺少 agent 无法本地取得的凭据/文件/事实源、下一步破坏性/不可逆/隐私敏感/外部可见且未预授权、事实源冲突会改变冻结语义、必需 sub-agent/connector/worktree/verifier 失败且无计划内本地下一步。>`
+4. Non-stops / 不应中断的事项：
+   - `<普通阶段边界、checkpoint、可记录风险、rebuild、refresh、reinstall、失败但有明确本地下一步的验证、策略合同更新、docs sync 等。>`
 
 ## Goal 执行合同
 
@@ -90,15 +103,15 @@ M0 设计冻结时的当前基线：
 2. 每个阶段开始前必须把阶段状态改为 `In Progress`。
 3. 每个阶段完成后必须记录 review 结论、运行命令、通过证据、失败断点和未解决风险。
 4. 每个阶段必须有 checkpoint evidence。若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，优先使用本计划中记录的 `<goal_slug> M<N>: <summary>` 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-5. 若本 goal 存在 Loop Blueprint，每个触及 trigger、input、orchestration、worktree、connector read/write boundaries、independent verification、permission stop conditions 或 durable learning 的阶段必须记录 harness evidence。
-6. Review gate 通过后默认继续进入下一阶段，除非该 gate 明确写明需要 human approval；不得因为普通阶段边界、checkpoint 或可记录的风险而中断询问。
+5. 若本 goal 存在 Loop Blueprint，每个触及 trigger、input、orchestration、worktree、connector read/write boundaries、independent verification、runtime hard stops 或 durable learning 的阶段必须记录 harness evidence。
+6. Review gate 通过后默认继续进入下一阶段；不得因为普通阶段边界、checkpoint、rebuild、refresh、reinstall 或可记录风险而中断询问。
 7. 未满足当前阶段 Review gate 时，不得进入下一阶段；若下一步修复或诊断清晰且仍在本 goal 范围内，继续修复并重新验证，不要先询问 permission。
-8. 只有遇到真正停止条件才询问用户：本计划明确要求人工批准、下一步是破坏性/不可逆/隐私敏感/外部可见动作、缺少无法本地取得的权限或输入、事实源冲突会改变目标语义、或同一 blocker 重复且已无有意义的本地下一步。
-9. 任何阶段失败必须记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议；只有符合上一条停止条件时才停下等待用户。
+8. 只有遇到运行时硬停止才询问用户：本地诊断/修复至少三次或三种方式后仍技术上无法继续、缺少无法本地取得的凭据/文件/事实源、下一步破坏性/不可逆/隐私敏感/外部可见且未预授权、事实源冲突会改变冻结语义、或必需 sub-agent/connector/worktree/verifier 失败且无计划内本地下一步。
+9. 任何阶段失败必须记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议；只有符合上一条硬停止条件时才停下等待用户。
 10. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
 11. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
-12. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界、Loop Blueprint 或 long-running-goal 策略不够严谨，只暂停 mutation 到足够记录暴露该问题的证据并更新 reusable strategy 或本计划合同；除非触发第 8 条停止条件，不要询问 permission；完成相关验证后回到原阶段继续，不得在实现完成后静默放宽验收标准。
-13. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求重新确认是否继续本 goal；若最新请求转为 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，不得继续旧阶段执行，也不得更新旧 goal 证据。
+12. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界、Loop Blueprint 或 long-running-goal 策略不够严谨，只暂停 mutation 到足够记录暴露该问题的证据并更新 reusable strategy 或本计划合同；除非触发第 8 条硬停止条件，不要询问 permission；完成相关验证后回到原阶段继续，不得在实现完成后静默放宽验收标准。
+13. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求确认是否仍是同一 goal；若最新请求只是询问同一 goal 的 status、evidence、clarification、progress 或补充上下文，回答或记录后继续；若最新请求明确要求 pause/stop/redirect/change scope，或转为无关 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，才暂停旧阶段执行。
 14. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
 
 ## 状态定义
@@ -109,7 +122,7 @@ M0 设计冻结时的当前基线：
 | `Ready` | 设计与验收指标已明确，可以开始该阶段 |
 | `Not Started` | 该阶段尚未开始，且必须等待前置阶段 Done |
 | `In Progress` | 当前阶段正在实现或验证 |
-| `Blocked` | 当前阶段因明确失败或未决设计被阻塞 |
+| `Blocked` | 当前阶段触发运行时硬停止；未决设计必须在 Ready 前解决，否则保持 Draft |
 | `Done` | 阶段 Review gate、量化验收和 checkpoint evidence 均已完成 |
 | `Closed` | 仅用于整体计划完成后关闭并从 active TODO/goal 导航移除 |
 
@@ -123,7 +136,7 @@ M0 设计冻结时的当前基线：
 4. 文档证据：同步更新本文件状态表，并按需更新 active current docs。
 5. 回滚证据：说明该阶段如何回滚，migration 阶段必须说明正反向策略。
 6. 风险证据：列出仍保留的 legacy compatibility、未解决风险和下一阶段要消除的部分。
-7. Harness 证据：若本阶段触及 Loop Blueprint，记录实际 trigger/input 路径、编排或 worktree 隔离证据、connector 读写结果、独立验收结果和权限停止条件结论。
+7. Harness 证据：若本阶段触及 Loop Blueprint，记录实际 trigger/input 路径、编排或 worktree 隔离证据、connector 读写结果、独立验收结果、YOLO actions 和运行时硬停止结论。
 
 默认验证命令：
 
@@ -210,7 +223,7 @@ Review gate：
 6. 剩余风险：
    - `<完成后填写残留风险。>`
 7. Harness evidence：
-   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和权限停止条件证据；否则写 Not applicable。>`
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收、YOLO actions 和运行时硬停止证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -256,7 +269,7 @@ Review gate：
 6. 剩余风险：
    - `<完成后填写残留风险。>`
 7. Harness evidence：
-   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和权限停止条件证据；否则写 Not applicable。>`
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收、YOLO actions 和运行时硬停止证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -302,7 +315,7 @@ Review gate：
 6. 剩余风险：
    - `<完成后填写残留风险。>`
 7. Harness evidence：
-   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收和权限停止条件证据；否则写 Not applicable。>`
+   - `<若本阶段触及 Loop Blueprint，填写触发、输入、编排、隔离、connector、独立验收、YOLO actions 和运行时硬停止证据；否则写 Not applicable。>`
 
 推荐验证：
 
@@ -378,10 +391,10 @@ Checkpoint evidence：
 执行要求：
 1. 阶段必须顺序执行，不得跳过 gate。
 2. 每个阶段开始前把该阶段状态改为 In Progress，完成后记录代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
-3. 若本 goal 存在 Loop Blueprint，执行前先确认 trigger、inputs、orchestration、worktree isolation、connector read/write boundaries、independent verification、permission stop conditions 和 durable learning 均已冻结；每个触及这些字段的阶段都必须记录 harness evidence。
+3. 执行前先确认 Pre-Approval / YOLO 边界已冻结；若本 goal 存在 Loop Blueprint，还要确认 trigger、inputs、orchestration、worktree isolation、connector read/write boundaries、independent verification、runtime hard stops 和 durable learning 均已冻结；每个触及这些字段的阶段都必须记录 harness evidence。
 4. 每个阶段都必须有 checkpoint evidence；若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，使用本 goal 记录的 <goal_slug> M<N>: <summary> 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-5. Review gate 通过后默认继续；只有 gate 明确要求 human approval，或下一步是破坏性/不可逆/隐私敏感/外部可见动作、缺少无法本地取得的权限或输入、事实源冲突会改变目标语义、或同一 blocker 重复且无有意义本地下一步时，才停下询问 permission。
-6. 失败时先在本 goal 范围内诊断和修复；只有触发上一条停止条件时，才停在失败点并报告 root cause、失败命令、文件路径、已知 breakpoint 和下一步建议。
+5. Review gate 通过后默认继续；rebuild、refresh、reinstall、tests、lint、formatting、docs sync、plugin/cache refresh 和 generated-artifact cleanup 等计划内非破坏性本地动作默认 YOLO，不询问 permission。
+6. 失败时先在本 goal 范围内诊断和修复；只有触发运行时硬停止时，才停在失败点并报告 root cause、失败命令、文件路径、已知 breakpoint 和下一步建议。
 7. 不允许使用 fallback、兼容假成功、alternate backend、部分成功包装、隐藏错误或 silent degradation 来绕过 gate。
 8. Close 前必须运行并记录 git diff --check -- <changed-paths> 以及本 goal 指定的所有验证命令。
 ```

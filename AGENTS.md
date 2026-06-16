@@ -5,6 +5,7 @@
 - Observe before acting. For uncertain, scheduled, or recurring workflows, collect evidence and write reports before making changes.
 - Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
 - Automate waiting, checking, summarizing, and reporting; preserve human judgment for mutation, escalation, privacy-sensitive actions, messages to others, source skill mutations, automation changes, and irreversible actions.
+- For a `Ready` long-running-goal continuation contract, planned non-destructive local mutation inside the goal scope is pre-approved by that contract. Local rebuilds, refreshes, reinstalls, tests, lint, formatting, docs sync, code edits, source skill edits, and generated-artifact cleanup are YOLO non-stops; do not pause for them unless the goal's runtime hard-stop boundary is reached.
 - Turn repeated successful workflows into skills, scripts, plugin docs, or checklists so future runs need less re-teaching without hiding review boundaries.
 - For global subagent workflow guidance, use the installed note at `$CODEX_HOME/agents/operating-principles.md`; if `$CODEX_HOME` is unset, use `~/.codex/agents/operating-principles.md`.
 
