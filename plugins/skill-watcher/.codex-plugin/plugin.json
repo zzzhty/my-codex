@@ -1,6 +1,6 @@
 {
   "name": "skill-watcher",
-  "version": "0.1.0+codex.20260611030501",
+  "version": "0.1.0+codex.20260618175959",
   "description": "Observe Codex skill usage logs and support evidence-backed skill maintenance and compression.",
   "author": {
     "name": "Local developer"

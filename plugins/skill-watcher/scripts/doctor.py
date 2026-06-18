@@ -192,8 +192,8 @@ class Doctor:
         if "sk-doctorsecret" in raw:
             self.fail("sample event leaked a secret-like token")
             return
-        if event.get("skill_name") != "mattpocock-skills:diagnose":
-            self.fail("sample event did not infer the monitored diagnose skill")
+        if event.get("skill_name") != "mattpocock-skills:diagnosing-bugs":
+            self.fail("sample event did not infer the monitored diagnosing-bugs skill")
             return
         parsed = json.loads(raw.strip())
         if parsed.get("codex", {}).get("prompt_summary"):

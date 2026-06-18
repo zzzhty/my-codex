@@ -53,6 +53,12 @@ from refresh_my_codex import (  # noqa: E402
 )
 from sync_codex_agents import load_sources  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
+from update_mattpocock_skills import (  # noqa: E402
+    flattened_skill_names,
+    load_upstream_skill_paths,
+    strip_unsupported_frontmatter,
+    update_plugin_manifest,
+)
 from update_proposal_status import update_status  # noqa: E402
 
 
@@ -188,6 +194,69 @@ class SkillWatcherTests(unittest.TestCase):
                 )
 
         self.assertIn("missing-plugin", str(raised.exception))
+
+    def test_mattpocock_updater_flattens_manifest_and_strips_claude_frontmatter(self) -> None:
+        text = (
+            "---\n"
+            "name: teach\n"
+            "description: Teach the user.\n"
+            "argument-hint: What would you like to learn?\n"
+            "disable-model-invocation: true\n"
+            "---\n"
+            "\n"
+            "# Teach\n"
+        )
+
+        cleaned = strip_unsupported_frontmatter(text)
+
+        self.assertIn("name: teach", cleaned)
+        self.assertIn("description: Teach the user.", cleaned)
+        self.assertNotIn("argument-hint", cleaned)
+        self.assertNotIn("disable-model-invocation", cleaned)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp)
+            manifest = source / ".claude-plugin" / "plugin.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "name": "mattpocock-skills",
+                        "skills": [
+                            "./skills/engineering/diagnosing-bugs",
+                            "./skills/productivity/teach",
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            paths = load_upstream_skill_paths(source)
+
+        self.assertEqual(paths, ["./skills/engineering/diagnosing-bugs", "./skills/productivity/teach"])
+        self.assertEqual(flattened_skill_names(paths), ["diagnosing-bugs", "teach"])
+
+    def test_mattpocock_updater_can_preserve_existing_cachebuster(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = Path(tmp)
+            manifest = plugin / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "name": "mattpocock-skills",
+                        "version": "1.0.1+codex.old-token",
+                        "interface": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            update_plugin_manifest(plugin, "1.0.2", preserve_existing_cachebuster=True)
+
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["version"], "1.0.2+codex.old-token")
 
     def test_stale_plugin_detection_includes_config_and_cache(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -340,7 +409,7 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(session_start["codex"]["allowlist_update"]["skill_count"], len(packaged))
         self.assertEqual(dynamic_skills, tuple(packaged))
         self.assertFalse(unknown["codex"]["persisted"])
-        self.assertEqual(prompt["skill_name"], "mattpocock-skills:diagnose")
+        self.assertEqual(prompt["skill_name"], "mattpocock-skills:diagnosing-bugs")
         self.assertEqual(prompt["codex"]["skill_attribution"], "prompt_mention")
         self.assertTrue(prompt["codex"]["persisted"])
         self.assertIn("user_skill_context", prompt["codex"])

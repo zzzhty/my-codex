@@ -155,6 +155,45 @@ Generate report-only summaries:
 The Codex automation named `Skill Watcher Weekly Report` runs this incremental report workflow weekly on Sunday at 20:00 Asia/Shanghai and returns the report path plus summary counts. It does not generate proposals or modify skills.
 Incremental runs store their successful watermark in `$CODEX_HOME/skill-watcher/report-state.json`; the `--since 7d` window is only the first-run fallback. A small overlap with recent event hashes prevents late-arriving events from being dropped at the report boundary.
 
+## Matt Pocock Skills Upstream Refresh
+
+Use `scripts/update_mattpocock_skills.py` only from this `my-codex` checkout. It is intentionally hard-coded to refresh `plugins/mattpocock-skills` from `https://github.com/mattpocock/skills.git`.
+
+The updater:
+
+- clones the requested upstream tag, or the latest `vX.Y.Z` tag by default, into `$HOME/.codex/sources`
+- reads upstream `.claude-plugin/plugin.json`
+- flattens each published upstream skill path into `plugins/mattpocock-skills/skills/<skill-name>/`
+- removes Claude-only frontmatter unsupported by Codex: `disable-model-invocation` and `argument-hint`
+- preserves the Codex plugin wrapper and regenerates the plugin README
+- updates the Codex cachebuster suffix
+- validates the plugin, validates every packaged skill, and runs `git diff --check`
+
+Windows PowerShell:
+
+```powershell
+$python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
+& $python plugins\skill-watcher\scripts\update_mattpocock_skills.py --tag latest
+```
+
+Unix:
+
+```bash
+"$MY_CODEX_PYTHON" plugins/skill-watcher/scripts/update_mattpocock_skills.py --tag latest
+```
+
+To pin a specific upstream version:
+
+```bash
+"$MY_CODEX_PYTHON" plugins/skill-watcher/scripts/update_mattpocock_skills.py --tag v1.0.1
+```
+
+After reviewing the diff, refresh the installed local marketplace plugin cache from the repository root:
+
+```bash
+python3 scripts/refresh_my_codex.py --plugin mattpocock-skills
+```
+
 ## Weekly Report Workflow Contract
 
 - Trigger: the `Skill Watcher Weekly Report` Codex automation, or an explicit user request to run the same report workflow.
