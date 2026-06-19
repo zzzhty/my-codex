@@ -13,5 +13,6 @@ Reusable Codex workflow skills maintained from the my-codex repository.
 ## Shared Vocabulary
 
 - `Continuation contract`: the durable goal file contract that lets the same or another agent continue without chat history.
+- `Workflow component`: an internal reusable step used by a skill, such as `long-running-goal` planning preflight or checkpoint evidence, without becoming a standalone user-invoked skill.
 - `YOLO non-stops`: planned non-destructive local operations inside a `Ready` long-running goal, such as rebuild, refresh, reinstall, tests, lint, formatting, docs sync, code edits, source skill edits, plugin/cache refresh, and generated-artifact cleanup.
 - `Runtime hard stops`: the only post-`Ready` long-running-goal conditions that should pause for the user, such as repeated technical impossibility, missing unavailable credentials or source facts, destructive/irreversible/privacy-sensitive/unapproved external writes, frozen semantic conflict, or required verifier/subagent/connector failure with no in-plan local next step.

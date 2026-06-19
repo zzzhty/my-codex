@@ -52,6 +52,8 @@ def main() -> int:
         "M0 milestone": r"\bM0\b",
         "review gate": r"(?i)\breview\s*gate\b|Review gate|评审|验收",
         "checkpoint evidence": r"(?i)\bcheckpoint\b|检查点",
+        "checkpoint component": r"(?i)\bcheckpoint\s+component\b|components/checkpoint\.md",
+        "planning preflight": r"(?i)\bplanning\s+preflight\b|components/planning-preflight\.md|grill-with-docs",
         "rollback path": r"(?i)\brollback\b|回滚",
         "close/archive procedure": r"(?i)\b(close|archive)\b|关闭|归档",
         "validation evidence": r"(?i)\b(validation|verify|test)\b|验证|测试",
@@ -65,6 +67,43 @@ def main() -> int:
     for label, pattern in required_patterns.items():
         if not re.search(pattern, visible_text):
             errors.append(f"missing required section signal: {label}")
+
+    marker_match = re.search(
+        r"(?im)^Planning preflight marker\s*[:：]\s*`?([^`\n]+)`?\s*$",
+        visible_text,
+    )
+    if not marker_match:
+        if not args.allow_draft:
+            errors.append("missing planning preflight marker field")
+    else:
+        marker = marker_match.group(1).strip()
+        marker_pattern = re.compile(
+            r"^preflight:[A-Za-z0-9_.-]+:(?:skip:)?[0-9]{8}-[A-Za-z0-9_.-]+$"
+        )
+        if not marker_pattern.match(marker):
+            errors.append(
+                "planning preflight marker must be a non-placeholder id like "
+                "preflight:<goal_slug>:<yyyymmdd>-<short-id> or "
+                "preflight:<goal_slug>:skip:<yyyymmdd>-<short-id>"
+            )
+
+    status_match = re.search(
+        r"(?im)^Planning preflight status\s*[:：]\s*`?([^`\n]+)`?\s*$",
+        visible_text,
+    )
+    if not status_match:
+        if not args.allow_draft:
+            errors.append("missing planning preflight status field")
+    else:
+        status = status_match.group(1).strip().lower()
+        valid_statuses = {
+            "done",
+            "skipped by explicit user instruction",
+        }
+        if status not in valid_statuses:
+            errors.append(
+                "planning preflight status must be Done or Skipped by explicit user instruction"
+            )
 
     if not args.allow_draft:
         status_lines = [

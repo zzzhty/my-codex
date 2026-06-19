@@ -13,11 +13,12 @@
 cp <skill-folder>/templates/long_running_goal_template.md <goal-dir>/<goal_slug>_long_running_goal_plan.md
 ```
 
-3. 将标题、目标描述、目标路径、Loop Blueprint、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
-4. 执行过程中只更新复制后的 goal 文件，不更新本模板。
-5. 每个阶段完成后必须补齐代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
-6. 按任务规模增删 `M<N>` 阶段；删除不用的阶段，按顺序新增需要的阶段，并同步更新阶段状态表、Checkpoint evidence、Close Gate 和推荐 Goal Prompt。
-7. Close 前必须确认所有阶段 `Done`，并记录最终验证结果。
+3. 创建或执行实现前先应用 `components/planning-preflight.md`：默认先运行 `grill-with-docs` 确定具体实施方案；只有用户显式表示不需要 grill 时才跳过，并在本文件记录 skip。
+4. 将标题、目标描述、目标路径、Planning preflight marker、Loop Blueprint、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
+5. 执行过程中只更新复制后的 goal 文件，不更新本模板。
+6. 每个阶段完成后必须补齐代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
+7. 按任务规模增删 `M<N>` 阶段；删除不用的阶段，按顺序新增需要的阶段，并同步更新阶段状态表、Checkpoint evidence、Close Gate 和推荐 Goal Prompt。
+8. Close 前必须确认所有阶段 `Done`，并记录最终验证结果。
 
 ## Goal 摘要
 
@@ -40,6 +41,18 @@ Planning root：`<planning-root>`
 Goal directory：`<goal-dir>`
 
 Continuation contract：`<同一或另一个 agent 不依赖聊天历史即可从本文件继续执行的关键约束。>`
+
+Planning preflight marker：`<preflight:<goal_slug>:<yyyymmdd>-<short-id> / preflight:<goal_slug>:skip:<yyyymmdd>-<short-id>>`
+
+Planning preflight status：`<Done / Skipped by explicit user instruction>`
+
+Preflight source：`<grill-with-docs / user skip>`
+
+Resolved decisions：`<summary or doc paths>`
+
+Open decisions：`<none or explicit runtime hard stops>`
+
+Docs written：`<CONTEXT.md / ADR paths / Not applicable>`
 
 ## M0 执行前基线
 
@@ -99,20 +112,21 @@ Ready 前必须冻结 approval 模型；若存在可预见但未确认的 approv
 
 如果本计划被作为 long-running goal 执行，必须按以下合同推进：
 
-1. 阶段必须顺序执行：`M0 -> M1 -> M2 -> ... -> Close`。
-2. 每个阶段开始前必须把阶段状态改为 `In Progress`。
-3. 每个阶段完成后必须记录 review 结论、运行命令、通过证据、失败断点和未解决风险。
-4. 每个阶段必须有 checkpoint evidence。若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，优先使用本计划中记录的 `<goal_slug> M<N>: <summary>` 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-5. 若本 goal 存在 Loop Blueprint，每个触及 trigger、input、orchestration、worktree、connector read/write boundaries、independent verification、runtime hard stops 或 durable learning 的阶段必须记录 harness evidence。
-6. Review gate 通过后默认继续进入下一阶段；不得因为普通阶段边界、checkpoint、rebuild、refresh、reinstall 或可记录风险而中断询问。
-7. 未满足当前阶段 Review gate 时，不得进入下一阶段；若下一步修复或诊断清晰且仍在本 goal 范围内，继续修复并重新验证，不要先询问 permission。
-8. 只有遇到运行时硬停止才询问用户：本地诊断/修复至少三次或三种方式后仍技术上无法继续、缺少无法本地取得的凭据/文件/事实源、下一步破坏性/不可逆/隐私敏感/外部可见且未预授权、事实源冲突会改变冻结语义、或必需 sub-agent/connector/worktree/verifier 失败且无计划内本地下一步。
-9. 任何阶段失败必须记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议；只有符合上一条硬停止条件时才停下等待用户。
-10. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
-11. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
-12. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界、Loop Blueprint 或 long-running-goal 策略不够严谨，只暂停 mutation 到足够记录暴露该问题的证据并更新 reusable strategy 或本计划合同；除非触发第 8 条硬停止条件，不要询问 permission；完成相关验证后回到原阶段继续，不得在实现完成后静默放宽验收标准。
-13. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求确认是否仍是同一 goal；若最新请求只是询问同一 goal 的 status、evidence、clarification、progress 或补充上下文，回答或记录后继续；若最新请求明确要求 pause/stop/redirect/change scope，或转为无关 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，才暂停旧阶段执行。
-14. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
+1. 执行实现前必须已有 Planning preflight marker：默认来自 `components/planning-preflight.md` / `grill-with-docs`；只有用户显式跳过 grill 时才记录 skip marker。若 marker 已存在且状态为 `Done` 或 `Skipped by explicit user instruction`，不得重复运行 grill。
+2. 阶段必须顺序执行：`M0 -> M1 -> M2 -> ... -> Close`。
+3. 每个阶段开始前必须把阶段状态改为 `In Progress`。
+4. 每个阶段完成后必须记录 review 结论、运行命令、通过证据、失败断点和未解决风险。
+5. 每个阶段必须应用 `components/checkpoint.md` 并记录 checkpoint evidence。若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，优先使用本计划中记录的 `<goal_slug> M<N>: <summary>` 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
+6. 若本 goal 存在 Loop Blueprint，每个触及 trigger、input、orchestration、worktree、connector read/write boundaries、independent verification、runtime hard stops 或 durable learning 的阶段必须记录 harness evidence。
+7. Review gate 通过后默认继续进入下一阶段；不得因为普通阶段边界、checkpoint、rebuild、refresh、reinstall 或可记录风险而中断询问。
+8. 未满足当前阶段 Review gate 时，不得进入下一阶段；若下一步修复或诊断清晰且仍在本 goal 范围内，继续修复并重新验证，不要先询问 permission。
+9. 只有遇到运行时硬停止才询问用户：本地诊断/修复至少三次或三种方式后仍技术上无法继续、缺少无法本地取得的凭据/文件/事实源、下一步破坏性/不可逆/隐私敏感/外部可见且未预授权、事实源冲突会改变冻结语义、或必需 sub-agent/connector/worktree/verifier 失败且无计划内本地下一步。
+10. 任何阶段失败必须记录 root cause、失败命令、文件路径、已知 breakpoint 和下一步修复建议；只有符合上一条硬停止条件时才停下等待用户。
+11. 不允许用 silent fallback、兼容假成功、部分成功包装、alternate backend、隐藏错误或 silent degradation 来绕过 gate。
+12. 不允许把 legacy / deprecated surface 重新包装成当前产品语义，除非本 goal 明确要求并完成文档更新。
+13. 若执行过程中发现 gate、验证规则、回滚路径、阶段边界、Loop Blueprint 或 long-running-goal 策略不够严谨，只暂停 mutation 到足够记录暴露该问题的证据并更新 reusable strategy 或本计划合同；除非触发第 9 条硬停止条件，不要询问 permission；完成相关验证后回到原阶段继续，不得在实现完成后静默放宽验收标准。
+14. 若上下文压缩、中断或用户新请求改变了任务方向，必须先按最新请求确认是否仍是同一 goal；若最新请求只是询问同一 goal 的 status、evidence、clarification、progress 或补充上下文，回答或记录后继续；若最新请求明确要求 pause/stop/redirect/change scope，或转为无关 planning、explanation、alignment、skill editing、review-only、git maintenance 或其他独立任务，才暂停旧阶段执行。
+15. Close 只能在所有阶段 `Done` 且完成标准全部有代码、测试和文档证据后执行。
 
 ## 状态定义
 
@@ -151,6 +165,17 @@ git diff --check -- <changed-paths>
 3. 涉及 runtime user flow、proxy、container、fixture 或 browser gate：运行对应 runtime diagnostics。
 4. 涉及 shell / PowerShell / batch / Python scripts：运行对应语法检查和 dry-run。
 5. 涉及 docs-only：至少运行 `git diff --check -- <changed-paths>`，并确认链接与事实源不冲突。
+
+Checkpoint evidence format：
+
+```text
+Checkpoint component: <Pending / Done>
+Checkpoint type: <git commit / current HEAD / artifact revision / not applicable>
+Revision: <commit hash / HEAD hash / artifact path / issue or task revision / n/a>
+Changed files: <milestone-scoped paths or none>
+Validation recorded: <commands and pass/fail result>
+Out-of-scope dirty changes: <none or excluded paths>
+```
 
 ## 设计原则
 
@@ -235,7 +260,7 @@ git diff --check -- <changed-paths>
 Checkpoint evidence：
 
 ```text
-<Git commit / revision / issue history / document revision / artifact path / Not applicable: no VCS in this workspace>
+<Fill the Checkpoint evidence format for M0.>
 ```
 
 ### M1 - `<阶段名称>`
@@ -281,7 +306,7 @@ git diff --check -- <changed-paths>
 Checkpoint evidence：
 
 ```text
-<Git commit / revision / issue history / document revision / artifact path / Not applicable: no VCS in this workspace>
+<Fill the Checkpoint evidence format for M1.>
 ```
 
 ### M2 - `<阶段名称>`
@@ -327,7 +352,7 @@ git diff --check -- <changed-paths>
 Checkpoint evidence：
 
 ```text
-<Git commit / revision / issue history / document revision / artifact path / Not applicable: no VCS in this workspace>
+<Fill the Checkpoint evidence format for M2.>
 ```
 
 ## 阶段状态表
@@ -374,7 +399,7 @@ Close 执行证据：
 Checkpoint evidence：
 
 ```text
-<Git commit / revision / issue history / document revision / artifact path / Not applicable: no VCS in this workspace>
+<Fill the Checkpoint evidence format for Close.>
 ```
 
 ## 当前风险
@@ -389,14 +414,14 @@ Checkpoint evidence：
 请按照 <goal-dir>/<goal_slug>_long_running_goal_plan.md 执行 <Goal Name>。
 
 执行要求：
-1. 阶段必须顺序执行，不得跳过 gate。
-2. 每个阶段开始前把该阶段状态改为 In Progress，完成后记录代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
-3. 执行前先确认 Pre-Approval / YOLO 边界已冻结；若本 goal 存在 Loop Blueprint，还要确认 trigger、inputs、orchestration、worktree isolation、connector read/write boundaries、independent verification、runtime hard stops 和 durable learning 均已冻结；每个触及这些字段的阶段都必须记录 harness evidence。
-4. 每个阶段都必须有 checkpoint evidence；若项目已有 Git / version-control 工作流且用户或项目要求阶段性提交，使用本 goal 记录的 <goal_slug> M<N>: <summary> 或本项目约定格式作为 commit/revision 证据；非 VCS 环境不得强行初始化 Git 或伪造 commit。
-5. Review gate 通过后默认继续；rebuild、refresh、reinstall、tests、lint、formatting、docs sync、plugin/cache refresh 和 generated-artifact cleanup 等计划内非破坏性本地动作默认 YOLO，不询问 permission。
-6. 失败时先在本 goal 范围内诊断和修复；只有触发运行时硬停止时，才停在失败点并报告 root cause、失败命令、文件路径、已知 breakpoint 和下一步建议。
-7. 不允许使用 fallback、兼容假成功、alternate backend、部分成功包装、隐藏错误或 silent degradation 来绕过 gate。
-8. Close 前必须运行并记录 git diff --check -- <changed-paths> 以及本 goal 指定的所有验证命令。
+1. 若无有效 Planning preflight marker，先应用 components/planning-preflight.md；已有 Done 或 explicit-skip marker 时不要重复 grill。
+2. 执行前确认 Pre-Approval / YOLO 边界已冻结；Loop-shaped goal 还要确认 harness 字段已冻结。
+3. 按阶段顺序执行；每阶段开始标 In Progress，完成前记录代码、行为、测试、文档、回滚、风险和 harness evidence。
+4. Review gate 通过后默认继续；计划内非破坏性本地动作按 YOLO 边界执行。
+5. 每阶段完成前应用 components/checkpoint.md，按 Checkpoint evidence format 记录 revision 证据；不默认 empty commit，非 VCS 不强行初始化 Git。
+6. 失败时在本 goal 范围内诊断修复；只有运行时硬停止才停下并报告 root cause、失败命令、文件路径、breakpoint 和下一步。
+7. 不允许用 fallback、兼容假成功、alternate backend、部分成功包装、隐藏错误或 silent degradation 绕过 gate。
+8. Close 前运行并记录 git diff --check -- <changed-paths> 以及本 goal 指定验证命令。
 ```
 
 ## 相关文档

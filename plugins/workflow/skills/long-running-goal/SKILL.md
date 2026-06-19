@@ -38,19 +38,29 @@ If preserving a compact local goal style, the copied or handwritten goal must st
 7. Current-doc/TODO sync requirements.
 8. Close/archive procedure and reusable continuation prompt.
 
+## Components
+
+Use bundled components as internal workflow steps, not as standalone user-facing skills:
+
+1. `components/planning-preflight.md`: before goal creation/conversion or first implementation without a completed marker, run `grill-with-docs`; skip only by explicit user instruction and record the skip marker.
+2. `components/checkpoint.md`: before any milestone or close step is `Done`, record revision evidence without default empty commits.
+
 ## Create Or Upgrade
 
+In this section, `upgrade` means converting or reshaping an existing TODO, PRD, issue, checklist, or rough plan into a long-running-goal contract. It does not mean ordinary runtime evolution during milestone execution.
+
 1. Read current truth before drafting: root instructions, README/area overviews, active TODO or goal indexes, current guides, status/boundary registers, validation logs, runtime audits, architecture/contract docs, and existing goal/archive docs.
-2. Create or reshape the goal file. Preserve useful findings from existing TODOs, but structure them as a continuation contract.
-3. Freeze the contract before implementation:
+2. Apply `components/planning-preflight.md` before freezing the goal unless the user explicitly skips the grill.
+3. Create or reshape the goal file as a continuation contract, preserve useful findings from existing TODOs, and record the planning-preflight marker or skip marker.
+4. Freeze the contract before implementation:
    - product semantics, owner boundaries, compatibility surface, future/non-goals
    - sequential milestones, usually `M0 Contract Review / Design Freeze`, implementation milestones, docs/release closeout, then `Close`
    - milestone scope, review gate, validation commands, evidence slots, checkpoint expectations
    - execution shape: manual staged execution or Loop-shaped execution
    - pre-approved YOLO local operations, pre-approved external reads/writes, runtime hard stops
    - Loop harness fields when applicable: trigger, inputs, triage/orchestration, isolation, connector boundaries, independent verifier, durable learning
-4. Keep foreseeable approval out of runtime execution. Human approval gates, external-write permission, destructive-action permission, connector permission, and unresolved design approval must be settled before `Ready`; otherwise keep the goal `Draft`.
-5. Add close criteria and a reusable continuation prompt that names the exact goal path and repeats the sequential milestone, YOLO boundary, Loop harness, evidence, hard-stop, and close-gate rules.
+5. Keep foreseeable approval out of runtime execution. Human approval gates, external-write permission, destructive-action permission, connector permission, and unresolved design approval must be settled before `Ready`; otherwise keep the goal `Draft`.
+6. Add close criteria and a reusable continuation prompt that names the exact goal path and repeats the sequential milestone, YOLO boundary, Loop harness, evidence, hard-stop, and close-gate rules.
 
 ## Loop Blueprint Harness
 
@@ -114,6 +124,8 @@ Do not claim production speedup by disabling shadow checks while still depending
 
 When the user asks to execute a goal, follow the goal file rather than improvising. After context transition, interruption, or compaction, re-read the newest user request and active goal document before resuming.
 
+Before the first implementation milestone, confirm the goal file records a completed planning-preflight marker from `components/planning-preflight.md` or an explicit user-skip marker. If not, run the preflight component before mutating implementation files.
+
 For each milestone:
 
 1. Mark it `In Progress`.
@@ -122,7 +134,8 @@ For each milestone:
 4. Run the milestone validation commands.
 5. Record changed files, behavior impact, command results, doc sync, rollback path, remaining risk, and checkpoint evidence.
 6. If the milestone exercises a Loop Blueprint, also record trigger/input path, orchestration or worktree isolation evidence, connector read/write evidence, independent verification, YOLO actions, and runtime hard-stop decisions.
-7. Mark milestone `Done`, review `Passed`, and checkpoint `Done` only after evidence is recorded.
+7. Apply `components/checkpoint.md`.
+8. Mark milestone `Done`, review `Passed`, and checkpoint `Done` only after evidence is recorded.
 
 When a review gate passes, enter the next milestone automatically. When it fails, keep fixing and diagnosing in scope while the next useful step is clear; stop only at the runtime hard-stop boundary.
 

@@ -18,6 +18,8 @@ Do not claim semantic equivalence unless:
 
 If independent review is unavailable, report the compression as unverified.
 
+An explicit user request to use this skill authorizes the independent semantic-review subagent required by this workflow. The authorization is limited to read-only review of the scoped compression artifacts and does not authorize unrelated delegation or file mutation.
+
 ## Workflow
 
 1. Define scope:

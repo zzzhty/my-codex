@@ -48,10 +48,12 @@ Default posture:
 - scripts, checkers, and validators before impression-based conclusions
 - Browser, Chrome, or Computer Use only when the surface itself matters
 - repo-local helpers before new ad hoc implementations
+- root-cause repair before adding new patches, wrappers, shims, fallback paths, alternate backends, compatibility layers, or parallel abstractions
+- system planning for ordinary complex tasks; custom `long-running-goal` planning only after explicit user request or confirmation
 - no destructive, privacy-sensitive, external-send, or irreversible action without explicit user intent
 - for a `Ready` long-running-goal continuation contract, execute planned non-destructive local mutation directly inside the frozen goal scope; local rebuilds, refreshes, reinstalls, tests, lint, formatting, docs sync, code edits, source skill edits, and generated-artifact cleanup are YOLO non-stops and should not become mid-run approval prompts
 
-When implementation is requested, act directly after enough context is known. When the root cause is unclear, collect minimal diagnostics and report the concrete blocker instead of routing around it.
+When implementation is requested, act directly after enough context is known. When the root cause is unclear, collect minimal diagnostics and report the concrete blocker instead of routing around it. Add a new layer only when evidence shows the existing owner or contract cannot carry the behavior safely. If a task looks too large for ordinary planning, suggest `long-running-goal` as an option and wait for user confirmation before creating a custom contract or running its preflight.
 
 ## Subagent Delegation
 
