@@ -27,6 +27,40 @@ UPSTREAM_MANIFEST = ".claude-plugin/plugin.json"
 CODEX_ONLY_VERSION_SUFFIX = re.compile(r"\+codex\..*$")
 SEMVER_TAG = re.compile(r"^v(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$")
 UNSUPPORTED_FRONTMATTER = {"argument-hint", "disable-model-invocation"}
+OMITTED_SKILLS = {
+    "setup-matt-pocock-skills": (
+        "Claude setup flow that writes Agent skills blocks into CLAUDE.md/AGENTS.md; "
+        "Codex uses plugin marketplace metadata instead."
+    ),
+}
+CODEX_TEXT_REPLACEMENTS = {
+    (
+        "**`/setup-matt-pocock-skills`** — run before your first engineering flow to configure "
+        "the issue tracker, triage labels, and doc layout the other skills assume. Custom issue "
+        "trackers also work."
+    ): (
+        "**Repo conventions** — before your first engineering flow, use the repo's existing issue "
+        "tracker, triage-label, and domain-doc conventions. If they are missing or ambiguous, ask "
+        "the user before writing to the tracker."
+    ),
+    (
+        "The issue tracker and triage label vocabulary should have been provided to you — run "
+        "`/setup-matt-pocock-skills` if not."
+    ): (
+        "The issue tracker and triage label vocabulary should come from current repo conventions, "
+        "durable docs, or the user's instructions. If they are missing or ambiguous, ask the user "
+        "before writing to the tracker."
+    ),
+    (
+        "These are canonical role names — the actual label strings used in the issue tracker may "
+        "differ. The mapping should have been provided to you - run `/setup-matt-pocock-skills` "
+        "if not."
+    ): (
+        "These are canonical role names — the actual label strings used in the issue tracker may "
+        "differ. Use the repo's documented mapping when present; if it is missing or ambiguous, "
+        "ask the maintainer before changing labels."
+    ),
+}
 
 
 def repo_root() -> Path:
@@ -127,6 +161,18 @@ def flattened_skill_names(skill_paths: Iterable[str]) -> list[str]:
     return names
 
 
+def filter_packaged_skill_paths(skill_paths: Iterable[str]) -> tuple[list[str], list[str]]:
+    packaged: list[str] = []
+    omitted: list[str] = []
+    for path in skill_paths:
+        name = path.rstrip("/").rsplit("/", 1)[-1]
+        if name in OMITTED_SKILLS:
+            omitted.append(name)
+        else:
+            packaged.append(path)
+    return packaged, omitted
+
+
 def strip_unsupported_frontmatter(text: str) -> str:
     lines = text.splitlines(keepends=True)
     if not lines or lines[0].strip() != "---":
@@ -149,10 +195,17 @@ def strip_unsupported_frontmatter(text: str) -> str:
     return "".join(filtered)
 
 
+def apply_codex_text_adaptations(text: str) -> str:
+    adapted = text
+    for upstream_text, codex_text in CODEX_TEXT_REPLACEMENTS.items():
+        adapted = adapted.replace(upstream_text, codex_text)
+    return adapted
+
+
 def clean_copied_skills(skills_root: Path) -> None:
     for skill_file in skills_root.glob("*/SKILL.md"):
         original = skill_file.read_text(encoding="utf-8")
-        cleaned = strip_unsupported_frontmatter(original)
+        cleaned = apply_codex_text_adaptations(strip_unsupported_frontmatter(original))
         if cleaned != original:
             skill_file.write_text(cleaned, encoding="utf-8")
 
@@ -203,7 +256,7 @@ def update_plugin_manifest(plugin_root: Path, version: str, *, preserve_existing
         "displayName": "Matt Pocock Skills",
         "shortDescription": "Use Matt Pocock's agent skills in Codex.",
         "longDescription": (
-            f"Matt Pocock Skills packages a local Codex-adapted copy of mattpocock/skills {version}, "
+            f"Matt Pocock Skills packages a local Codex-adapted copy of mattpocock/skills v{version}, "
             "including engineering, planning, triage, diagnosis, TDD, architecture, domain-modeling, "
             "teaching, and productivity workflows."
         ),
@@ -215,8 +268,16 @@ def update_plugin_manifest(plugin_root: Path, version: str, *, preserve_existing
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
-def write_readme(plugin_root: Path, tag: str, commit: str, skill_names: list[str]) -> None:
-    skills = "\n".join(f"- `{name}`" for name in skill_names)
+def write_readme(plugin_root: Path, tag: str, commit: str, skill_names: list[str], omitted_skills: list[str]) -> None:
+    skills = "\n".join(f"- `{name}`" for name in sorted(skill_names))
+    omitted = "\n".join(f"- `{name}`: {OMITTED_SKILLS[name]}" for name in omitted_skills)
+    omitted_section = (
+        "\n\n## Omitted Upstream Skills\n\n"
+        "The updater intentionally keeps these upstream skills out of the Codex plugin package:\n\n"
+        f"{omitted}"
+        if omitted
+        else ""
+    )
     text = f"""# Matt Pocock Skills
 
 Skill-only Codex plugin for the local Codex-adapted copy of Matt Pocock's skills.
@@ -227,7 +288,7 @@ Adapted from: `{tag}` (`{commit}`)
 
 ## Skills
 
-{skills}
+{skills}{omitted_section}
 
 ## Compatibility Notes
 
@@ -278,19 +339,27 @@ def validate(plugin_root: Path) -> None:
     run(["git", "diff", "--check", "--", str(plugin_root.relative_to(repo_root()))], cwd=repo_root())
 
 
-def sync_from_source(source_root: Path, *, tag: str, commit: str, cachebuster: bool, run_validation: bool) -> list[str]:
+def sync_from_source(
+    source_root: Path,
+    *,
+    tag: str,
+    commit: str,
+    cachebuster: bool,
+    run_validation: bool,
+) -> tuple[list[str], list[str]]:
     plugin_root = target_plugin_root()
     ensure_inside(plugin_root, repo_root(), label="target plugin root")
     skill_paths = load_upstream_skill_paths(source_root)
+    skill_paths, omitted_skills = filter_packaged_skill_paths(skill_paths)
     skill_names = replace_skill_tree(source_root, skill_paths, plugin_root)
     copy_license(source_root, plugin_root)
     update_plugin_manifest(plugin_root, version_from_tag(tag), preserve_existing_cachebuster=not cachebuster)
-    write_readme(plugin_root, tag, commit, skill_names)
+    write_readme(plugin_root, tag, commit, skill_names, omitted_skills)
     if cachebuster:
         run_cachebuster(plugin_root)
     if run_validation:
         validate(plugin_root)
-    return skill_names
+    return skill_names, omitted_skills
 
 
 def parse_args() -> argparse.Namespace:
@@ -308,7 +377,7 @@ def main() -> None:
     tag = latest_semver_tag() if args.tag == "latest" else args.tag
     source_root = Path(args.source_dir).resolve() if args.source_dir else clone_upstream(tag, Path(args.sources_dir))
     commit = upstream_commit(source_root)
-    skills = sync_from_source(
+    skills, omitted_skills = sync_from_source(
         source_root,
         tag=tag,
         commit=commit,
@@ -316,7 +385,9 @@ def main() -> None:
         run_validation=not args.skip_validation,
     )
     print(f"updated {TARGET_PLUGIN_NAME} from {tag} ({commit})")
-    print("skills: " + ", ".join(skills))
+    print("skills: " + ", ".join(sorted(skills)))
+    if omitted_skills:
+        print("omitted: " + ", ".join(f"{name} ({OMITTED_SKILLS[name]})" for name in sorted(omitted_skills)))
 
 
 if __name__ == "__main__":

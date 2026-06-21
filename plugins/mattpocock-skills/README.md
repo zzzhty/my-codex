@@ -18,13 +18,18 @@ Adapted from: `v1.0.1` (`2454c95dc305c158b21a0cdafeb728879dd0359a`)
 - `handoff`
 - `improve-codebase-architecture`
 - `prototype`
-- `setup-matt-pocock-skills`
 - `tdd`
 - `teach`
 - `to-issues`
 - `to-prd`
 - `triage`
 - `writing-great-skills`
+
+## Omitted Upstream Skills
+
+The updater intentionally keeps these upstream skills out of the Codex plugin package:
+
+- `setup-matt-pocock-skills`: Claude setup flow that writes Agent skills blocks into CLAUDE.md/AGENTS.md; Codex uses plugin marketplace metadata instead.
 
 ## Compatibility Notes
 

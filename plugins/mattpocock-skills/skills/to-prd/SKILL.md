@@ -5,7 +5,7 @@ description: Turn the current conversation into a PRD and publish it to the proj
 
 This skill takes the current conversation context and codebase understanding and produces a PRD. Do NOT interview the user — just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
+The issue tracker and triage label vocabulary should come from current repo conventions, durable docs, or the user's instructions. If they are missing or ambiguous, ask the user before writing to the tracker.
 
 ## Process
 

@@ -163,7 +163,8 @@ The updater:
 
 - clones the requested upstream tag, or the latest `vX.Y.Z` tag by default, into `$HOME/.codex/sources`
 - reads upstream `.claude-plugin/plugin.json`
-- flattens each published upstream skill path into `plugins/mattpocock-skills/skills/<skill-name>/`
+- flattens each packaged upstream skill path into `plugins/mattpocock-skills/skills/<skill-name>/`
+- omits upstream Claude setup flows that would write Agent skills blocks into `CLAUDE.md` or `AGENTS.md`
 - removes Claude-only frontmatter unsupported by Codex: `disable-model-invocation` and `argument-hint`
 - preserves the Codex plugin wrapper and regenerates the plugin README
 - updates the Codex cachebuster suffix

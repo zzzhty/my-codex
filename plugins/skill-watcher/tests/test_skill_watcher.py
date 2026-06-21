@@ -54,6 +54,9 @@ from refresh_my_codex import (  # noqa: E402
 from sync_codex_agents import load_sources  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_mattpocock_skills import (  # noqa: E402
+    OMITTED_SKILLS,
+    apply_codex_text_adaptations,
+    filter_packaged_skill_paths,
     flattened_skill_names,
     load_upstream_skill_paths,
     strip_unsupported_frontmatter,
@@ -195,7 +198,7 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertIn("missing-plugin", str(raised.exception))
 
-    def test_mattpocock_updater_flattens_manifest_and_strips_claude_frontmatter(self) -> None:
+    def test_mattpocock_updater_flattens_manifest_strips_frontmatter_and_omits_claude_setup(self) -> None:
         text = (
             "---\n"
             "name: teach\n"
@@ -213,6 +216,12 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertIn("description: Teach the user.", cleaned)
         self.assertNotIn("argument-hint", cleaned)
         self.assertNotIn("disable-model-invocation", cleaned)
+        self.assertIn("setup-matt-pocock-skills", OMITTED_SKILLS)
+        adapted = apply_codex_text_adaptations(
+            "The issue tracker and triage label vocabulary should have been provided to you — "
+            "run `/setup-matt-pocock-skills` if not."
+        )
+        self.assertNotIn("/setup-matt-pocock-skills", adapted)
 
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp)
@@ -224,6 +233,7 @@ class SkillWatcherTests(unittest.TestCase):
                         "name": "mattpocock-skills",
                         "skills": [
                             "./skills/engineering/diagnosing-bugs",
+                            "./skills/productivity/setup-matt-pocock-skills",
                             "./skills/productivity/teach",
                         ],
                     }
@@ -232,9 +242,22 @@ class SkillWatcherTests(unittest.TestCase):
             )
 
             paths = load_upstream_skill_paths(source)
+            packaged, omitted = filter_packaged_skill_paths(paths)
 
-        self.assertEqual(paths, ["./skills/engineering/diagnosing-bugs", "./skills/productivity/teach"])
-        self.assertEqual(flattened_skill_names(paths), ["diagnosing-bugs", "teach"])
+        self.assertEqual(
+            paths,
+            [
+                "./skills/engineering/diagnosing-bugs",
+                "./skills/productivity/setup-matt-pocock-skills",
+                "./skills/productivity/teach",
+            ],
+        )
+        self.assertEqual(
+            packaged,
+            ["./skills/engineering/diagnosing-bugs", "./skills/productivity/teach"],
+        )
+        self.assertEqual(omitted, ["setup-matt-pocock-skills"])
+        self.assertEqual(flattened_skill_names(packaged), ["diagnosing-bugs", "teach"])
 
     def test_mattpocock_updater_can_preserve_existing_cachebuster(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -327,6 +350,9 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_SKILL_ALIASES)
+        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_MONITORED_SKILLS)
+        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_SKILL_ALIASES)
+        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
         self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
 
         normalized = normalize_hook_payload(

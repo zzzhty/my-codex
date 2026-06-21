@@ -57,4 +57,4 @@ Off the main flow entirely.
 
 ## Precondition
 
-**`/setup-matt-pocock-skills`** — run before your first engineering flow to configure the issue tracker, triage labels, and doc layout the other skills assume. Custom issue trackers also work.
+**Repo conventions** — before your first engineering flow, use the repo's existing issue tracker, triage-label, and domain-doc conventions. If they are missing or ambiguous, ask the user before writing to the tracker.
