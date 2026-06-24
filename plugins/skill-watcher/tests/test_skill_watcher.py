@@ -61,6 +61,11 @@ from runtime_paths import (  # noqa: E402
     state_dir_from_env_or_arg as runtime_state_dir_from_env_or_arg,
     turns_dir,
 )
+from report_pipeline import (  # noqa: E402
+    ReportOutputPolicy,
+    ReportQuery,
+    generate_report as run_report_pipeline,
+)
 from sync_codex_agents import load_sources  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_mattpocock_skills import (  # noqa: E402
@@ -663,6 +668,38 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(state_since(loaded, key), datetime(2026, 6, 6, tzinfo=timezone.utc))
         self.assertEqual(loaded["reports"][key]["last_event_count"], 2)
         self.assertEqual(len(loaded["reports"][key]["recent_event_hashes"]), 2)
+
+    def test_report_pipeline_writes_report_state_and_counts_outcomes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            log_file = log_file_path(state_dir)
+            log_file.parent.mkdir(parents=True)
+            events = [
+                {"timestamp": "2026-06-05T00:00:00Z", "skill_name": "demo", "outcome": "failure"},
+                {"timestamp": "2026-06-06T00:00:00Z", "skill_name": "demo", "outcome": "success"},
+            ]
+            log_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+
+            result = run_report_pipeline(
+                ReportQuery(
+                    state_dir=state_dir,
+                    log_file=log_file,
+                    skill="demo",
+                    since_raw="2026-06-05T00:00:00Z",
+                    incremental=True,
+                ),
+                ReportOutputPolicy(write_output=True),
+            )
+            loaded = load_report_state(state_dir)
+            output_exists = result.output.is_file() if result.output is not None else False
+
+        self.assertEqual(result.event_count, 2)
+        self.assertEqual(result.outcome_counts["failure"], 1)
+        self.assertEqual(result.outcome_counts["success"], 1)
+        self.assertIsNotNone(result.output)
+        self.assertTrue(output_exists)
+        self.assertEqual(result.state_path, state_dir / "report-state.json")
+        self.assertEqual(loaded["reports"]["demo"]["last_event_count"], 2)
 
 
 if __name__ == "__main__":

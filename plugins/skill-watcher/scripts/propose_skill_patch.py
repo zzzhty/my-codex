@@ -9,6 +9,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from report_pipeline import ReportOutputPolicy, ReportQuery, generate_report
 from runtime_paths import (
     CODEX_HOME,
     DEFAULT_STATE_DIR,
@@ -19,7 +20,6 @@ from runtime_paths import (
     snapshots_dir,
     state_dir_from_env_or_arg,
 )
-from summarize_logs import build_report, filter_events, parse_since, read_events
 
 
 def yaml_string(value: str) -> str:
@@ -79,9 +79,17 @@ def load_report(args: argparse.Namespace, state_dir: Path, skill_name: str) -> s
         except OSError as exc:
             raise SystemExit(f"failed to read report {report_path}: {exc}") from exc
     log_file = log_file_path(state_dir, args.log_file)
-    since = parse_since(args.since)
-    events = filter_events(read_events(log_file), skill=skill_name, since=since)
-    return build_report(events, skill=skill_name, since_raw=args.since, log_file=log_file)
+    result = generate_report(
+        ReportQuery(
+            state_dir=state_dir,
+            log_file=log_file,
+            skill=skill_name,
+            since_raw=args.since,
+            display_since_raw=True,
+        ),
+        ReportOutputPolicy(),
+    )
+    return result.report
 
 
 def build_proposal(
