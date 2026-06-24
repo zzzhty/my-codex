@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     docwatcher_config_path: str = ""
     docwatcher_state_dir: str = ""
+    docwatcher_enable_legacy_routes: bool = False
 
     cors_origins: list[str] = ["http://localhost:5173"]
 

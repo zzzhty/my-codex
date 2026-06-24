@@ -226,7 +226,7 @@ uv run ruff check app tests
 uv run --all-groups python -m pytest
 ```
 
-Backend audit endpoints are served under `/api/v1/audit/*`. Existing database-backed patch/PR/provider routes are legacy compatibility surfaces and are not the current audit product source of truth.
+Backend audit endpoints are served under `/api/v1/audit/*`. Existing database-backed project/change/patch/doc-PR/provider/webhook routes are legacy compatibility surfaces and are not mounted by default. To inspect or revive them explicitly, run the backend with `DOCWATCHER_ENABLE_LEGACY_ROUTES=true`; audit-only startup does not initialize the legacy SQLite tables.
 
 Frontend:
 
