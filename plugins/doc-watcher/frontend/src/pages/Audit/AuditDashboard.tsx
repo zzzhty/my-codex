@@ -17,7 +17,8 @@ import {
   useRunRepoAudit,
 } from "../../hooks/useAudit";
 import type { AuditRepoStatus, AuditRunRecord } from "../../types/audit";
-import { findingKey, findingSeverityText, formatDate } from "./auditViewUtils";
+import { buildAuditDashboardViewModel } from "./auditViewModel";
+import { findingKey, formatDate } from "./auditViewUtils";
 
 export default function AuditDashboard() {
   const statusQuery = useAuditStatus();
@@ -28,17 +29,23 @@ export default function AuditDashboard() {
   const runRepoAudit = useRunRepoAudit();
 
   const status = statusQuery.data;
-  const repos = status?.repos ?? [];
-  const dueRepos = repos.filter((repo) => repo.due);
-  const errorRepos = repos.filter((repo) => repo.status === "error");
-  const findings = repos.flatMap((repo) =>
-    repo.findings.map((finding, index) => ({ repo, finding, index })),
-  );
-  const latestReport = status?.reports.latest;
-  const latestRun = runsQuery.data?.runs[0] ?? null;
-
-  const busy =
-    runCommitCounter.isPending || runGenerateReport.isPending || runRepoAudit.isPending;
+  const view = buildAuditDashboardViewModel({
+    status,
+    reports: reportsQuery.data,
+    runs: runsQuery.data,
+    busy: runCommitCounter.isPending || runGenerateReport.isPending || runRepoAudit.isPending,
+  });
+  const {
+    busy,
+    findingPreview,
+    findings,
+    latestReport,
+    latestRun,
+    metrics,
+    recentReports,
+    recentRuns,
+    repos,
+  } = view;
 
   if (statusQuery.isLoading) {
     return <Skeleton />;
@@ -59,7 +66,7 @@ export default function AuditDashboard() {
   return (
     <PageShell
       title="Audit Cockpit"
-      subtitle={status?.config.path || "No audit config loaded"}
+      subtitle={view.subtitle}
       action={
         <div className="flex flex-wrap items-center gap-2">
           <ActionButton
@@ -91,30 +98,10 @@ export default function AuditDashboard() {
       }
     >
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          label="Configured Repos"
-          value={status?.config.repo_count ?? 0}
-          detail={status?.config.exists ? "config loaded" : "config missing"}
-          tone="neutral"
-        />
-        <Metric
-          label="Due Repos"
-          value={dueRepos.length}
-          detail={`${errorRepos.length} repo errors`}
-          tone={dueRepos.length ? "amber" : "green"}
-        />
-        <Metric
-          label="Open Findings"
-          value={findings.length}
-          detail={findingSeverityText(findings.map((item) => item.finding))}
-          tone={findings.length ? "rose" : "green"}
-        />
-        <Metric
-          label="Reports"
-          value={status?.reports.count ?? 0}
-          detail={latestReport ? formatDate(latestReport.modified_at) : "no reports"}
-          tone="neutral"
-        />
+        <Metric {...metrics.configuredRepos} />
+        <Metric {...metrics.dueRepos} />
+        <Metric {...metrics.openFindings} />
+        <Metric {...metrics.reports} />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -145,7 +132,7 @@ export default function AuditDashboard() {
           >
             <div className="divide-y divide-gray-100">
               {findings.length ? (
-                findings.slice(0, 12).map(({ repo, finding, index }) => (
+                findingPreview.map(({ repo, finding, index }) => (
                   <Link
                     key={`${repo.name}-${findingKey(finding, index)}`}
                     to={`/audit/repos/${encodeURIComponent(repo.name)}/findings/${encodeURIComponent(
@@ -198,7 +185,7 @@ export default function AuditDashboard() {
 
           <Panel title="Recent Reports" action={null}>
             <div className="divide-y divide-gray-100">
-              {(reportsQuery.data?.reports ?? []).slice(0, 5).map((report) => (
+              {recentReports.map((report) => (
                 <Link
                   key={report.id}
                   to={`/audit/reports/${encodeURIComponent(report.id)}`}
@@ -208,16 +195,16 @@ export default function AuditDashboard() {
                   <p className="mt-1 text-xs text-gray-500">{formatDate(report.modified_at)}</p>
                 </Link>
               ))}
-              {!reportsQuery.data?.reports.length && <EmptyRow label="No reports found." />}
+              {!recentReports.length && <EmptyRow label="No reports found." />}
             </div>
           </Panel>
 
           <Panel title="Recent Runs" action={null}>
             <div className="divide-y divide-gray-100">
-              {(runsQuery.data?.runs ?? []).slice(0, 5).map((run) => (
+              {recentRuns.map((run) => (
                 <RunRow key={run.id} run={run} />
               ))}
-              {!runsQuery.data?.runs.length && <EmptyRow label="No command runs recorded." />}
+              {!recentRuns.length && <EmptyRow label="No command runs recorded." />}
             </div>
           </Panel>
 

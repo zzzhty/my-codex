@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from proposal_artifact import proposal_id_for, render_frontmatter
 from report_pipeline import ReportOutputPolicy, ReportQuery, generate_report
 from runtime_paths import (
     CODEX_HOME,
@@ -20,33 +20,6 @@ from runtime_paths import (
     snapshots_dir,
     state_dir_from_env_or_arg,
 )
-
-
-def yaml_string(value: str) -> str:
-    return json.dumps(value, ensure_ascii=False)
-
-
-def render_frontmatter(
-    *,
-    proposal_id: str,
-    skill_name: str,
-    skill_dir: Path,
-    snapshot_path: Path,
-    timestamp: str,
-) -> list[str]:
-    return [
-        "---",
-        "schema_version: 1",
-        'proposal_type: "skill-maintenance"',
-        f"proposal_id: {yaml_string(proposal_id)}",
-        'status: "draft"',
-        f"generated_at: {yaml_string(timestamp)}",
-        f"skill_name: {yaml_string(skill_name)}",
-        f"skill_dir: {yaml_string(str(skill_dir))}",
-        f"snapshot_path: {yaml_string(str(snapshot_path))}",
-        "---",
-        "",
-    ]
 
 
 def read_skill(skill_dir: Path) -> str:
@@ -165,7 +138,7 @@ def main() -> None:
     skill_dir = expand_path(args.skill_dir).resolve()
     skill_name = args.skill or skill_dir.name
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    proposal_id = f"{timestamp}-{safe_slug(skill_name, fallback='skill')}"
+    proposal_id = proposal_id_for(timestamp, skill_name)
 
     skill_contents = read_skill(skill_dir)
     snapshot_path = save_snapshot(skill_dir, state_dir, skill_name, timestamp)

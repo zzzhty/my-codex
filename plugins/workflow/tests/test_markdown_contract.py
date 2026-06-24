@@ -17,6 +17,7 @@ from markdown_contract import (  # noqa: E402
     render_link_errors,
     strip_fenced_blocks,
 )
+from summary_artifact import SummaryArtifactError, artifact_from_data, validate_summary_artifact  # noqa: E402
 
 
 class MarkdownContractTests(unittest.TestCase):
@@ -73,6 +74,27 @@ class MarkdownContractTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn(":1: missing missing.md", stderr.getvalue())
+
+    def test_summary_artifact_validates_shape_before_rendering(self) -> None:
+        data = {
+            "title": "Demo",
+            "sections": [
+                {
+                    "title": "Overview",
+                    "summary": "A short summary.",
+                    "paragraphs": ["One paragraph."],
+                    "files": [{"path": "README.md"}],
+                }
+            ],
+        }
+
+        artifact = artifact_from_data(data)
+
+        self.assertEqual(artifact.title, "Demo")
+        self.assertEqual(artifact.sections[0]["title"], "Overview")
+        self.assertEqual(validate_summary_artifact({"title": "Demo"}), ["summary JSON must include a non-empty sections list"])
+        with self.assertRaises(SummaryArtifactError):
+            artifact_from_data({"sections": [{"title": ["not", "text"]}]})
 
 
 if __name__ == "__main__":

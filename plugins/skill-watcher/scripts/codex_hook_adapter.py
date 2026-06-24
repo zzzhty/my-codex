@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +97,19 @@ FAILURE_TEXT_RE = re.compile(
     r"non[- ]zero\s+exit|traceback|exception|error)",
     re.IGNORECASE,
 )
+
+
+@dataclass(frozen=True)
+class HookRuntimePaths:
+    state_dir: Path
+    log_file: Path
+
+
+@dataclass(frozen=True)
+class HookResult:
+    event: dict[str, Any]
+    persisted: bool
+    hook_event_name: str
 
 
 def read_payload() -> dict[str, Any]:
@@ -642,13 +656,16 @@ def apply_turn_summary(event: dict[str, Any], state: dict[str, Any]) -> dict[str
     return event
 
 
-def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, log_file: Path | None = None) -> dict[str, Any]:
-    target_state_dir = state_dir or state_dir_from_env_or_arg(None)
-    target_log_file = log_file or log_file_path(target_state_dir)
-    ensure_runtime_dirs(target_state_dir)
-
+def process_hook(payload: dict[str, Any], runtime_paths: HookRuntimePaths, *, persist: bool = True) -> HookResult:
+    target_state_dir = runtime_paths.state_dir
+    if persist:
+        ensure_runtime_dirs(target_state_dir)
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
-    allowlist_update = refresh_dynamic_monitored_skills(target_state_dir) if hook_event_name == "SessionStart" else None
+    allowlist_update = (
+        refresh_dynamic_monitored_skills(target_state_dir)
+        if persist and hook_event_name == "SessionStart"
+        else None
+    )
     direct_context = infer_skill_context(payload, state_dir=target_state_dir)
     state = load_turn_state(target_state_dir, payload)
     context = direct_context or state_skill_context(state)
@@ -657,12 +674,12 @@ def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, 
         event["codex"]["allowlist_update"] = allowlist_update
 
     if hook_event_name == "UserPromptSubmit":
-        if direct_context:
+        if persist and direct_context:
             usage_context = event.get("codex", {}).get("user_skill_context")
             write_turn_state(target_state_dir, payload, initial_turn_state(payload, direct_context, usage_context))
-        else:
+        elif persist:
             clear_turn_state(target_state_dir, payload)
-    elif hook_event_name == "PostToolUse" and context:
+    elif persist and hook_event_name == "PostToolUse" and context:
         if not state:
             state = initial_turn_state(payload, context, None)
         state = update_tool_stats(state, event)
@@ -672,11 +689,18 @@ def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, 
 
     persisted = should_persist_event(event)
     event["codex"]["persisted"] = persisted
-    if persisted:
-        append_event(event, target_log_file)
-    if hook_event_name == "Stop":
+    if persist and persisted:
+        append_event(event, runtime_paths.log_file)
+    if persist and hook_event_name == "Stop":
         clear_turn_state(target_state_dir, payload)
-    return event
+    return HookResult(event=event, persisted=persisted, hook_event_name=hook_event_name)
+
+
+def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, log_file: Path | None = None) -> dict[str, Any]:
+    target_state_dir = state_dir or state_dir_from_env_or_arg(None)
+    target_log_file = log_file or log_file_path(target_state_dir)
+    result = process_hook(payload, HookRuntimePaths(state_dir=target_state_dir, log_file=target_log_file))
+    return result.event
 
 
 def main() -> None:
@@ -690,21 +714,17 @@ def main() -> None:
     payload = read_payload()
     state_dir = state_dir_from_env_or_arg(args.state_dir)
     log_file = log_file_path(state_dir, args.log_file)
+    runtime_paths = HookRuntimePaths(state_dir=state_dir, log_file=log_file)
     if args.dry_run:
-        state = load_turn_state(state_dir, payload)
-        context = infer_skill_context(payload, state_dir=state_dir) or state_skill_context(state)
-        event = normalize_hook_payload(payload, skill_context=context, state_dir=state_dir)
-        if str(payload.get("hook_event_name") or payload.get("event") or "unknown") == "Stop" and context:
-            event = apply_turn_summary(event, state)
-        event["codex"]["persisted"] = should_persist_event(event)
-        json.dump(event, sys.stdout, ensure_ascii=False, indent=2, sort_keys=True)
+        result = process_hook(payload, runtime_paths, persist=False)
+        json.dump(result.event, sys.stdout, ensure_ascii=False, indent=2, sort_keys=True)
         sys.stdout.write("\n")
         return
 
-    event = write_hook_event(payload, state_dir=state_dir, log_file=log_file)
+    result = process_hook(payload, runtime_paths)
 
     if args.print_event:
-        json.dump(event, sys.stdout, ensure_ascii=False, sort_keys=True)
+        json.dump(result.event, sys.stdout, ensure_ascii=False, sort_keys=True)
         sys.stdout.write("\n")
     elif payload.get("hook_event_name") == "Stop":
         json.dump({"continue": True, "suppressOutput": True}, sys.stdout, separators=(",", ":"))

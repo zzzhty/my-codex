@@ -20,9 +20,11 @@ sys.path.insert(0, str(SCRIPTS))
 from codex_hook_adapter import (  # noqa: E402
     DEFAULT_MONITORED_SKILLS,
     DEFAULT_SKILL_ALIASES,
+    HookRuntimePaths,
     discover_packaged_skills,
     load_dynamic_monitored_skills,
     normalize_hook_payload,
+    process_hook,
     write_hook_event,
 )
 from codex_hook_config import (  # noqa: E402
@@ -482,6 +484,28 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(sop_assistant["skill_name"], "workflow:sop")
         self.assertEqual(sop_assistant["codex"]["skill_attribution"], "assistant_announcement")
         self.assertEqual(sop_assistant["codex"]["matched_alias"], "sop")
+
+    def test_hook_runtime_dry_run_normalizes_without_writing_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp)
+            result = process_hook(
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "cwd": "/tmp/workspace",
+                    "session_id": "session-dry-run",
+                    "turn_id": "turn-dry-run",
+                    "prompt": "Use diagnose on flaky tests",
+                },
+                HookRuntimePaths(state_dir=state_dir, log_file=log_file_path(state_dir)),
+                persist=False,
+            )
+
+            self.assertFalse(log_file_path(state_dir).exists())
+            self.assertEqual(list((state_dir / "turns").glob("*.json")), [])
+
+        self.assertTrue(result.persisted)
+        self.assertEqual(result.hook_event_name, "UserPromptSubmit")
+        self.assertEqual(result.event["skill_name"], "mattpocock-skills:diagnosing-bugs")
 
     def test_hook_config_runtime_helpers_and_stale_schema_detection(self) -> None:
         with mock.patch.dict("os.environ", {"MY_CODEX_PYTHON": "/tmp/shared-python"}, clear=True):
