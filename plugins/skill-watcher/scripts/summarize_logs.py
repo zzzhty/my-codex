@@ -12,17 +12,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-
-CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
-
-
-def expand_path(raw: str | Path) -> Path:
-    return Path(os.path.expandvars(str(raw))).expanduser()
-
-
-def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_STATE_DIR,
+    expand_path,
+    log_file_path,
+    reports_dir,
+    safe_slug,
+    state_dir_from_env_or_arg,
+)
 
 
 def parse_timestamp(raw: str) -> datetime | None:
@@ -264,8 +262,7 @@ def build_report(
 def default_report_path(state_dir: Path, skill: str | None) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = skill or "all"
-    safe_name = "".join(char if char.isalnum() or char in "-_" else "-" for char in name).strip("-") or "all"
-    return state_dir / "reports" / f"{timestamp}-{safe_name}-report.md"
+    return reports_dir(state_dir) / f"{timestamp}-{safe_slug(name, fallback='all')}-report.md"
 
 
 def main() -> None:
@@ -279,7 +276,7 @@ def main() -> None:
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = log_file_path(state_dir, args.log_file)
     since = parse_since(args.since)
     events = filter_events(read_events_since(log_file, since), skill=args.skill, since=since)
     report = build_report(events, skill=args.skill, since_raw=args.since, log_file=log_file)

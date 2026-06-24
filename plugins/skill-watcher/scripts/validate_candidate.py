@@ -4,16 +4,12 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 from pathlib import Path
 
+from runtime_paths import expand_path
 
 TODO_MARKER = "[TODO:"
-
-
-def expand_path(raw: str | Path) -> Path:
-    return Path(os.path.expandvars(str(raw))).expanduser()
 
 
 def load_yaml_module():

@@ -6,40 +6,35 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import sys
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from summarize_logs import build_report, expand_path, filter_events, parse_since, parse_timestamp, read_events_since
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_STATE_DIR,
+    expand_path,
+    log_file_path,
+    report_state_path,
+    reports_dir,
+    safe_slug,
+    state_dir_from_env_or_arg,
+    utc_now as runtime_utc_now,
+)
+from summarize_logs import build_report, filter_events, parse_since, parse_timestamp, read_events_since
 
 
-CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 DEFAULT_OVERLAP_MINUTES = 5
 
 
-def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
-
-
-def safe_slug(value: str) -> str:
-    slug = "".join(char if char.isalnum() or char in "-_" else "-" for char in value).strip("-")
-    return slug or "all"
-
-
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return runtime_utc_now()
 
 
 def format_timestamp(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def report_state_path(state_dir: Path) -> Path:
-    return state_dir / "report-state.json"
 
 
 def load_report_state(state_dir: Path) -> dict[str, Any]:
@@ -69,7 +64,7 @@ def save_report_state(state_dir: Path, state: dict[str, Any]) -> None:
 
 
 def report_state_key(skill: str | None) -> str:
-    return safe_slug(skill or "all")
+    return safe_slug(skill or "all", fallback="all")
 
 
 def report_state_entry(state: dict[str, Any], key: str) -> dict[str, Any]:
@@ -134,7 +129,7 @@ def outcome_counts(events: list[dict[str, Any]]) -> Counter[str]:
 
 def default_report_path(state_dir: Path, skill: str | None) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return state_dir / "reports" / f"{timestamp}-{safe_slug(skill or 'all')}-report.md"
+    return reports_dir(state_dir) / f"{timestamp}-{safe_slug(skill or 'all', fallback='all')}-report.md"
 
 
 def main() -> None:
@@ -159,7 +154,7 @@ def main() -> None:
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = log_file_path(state_dir, args.log_file)
     fallback_since = parse_since(args.since)
     state = load_report_state(state_dir) if args.incremental else None
     key = report_state_key(args.skill)

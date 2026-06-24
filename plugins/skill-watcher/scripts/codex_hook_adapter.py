@@ -9,12 +9,12 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from collect_event import append_event, ensure_runtime_dirs, expand_path, normalize_event, state_dir_from_env_or_arg
 from redact_event import redact_event, redact_string
+from runtime_paths import log_file_path, safe_slug as runtime_safe_slug, turns_dir, utc_now_text
 
 
 SUPPORTED_HOOK_EVENTS = {"SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"}
@@ -165,7 +165,7 @@ def summarize_json_value(value: Any, *, limit: int = SUMMARY_LIMIT) -> dict[str,
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return utc_now_text()
 
 
 def parse_env_list(raw: str | None) -> tuple[str, ...]:
@@ -391,15 +391,14 @@ def user_skill_context(payload: dict[str, Any], context: dict[str, str] | None) 
 
 
 def safe_slug(value: str) -> str:
-    slug = "".join(char if char.isalnum() or char in "-_." else "-" for char in value).strip("-")
-    return slug or "unknown"
+    return runtime_safe_slug(value, fallback="unknown", allowed="-_.")
 
 
 def turn_state_path(state_dir: Path, payload: dict[str, Any]) -> Path | None:
     session_id = str(payload.get("session_id") or "").strip()
     if not session_id:
         return None
-    return state_dir / "turns" / f"{safe_slug(session_id)}.json"
+    return turns_dir(state_dir) / f"{safe_slug(session_id)}.json"
 
 
 def load_turn_state(state_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
@@ -645,7 +644,7 @@ def apply_turn_summary(event: dict[str, Any], state: dict[str, Any]) -> dict[str
 
 def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, log_file: Path | None = None) -> dict[str, Any]:
     target_state_dir = state_dir or state_dir_from_env_or_arg(None)
-    target_log_file = log_file or target_state_dir / "logs" / "events.jsonl"
+    target_log_file = log_file or log_file_path(target_state_dir)
     ensure_runtime_dirs(target_state_dir)
 
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
@@ -690,7 +689,7 @@ def main() -> None:
 
     payload = read_payload()
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = log_file_path(state_dir, args.log_file)
     if args.dry_run:
         state = load_turn_state(state_dir, payload)
         context = infer_skill_context(payload, state_dir=state_dir) or state_skill_context(state)

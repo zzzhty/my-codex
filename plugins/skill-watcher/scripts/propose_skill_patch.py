@@ -5,25 +5,21 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from summarize_logs import build_report, expand_path, filter_events, parse_since, read_events
-
-
-CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
-
-
-def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
-
-
-def safe_slug(value: str) -> str:
-    slug = "".join(char if char.isalnum() or char in "-_" else "-" for char in value).strip("-")
-    return slug or "skill"
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_STATE_DIR,
+    expand_path,
+    log_file_path,
+    proposals_dir,
+    safe_slug,
+    snapshots_dir,
+    state_dir_from_env_or_arg,
+)
+from summarize_logs import build_report, filter_events, parse_since, read_events
 
 
 def yaml_string(value: str) -> str:
@@ -65,9 +61,9 @@ def read_skill(skill_dir: Path) -> str:
 
 def save_snapshot(skill_dir: Path, state_dir: Path, skill_name: str, timestamp: str) -> Path:
     source = skill_dir / "SKILL.md"
-    snapshot_dir = state_dir / "snapshots"
+    snapshot_dir = snapshots_dir(state_dir)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    snapshot_path = snapshot_dir / f"{timestamp}-{safe_slug(skill_name)}-SKILL.md"
+    snapshot_path = snapshot_dir / f"{timestamp}-{safe_slug(skill_name, fallback='skill')}-SKILL.md"
     try:
         shutil.copyfile(source, snapshot_path)
     except OSError as exc:
@@ -82,7 +78,7 @@ def load_report(args: argparse.Namespace, state_dir: Path, skill_name: str) -> s
             return report_path.read_text(encoding="utf-8")
         except OSError as exc:
             raise SystemExit(f"failed to read report {report_path}: {exc}") from exc
-    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = log_file_path(state_dir, args.log_file)
     since = parse_since(args.since)
     events = filter_events(read_events(log_file), skill=skill_name, since=since)
     return build_report(events, skill=skill_name, since_raw=args.since, log_file=log_file)
@@ -161,7 +157,7 @@ def main() -> None:
     skill_dir = expand_path(args.skill_dir).resolve()
     skill_name = args.skill or skill_dir.name
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    proposal_id = f"{timestamp}-{safe_slug(skill_name)}"
+    proposal_id = f"{timestamp}-{safe_slug(skill_name, fallback='skill')}"
 
     skill_contents = read_skill(skill_dir)
     snapshot_path = save_snapshot(skill_dir, state_dir, skill_name, timestamp)
@@ -176,7 +172,7 @@ def main() -> None:
         timestamp=timestamp,
     )
 
-    output_dir = expand_path(args.output_dir) if args.output_dir else state_dir / "proposals"
+    output_dir = expand_path(args.output_dir) if args.output_dir else proposals_dir(state_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     proposal_path = output_dir / f"{proposal_id}-proposal.md"
     try:

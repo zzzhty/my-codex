@@ -14,16 +14,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
-def expand_path(raw: str | Path) -> Path:
-    return Path(os.path.expandvars(str(raw))).expanduser()
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_HOOK_TARGET,
+    DEFAULT_STATE_DIR,
+    DEFAULT_TOOLING_VENV,
+    expand_path,
+    hook_backup_dir,
+)
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-CODEX_HOME = expand_path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-DEFAULT_TOOLING_VENV = CODEX_HOME / "venvs" / "my-codex"
-DEFAULT_TARGET = CODEX_HOME / "hooks.json"
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
+DEFAULT_TARGET = DEFAULT_HOOK_TARGET
 HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
 STATUS_PREFIX = "Skill Watcher:"
 ADAPTER_NAME = "codex_hook_adapter.py"
@@ -179,7 +181,7 @@ def render_diff(before: dict[str, Any] | None, after: dict[str, Any], path: Path
 def backup_existing_file(path: Path, *, state_dir: Path = DEFAULT_STATE_DIR) -> Path | None:
     if not path.exists():
         return None
-    backup_dir = state_dir / "backups" / "hooks-json"
+    backup_dir = hook_backup_dir(state_dir)
     backup_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_path = backup_dir / f"{timestamp}-hooks.json"

@@ -5,20 +5,25 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from redact_event import redact_event
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_STATE_DIR,
+    ensure_runtime_dirs,
+    expand_path,
+    log_file_path,
+    state_dir_from_env_or_arg,
+    utc_now_text,
+)
 
 
 SCHEMA_VERSION = 1
 DEFAULT_AGENT = "codex"
-CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 EVENT_FIELDS = [
     "schema_version",
     "event_id",
@@ -41,20 +46,7 @@ EVENT_FIELDS = [
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def expand_path(raw: str | Path) -> Path:
-    return Path(os.path.expandvars(str(raw))).expanduser()
-
-
-def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
-
-
-def ensure_runtime_dirs(state_dir: Path) -> None:
-    for name in ("logs", "reports", "proposals", "snapshots", "rejected", "backups", "turns"):
-        (state_dir / name).mkdir(parents=True, exist_ok=True)
+    return utc_now_text()
 
 
 def read_event(path: str | None) -> dict[str, Any]:
@@ -170,7 +162,7 @@ def main() -> None:
     args = parser.parse_args()
 
     state_dir = state_dir_from_env_or_arg(args.state_dir)
-    log_file = expand_path(args.log_file) if args.log_file else state_dir / "logs" / "events.jsonl"
+    log_file = log_file_path(state_dir, args.log_file)
     event = normalize_event(read_event(args.input), args)
     event = redact_event(event)
 

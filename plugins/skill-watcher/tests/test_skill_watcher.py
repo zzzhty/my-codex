@@ -51,6 +51,16 @@ from refresh_my_codex import (  # noqa: E402
     selected_plugins,
     stale_plugin_names,
 )
+from runtime_paths import (  # noqa: E402
+    ensure_runtime_dirs as runtime_ensure_runtime_dirs,
+    hook_backup_dir,
+    log_file_path,
+    report_state_path as runtime_report_state_path,
+    reports_dir,
+    safe_slug as runtime_safe_slug,
+    state_dir_from_env_or_arg as runtime_state_dir_from_env_or_arg,
+    turns_dir,
+)
 from sync_codex_agents import load_sources  # noqa: E402
 from summarize_logs import parse_since, read_events_since  # noqa: E402
 from update_mattpocock_skills import (  # noqa: E402
@@ -428,7 +438,7 @@ class SkillWatcherTests(unittest.TestCase):
                 state_dir=state_dir,
             )
             summary = write_hook_event({**base, "hook_event_name": "Stop"}, state_dir=state_dir)
-            lines = (state_dir / "logs" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            lines = log_file_path(state_dir).read_text(encoding="utf-8").splitlines()
             dynamic_skills = load_dynamic_monitored_skills(state_dir)
 
         self.assertFalse(session_start["codex"]["persisted"])
@@ -548,6 +558,28 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertTrue(any("timeoutSec" in issue for issue in issues))
         self.assertTrue(any("unexpected keys: timeout" in issue for issue in issues))
         self.assertTrue(any("SessionStart" in issue for issue in issues))
+
+    def test_runtime_paths_centralize_state_layout_and_env_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            custom_log = Path(tmp) / "custom-events.jsonl"
+
+            runtime_ensure_runtime_dirs(state_dir)
+
+            self.assertEqual(log_file_path(state_dir), state_dir / "logs" / "events.jsonl")
+            self.assertEqual(log_file_path(state_dir, str(custom_log)), custom_log)
+            self.assertEqual(runtime_report_state_path(state_dir), state_dir / "report-state.json")
+            self.assertEqual(reports_dir(state_dir), state_dir / "reports")
+            self.assertEqual(hook_backup_dir(state_dir), state_dir / "backups" / "hooks-json")
+            self.assertEqual(turns_dir(state_dir), state_dir / "turns")
+            for dirname in ("logs", "reports", "proposals", "snapshots", "rejected", "backups", "turns"):
+                self.assertTrue((state_dir / dirname).is_dir())
+
+            with mock.patch.dict("os.environ", {"SKILL_WATCHER_STATE_DIR": str(state_dir)}, clear=False):
+                self.assertEqual(runtime_state_dir_from_env_or_arg(None), state_dir)
+            self.assertEqual(runtime_state_dir_from_env_or_arg(str(state_dir / "explicit")), state_dir / "explicit")
+            self.assertEqual(runtime_safe_slug("skill watcher:demo", fallback="x"), "skill-watcher-demo")
+            self.assertEqual(runtime_safe_slug("!!!", fallback="x"), "x")
 
     def test_proposal_frontmatter_and_status_transitions(self) -> None:
         proposal = build_proposal(

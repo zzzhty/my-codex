@@ -5,27 +5,25 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from runtime_paths import (
+    CODEX_HOME,
+    DEFAULT_STATE_DIR,
+    expand_path,
+    rejected_dir as runtime_rejected_dir,
+    safe_slug,
+    state_dir_from_env_or_arg,
+    utc_now as runtime_utc_now,
+    utc_now_text,
+)
 
-CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
-DEFAULT_STATE_DIR = CODEX_HOME / "skill-watcher"
 ALLOWED_STATUSES = {"draft", "needs-validation", "accepted", "rejected"}
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def expand_path(raw: str | Path) -> Path:
-    return Path(os.path.expandvars(str(raw))).expanduser()
-
-
-def state_dir_from_env_or_arg(raw_state_dir: str | None) -> Path:
-    return expand_path(raw_state_dir or os.environ.get("SKILL_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
+    return utc_now_text()
 
 
 def load_yaml_module():
@@ -75,11 +73,11 @@ def write_proposal(path: Path, frontmatter: dict[str, Any], body: str) -> None:
 
 
 def record_rejected(path: Path, frontmatter: dict[str, Any], state_dir: Path, previous_status: str, reason: str) -> Path:
-    rejected_dir = state_dir / "rejected"
+    rejected_dir = runtime_rejected_dir(state_dir)
     rejected_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = runtime_utc_now().strftime("%Y%m%dT%H%M%SZ")
     proposal_id = str(frontmatter.get("proposal_id") or path.stem)
-    safe_id = "".join(char if char.isalnum() or char in "-_" else "-" for char in proposal_id).strip("-") or "proposal"
+    safe_id = safe_slug(proposal_id, fallback="proposal")
     output = rejected_dir / f"{timestamp}-{safe_id}.json"
     payload = {
         "timestamp": utc_now(),

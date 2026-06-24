@@ -24,6 +24,7 @@ from codex_hook_config import (
     validate_hook_shape,
 )
 from collect_event import DEFAULT_STATE_DIR, ensure_runtime_dirs
+from runtime_paths import log_file_path
 
 
 def describe_handler_mismatch(handler: dict[str, object], expected: dict[str, object]) -> list[str]:
@@ -187,7 +188,7 @@ class Doctor:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
             event = write_hook_event(sample, state_dir=state_dir)
-            log_file = state_dir / "logs" / "events.jsonl"
+            log_file = log_file_path(state_dir)
             raw = log_file.read_text(encoding="utf-8")
         if "sk-doctorsecret" in raw:
             self.fail("sample event leaked a secret-like token")
