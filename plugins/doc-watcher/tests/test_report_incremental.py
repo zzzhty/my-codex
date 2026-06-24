@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+from audit_runtime import repo_read_status  # noqa: E402
 from commit_counter import load_state, mark_current, repo_status  # noqa: E402
 from generate_report import finding_delta, finding_records  # noqa: E402
 
@@ -51,6 +52,35 @@ class DocWatcherIncrementalTests(unittest.TestCase):
         self.assertFalse(unchanged["due"])
         self.assertTrue(changed["due"])
         self.assertTrue(changed["config_changed"])
+
+    def test_read_model_status_uses_same_runtime_hash_and_due_logic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            state_dir = root / "state"
+            repo.mkdir()
+            run(["git", "init"], repo)
+            run(["git", "config", "user.email", "test@example.com"], repo)
+            run(["git", "config", "user.name", "Test User"], repo)
+            (repo / "README.md").write_text("# Demo\n", encoding="utf-8")
+            run(["git", "add", "README.md"], repo)
+            run(["git", "commit", "-m", "init"], repo)
+
+            config = {
+                "name": "demo",
+                "path": str(repo),
+                "docs": ["README.md"],
+                "source_of_truth": ["README.md"],
+                "commit_threshold": 10,
+            }
+            state = load_state(state_dir)
+            cli_status = repo_status(config, state)
+            read_status = repo_read_status(config, state)
+
+        self.assertEqual(read_status["status"], "ok")
+        self.assertEqual(read_status["config_hash"], cli_status["config_hash"])
+        self.assertEqual(read_status["commits_since_audit"], cli_status["commits_since_audit"])
+        self.assertEqual(read_status["due"], cli_status["due"])
 
     def test_finding_records_diff_new_resolved_and_still_open(self) -> None:
         previous_result = {

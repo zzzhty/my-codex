@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import subprocess
 import sys
 import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from app.services.audit_read_model import AuditReadError, AuditReadModel
+
+from audit_repo import AuditFailure, audit_repository, default_audit_path, render_report, write_report  # noqa: E402
+from commit_counter import run_commit_counter as execute_commit_counter  # noqa: E402
+from generate_report import run_generate_report as execute_generate_report  # noqa: E402
 
 MAX_STREAM_CHARS = 12000
 _RUN_LOCKS: dict[str, threading.Lock] = {}
@@ -73,7 +76,12 @@ class AuditCommandRunner:
             "--state-dir",
             str(self.state_dir),
         ]
-        return self._run("commit_counter", command, lock_target="config")
+        return self._run(
+            "commit_counter",
+            command,
+            lock_target="config",
+            execute=lambda: self._execute_commit_counter(),
+        )
 
     def run_generate_report(
         self,
@@ -99,7 +107,17 @@ class AuditCommandRunner:
             command.append("--digest")
         if print_report:
             command.append("--print-report")
-        return self._run("generate_report", command, lock_target="config")
+        return self._run(
+            "generate_report",
+            command,
+            lock_target="config",
+            execute=lambda: self._execute_generate_report(
+                mode=mode,
+                mark_audited=mark_audited,
+                digest=digest,
+                print_report=print_report,
+            ),
+        )
 
     def run_repo_audit(
         self,
@@ -134,7 +152,16 @@ class AuditCommandRunner:
             command.extend(["--since-ref", str(repo_config["since_ref"])])
         if print_report:
             command.append("--print-report")
-        return self._run("audit_repo", command, lock_target=f"repo:{repo_name}")
+        return self._run(
+            "audit_repo",
+            command,
+            lock_target=f"repo:{repo_name}",
+            execute=lambda: self._execute_repo_audit(
+                repo_name=repo_name,
+                repo_config=repo_config,
+                print_report=print_report,
+            ),
+        )
 
     def _run(
         self,
@@ -142,33 +169,44 @@ class AuditCommandRunner:
         command: list[str],
         *,
         lock_target: str,
+        execute: Callable[[], dict[str, Any]],
     ) -> dict[str, Any]:
         key = self._lock_key(lock_target)
         lock = self._lock_for(key)
         if not lock.acquire(blocking=False):
             raise AuditRunConflict(key)
         try:
-            return self._execute(kind=kind, command=command, lock_key=key)
+            return self._execute(kind=kind, command=command, lock_key=key, execute=execute)
         finally:
             lock.release()
 
-    def _execute(self, *, kind: str, command: list[str], lock_key: str) -> dict[str, Any]:
+    def _execute(
+        self,
+        *,
+        kind: str,
+        command: list[str],
+        lock_key: str,
+        execute: Callable[[], dict[str, Any]],
+    ) -> dict[str, Any]:
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         run_id = f"{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}-{kind}-{uuid.uuid4().hex[:8]}"
         started_at = dt.datetime.now().astimezone()
         started = time.monotonic()
-        proc = subprocess.run(
-            command,
-            cwd=self.plugin_root,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
+        try:
+            result = execute()
+        except AuditFailure as exc:
+            result = {
+                "exit_code": 1,
+                "stdout": "",
+                "stderr": str(exc),
+            }
         completed_at = dt.datetime.now().astimezone()
         duration_ms = int((time.monotonic() - started) * 1000)
-        stdout = _summarize_stream(proc.stdout)
-        stderr = _summarize_stream(proc.stderr)
+        raw_stdout = str(result.get("stdout") or "")
+        raw_stderr = str(result.get("stderr") or "")
+        exit_code = int(result.get("exit_code") or 0)
+        stdout = _summarize_stream(raw_stdout)
+        stderr = _summarize_stream(raw_stderr)
         record = {
             "id": run_id,
             "kind": kind,
@@ -180,26 +218,85 @@ class AuditCommandRunner:
             "started_at": started_at.isoformat(timespec="seconds"),
             "completed_at": completed_at.isoformat(timespec="seconds"),
             "duration_ms": duration_ms,
-            "exit_code": proc.returncode,
-            "success": proc.returncode == 0,
+            "exit_code": exit_code,
+            "success": exit_code == 0,
             "stdout": stdout["text"],
             "stdout_truncated": stdout["truncated"],
             "stderr": stderr["text"],
             "stderr_truncated": stderr["truncated"],
-            "report_path": _extract_prefixed_value(proc.stdout, "report:"),
-            "audit_path": _extract_prefixed_value(proc.stdout, "audit:"),
-            "updated_state_path": _extract_prefixed_value(proc.stdout, "updated state:"),
+            "report_path": str(result["report_path"]) if result.get("report_path") else _extract_prefixed_value(raw_stdout, "report:"),
+            "audit_path": str(result["audit_path"]) if result.get("audit_path") else _extract_prefixed_value(raw_stdout, "audit:"),
+            "updated_state_path": str(result["updated_state_path"])
+            if result.get("updated_state_path")
+            else _extract_prefixed_value(raw_stdout, "updated state:"),
             "failure_breakpoint": None,
         }
-        if proc.returncode != 0:
+        if exit_code != 0:
             record["failure_breakpoint"] = _failure_breakpoint(
                 command=command,
-                exit_code=proc.returncode,
-                stdout=proc.stdout,
-                stderr=proc.stderr,
+                exit_code=exit_code,
+                stdout=raw_stdout,
+                stderr=raw_stderr,
             )
         self._write_run(record)
         return record
+
+    def _execute_commit_counter(self) -> dict[str, Any]:
+        stdout, _statuses = execute_commit_counter(
+            config_path=self.config_path,
+            state_dir=self.state_dir,
+        )
+        return {
+            "exit_code": 0,
+            "stdout": stdout,
+            "stderr": "",
+        }
+
+    def _execute_generate_report(
+        self,
+        *,
+        mode: str,
+        mark_audited: bool,
+        digest: bool,
+        print_report: bool,
+    ) -> dict[str, Any]:
+        return execute_generate_report(
+            config_path=self.config_path,
+            state_dir=self.state_dir,
+            mode=mode,
+            mark_audited=mark_audited,
+            digest=digest,
+            print_report=print_report,
+        )
+
+    def _execute_repo_audit(
+        self,
+        *,
+        repo_name: str,
+        repo_config: dict[str, Any],
+        print_report: bool,
+    ) -> dict[str, Any]:
+        result = audit_repository(
+            repo=Path(str(repo_config["path"])),
+            name=repo_name,
+            docs=list(repo_config.get("docs") or []),
+            source_of_truth=list(repo_config.get("source_of_truth") or []),
+            watch_terms=list(repo_config.get("watch_terms") or []),
+            recent_limit=int(repo_config.get("recent_limit") or 5),
+            since_ref=repo_config.get("since_ref"),
+        )
+        report = render_report(result)
+        output = default_audit_path(self.state_dir, repo_name)
+        write_report(output, report)
+        stdout = f"audit: {output}\nfindings: {len(result['findings'])}\n"
+        if print_report:
+            stdout += f"\n{report}"
+        return {
+            "exit_code": 0,
+            "stdout": stdout,
+            "stderr": "",
+            "audit_path": output,
+        }
 
     def _write_run(self, record: dict[str, Any]) -> None:
         path = self._safe_run_path(record["id"])

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from audit_repo import AuditFailure, audit_repository, expand_path, render_report, resolve_state_dir, safe_slug
-from commit_counter import load_config, load_state, mark_current, repo_status, state_path
+from audit_runtime import load_config, load_state, mark_current, repo_status, state_path
 
 DEFAULT_CONFIG = Path("config/repos.json")
 
@@ -240,11 +240,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
-    config_path = expand_path(args.config)
+def run_generate_report(
+    *,
+    config_path: Path,
+    state_dir: Path,
+    mode: str = "all",
+    mark_audited: bool = False,
+    output_path: Path | None = None,
+    digest: bool = False,
+    print_report: bool = False,
+) -> dict[str, Any]:
     config = load_config(config_path)
-    state_dir = resolve_state_dir(args.state_dir)
     state = load_state(state_dir)
     audited_statuses: list[dict[str, Any]] = []
     reports: list[tuple[str, str]] = []
@@ -257,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         name = str(repo_config.get("name") or Path(str(repo_config.get("path", "repo"))).name)
         try:
             status = repo_status(repo_config, state)
-            if args.mode == "commit-dependent" and not status["due"]:
+            if mode == "commit-dependent" and not status["due"]:
                 skipped.append(
                     f"{name}: commits_since_audit={status['commits_since_audit']} "
                     f"threshold={status['commit_threshold']} config_changed={status['config_changed']}"
@@ -291,35 +297,62 @@ def main(argv: list[str] | None = None) -> int:
         skipped=skipped,
         failures=failures,
     )
-    output = expand_path(args.output) if args.output else default_report_path(state_dir)
+    output = output_path if output_path is not None else default_report_path(state_dir)
     write_report(output, report)
-    print(f"report: {output}")
-    print(f"audited: {len(reports)}")
-    print(f"skipped: {len(skipped)}")
-    print(f"failures: {len(failures)}")
+    stdout_lines = [
+        f"report: {output}",
+        f"audited: {len(reports)}",
+        f"skipped: {len(skipped)}",
+        f"failures: {len(failures)}",
+    ]
+    updated_state_path: Path | None = None
 
-    if args.mark_audited and audited_statuses and not failures:
+    if mark_audited and audited_statuses and not failures:
         mark_current(state_dir, state, audited_statuses, findings_by_name=findings_by_name)
-        print(f"updated state: {state_path(state_dir)}")
-    elif args.mark_audited and failures:
-        print("state not updated because at least one audit failed")
+        updated_state_path = state_path(state_dir)
+        stdout_lines.append(f"updated state: {updated_state_path}")
+    elif mark_audited and failures:
+        stdout_lines.append("state not updated because at least one audit failed")
 
-    if args.print_report:
-        print()
-        print(report, end="")
-    if args.digest:
-        print()
-        print(
-            render_digest(
-                generated_at=generated_at,
-                config_path=config_path,
-                repo_summaries=repo_summaries,
-                skipped=skipped,
-                failures=failures,
-            ),
-            end="",
+    if print_report:
+        stdout_lines.extend(["", report.rstrip()])
+    if digest:
+        stdout_lines.extend(
+            [
+                "",
+                render_digest(
+                    generated_at=generated_at,
+                    config_path=config_path,
+                    repo_summaries=repo_summaries,
+                    skipped=skipped,
+                    failures=failures,
+                ).rstrip(),
+            ]
         )
-    return 1 if failures else 0
+    return {
+        "exit_code": 1 if failures else 0,
+        "stdout": "\n".join(stdout_lines) + "\n",
+        "report_path": output,
+        "updated_state_path": updated_state_path,
+        "audited": len(reports),
+        "skipped": len(skipped),
+        "failures": len(failures),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    result = run_generate_report(
+        config_path=expand_path(args.config),
+        state_dir=resolve_state_dir(args.state_dir),
+        mode=args.mode,
+        mark_audited=args.mark_audited,
+        output_path=expand_path(args.output) if args.output else None,
+        digest=args.digest,
+        print_report=args.print_report,
+    )
+    print(result["stdout"], end="")
+    return int(result["exit_code"])
 
 
 if __name__ == "__main__":
