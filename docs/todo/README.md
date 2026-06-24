@@ -2,7 +2,7 @@
 
 ## Active Design Notes
 
-No active design notes.
+- [Skill Prompt Optimization Report](skill-prompt-optimization.md): report-first audit for custom plugin `SKILL.md` prompt quality and future writeback candidates.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
 Closed historical records should stay out of active navigation unless a current
