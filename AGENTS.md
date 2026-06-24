@@ -1,8 +1,6 @@
 ## Agent Operating Principles
 
-- Recurring or long-running work should have a durable home: a named thread, repo file, automation memory, report, TODO, or skill. Do not leave important project state only in chat history.
-- Prefer inspectable artifacts over implicit memory. Reusable knowledge, commands, decisions, failures, and open loops should be written to reviewable files when they matter beyond the current turn.
-- Observe before acting. For uncertain, scheduled, or recurring workflows, collect evidence and write reports before making changes.
+- Observe before acting; for uncertain, scheduled, recurring, or long-running work, keep durable, inspectable evidence in a named thread, repo file, automation memory, report, TODO, or skill when the state matters beyond the current turn. Do not leave important project state only in chat history.
 - Apply Occam's razor: do not add entities without necessity. Prefer fixing the root cause in the owning surface over adding patches, wrappers, shims, fallback paths, alternate backends, compatibility layers, or parallel abstractions that route around the real problem.
 - Keep planning schemes separate. The agent may suggest that a task is a `long-running-goal` candidate, but must not automatically create, convert, grill, or execute a custom long-running-goal contract unless the user explicitly requests it or confirms the conversion; ordinary complex tasks should continue using the system planning scheme.
 - Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
@@ -26,11 +24,9 @@
 
 ## Delegation policy
 
-- For heavy, parallelizable, or noisy work, prefer bounded subagent tasks; decide and start them before broad exploration when parallel work is useful.
-- When a task explicitly invokes `$orchestrate-subagents` or asks for subagent orchestration, use that skill as the short entry point; keep the full orchestration workflow in the skill, not in this file.
-- Delegate only tasks with clear inputs, expected outputs, stopping conditions, and low risk of racing on the same files.
-- Do not delegate tiny tasks, tightly coupled edits, sequential debugging steps, or changes where multiple agents may race on the same files.
-- Good candidates include codebase exploration, impact analysis, test discovery, failure triage, log review, API/schema inspection, and independent implementation options.
+- Use subagents only when the user explicitly asks for subagents or the active environment/plan authorizes them. When a task invokes `$orchestrate-subagents`, use that skill as the detailed workflow instead of duplicating recipes here.
+- Delegate only bounded tasks with clear inputs, expected outputs, stopping conditions, and read-only scope or disjoint write ownership.
+- Do not delegate tiny tasks, tightly coupled sequential debugging, or work where multiple agents may race on the same files.
 - Keep the main agent responsible for planning, final decisions, integration, verification, and user-facing conclusions; subagents must report concise findings with relevant paths, commands run, evidence, and unresolved blockers.
 
 ## Subagent failure handling
