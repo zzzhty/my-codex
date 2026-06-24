@@ -13,6 +13,10 @@ The proposer must not be the sole judge of whether a prompt or strategy improved
 
 If independent evaluation is unavailable, stop at an unverified proposal and say so. Do not claim the new prompt is better.
 
+## Report-Only Branch
+
+When the user asks for a prompt, skill, or workflow audit, recommendation, or implementation plan without requesting source mutation, run the loop as a report-only evaluation: collect evidence, freeze the oracle, compare bounded candidates against a no-change baseline, run independent review according to the Core Rule, return the recommendation or write a durable report only when requested, and stop before writing source prompts, generated caches, or installed copies.
+
 ## Workflow
 
 1. Define target, failure mode or desired improvement, non-goals, and mutation boundaries.

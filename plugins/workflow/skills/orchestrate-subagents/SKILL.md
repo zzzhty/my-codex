@@ -1,6 +1,6 @@
 ---
 name: orchestrate-subagents
-description: Use for complex Codex tasks that should explicitly spawn subagents, including PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection, documentation alignment, and multi-file implementation planning.
+description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks Codex to use subagents or parallel agents for a complex task, including PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection, documentation alignment, and multi-file implementation planning.
 ---
 
 # Orchestrate Subagents
