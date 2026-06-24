@@ -8,20 +8,15 @@ import re
 import sys
 from pathlib import Path
 
+SHARED = Path(__file__).resolve().parents[3] / "scripts"
+sys.path.insert(0, str(SHARED))
 
-PLACEHOLDER_RE = re.compile(r"<[^>\n]+>")
-
-
-def strip_fenced_blocks(text: str) -> str:
-    lines = []
-    in_fence = False
-    for line in text.splitlines():
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if not in_fence:
-            lines.append(line)
-    return "\n".join(lines)
+from markdown_contract import (  # noqa: E402
+    missing_required_pattern_errors,
+    placeholder_errors,
+    render_errors,
+    strip_fenced_blocks,
+)
 
 
 def main() -> int:
@@ -43,10 +38,7 @@ def main() -> int:
     visible_text = strip_fenced_blocks(text)
     errors: list[str] = []
 
-    placeholders = PLACEHOLDER_RE.findall(visible_text)
-    if placeholders:
-        preview = ", ".join(sorted(set(placeholders))[:10])
-        errors.append(f"unresolved placeholders outside code fences: {preview}")
+    errors.extend(placeholder_errors(visible_text))
 
     required_patterns = {
         "M0 milestone": r"\bM0\b",
@@ -64,9 +56,13 @@ def main() -> int:
         "non-stops": r"(?i)\bnon[- ]?stops?\b|不应中断",
         "reusable prompt": r"(?i)\b(prompt)\b|推荐.*Prompt",
     }
-    for label, pattern in required_patterns.items():
-        if not re.search(pattern, visible_text):
-            errors.append(f"missing required section signal: {label}")
+    errors.extend(
+        missing_required_pattern_errors(
+            visible_text,
+            required_patterns,
+            message="missing required section signal",
+        )
+    )
 
     marker_match = re.search(
         r"(?im)^Planning preflight marker\s*[:：]\s*`?([^`\n]+)`?\s*$",
@@ -116,9 +112,7 @@ def main() -> int:
             errors.append("no Ready/In Progress/Closed status found in status lines")
 
     if errors:
-        for error in errors:
-            print(f"{path}: {error}", file=sys.stderr)
-        return 1
+        return render_errors(path, errors)
 
     print(f"{path}: goal readiness checks OK")
     return 0
