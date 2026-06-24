@@ -11,10 +11,10 @@ Use this skill to maintain or improve a Codex skill from Skill Watcher logs, rep
 
 1. Locate Skill Watcher state under `$CODEX_HOME/skill-watcher/`.
 2. Read the target skill's current `SKILL.md`.
-3. Summarize evidence with `scripts/summarize_logs.py`.
-4. Generate a proposal with `scripts/propose_skill_patch.py`.
+3. From the Skill Watcher plugin root, summarize evidence with `scripts/summarize_logs.py`.
+4. From the Skill Watcher plugin root, generate a proposal with `scripts/propose_skill_patch.py`.
 5. Review the proposal against the references before recommending any edit.
-6. Validate any candidate `SKILL.md` with `scripts/validate_candidate.py`.
+6. From the Skill Watcher plugin root, validate any candidate `SKILL.md` with `scripts/validate_candidate.py`.
 
 ## Rules
 
