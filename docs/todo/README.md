@@ -2,6 +2,7 @@
 
 ## Active Design Notes
 
+- [Doc Alignment Progressive Disclosure Proposal](doc-alignment-progressive-disclosure-proposal.md): guarded future disclosure plan for branch-heavy DocWatcher `doc-alignment` reference.
 - [Long-Running Goal Skill Compression Proposal](long-running-goal-skill-compression-proposal.md): semantic inventory and guarded future compression plan for the Workflow `long-running-goal` skill.
 - [Skill Prompt Optimization Report](skill-prompt-optimization.md): report-first audit for custom plugin `SKILL.md` prompt quality and future writeback candidates.
 
