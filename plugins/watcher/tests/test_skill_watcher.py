@@ -17,6 +17,8 @@ SCRIPTS = ROOT / "scripts" / "skill"
 ROOT_SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(ROOT_SCRIPTS))
 sys.path.insert(0, str(SCRIPTS))
+for module_name in ("doctor", "generate_report", "summarize_logs"):
+    sys.modules.pop(module_name, None)
 
 from codex_hook_adapter import (  # noqa: E402
     DEFAULT_MONITORED_SKILLS,

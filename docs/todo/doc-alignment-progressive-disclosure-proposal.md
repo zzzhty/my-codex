@@ -2,26 +2,26 @@
 
 Generated: 2026-06-25
 
-Status: proposal only. Do not edit `plugins/doc-watcher/skills/doc-alignment/SKILL.md` from this artifact without a later source-edit pass, fresh oracle, independent review, and validation.
+Status: proposal only. Do not edit `plugins/watcher/skills/doc-alignment/SKILL.md` from this artifact without a later source-edit pass, fresh oracle, independent review, and validation.
 This proposal does not authorize direct installed-cache edits or cache writeback under `/Users/max/.codex/plugins/cache/`.
 
 ## Target
 
-Reduce branch-heavy reference in `doc-alignment` while preserving DocWatcher's audit-first semantics. The no-change baseline remains acceptable because the current skill keeps read-only audit behavior, implementation-mode boundaries, and validation expectations explicit.
+Reduce branch-heavy reference in `doc-alignment` while preserving Watcher's audit-first semantics. The no-change baseline remains acceptable because the current skill keeps read-only audit behavior, implementation-mode boundaries, and validation expectations explicit.
 
 ## Evidence And Oracle
 
 Evidence:
 
-- `plugins/doc-watcher/skills/doc-alignment/SKILL.md`
-- `plugins/doc-watcher/README.md`
+- `plugins/watcher/skills/doc-alignment/SKILL.md`
+- `plugins/watcher/README.md`
 - `docs/todo/skill-prompt-optimization.md`
 - `mattpocock-skills:writing-great-skills` rubric: information hierarchy, context pointers, co-location, single source of truth, and sprawl control.
 - `workflow:prompt-strategy-loop` rubric: no-change baseline, frozen oracle, independent evaluation, bounded writeback, and source/cache separation.
 
 Future disclosure must improve skill legibility without weakening:
 
-- DocWatcher report-first and target-repo read-only default.
+- Watcher doc-domain report-first and target-repo read-only default.
 - Mode selection between read-only review and implementation.
 - Implementation-mode requirement for explicit user authorization before target file changes.
 - Audit workflow commands and failure reporting.
@@ -38,7 +38,7 @@ These sections are core execution steps or high-risk boundaries and should remai
 | Frontmatter and invocation metadata | The `description` is the model-facing trigger and must keep the audit/alignment scope visible. |
 | Core Contract | Every branch needs source-of-truth alignment, current/history separation, path coverage, failure handling, and read-only scheduled audits. |
 | Mode Selection | Prevents report-only requests from becoming mutation work and defines implementation-mode authorization. |
-| DocWatcher Audit Workflow | Names deterministic audit commands, config selection, skip semantics, and failure reporting. |
+| Watcher Doc Audit Workflow | Names deterministic audit commands, config selection, skip semantics, and failure reporting. |
 | Review Workflow | Gives the common inventory/read/classify/align sequence that drives all branches. |
 | Finding Severity | Keeps findings checkable and consistently reported. |
 | Final Report | Defines the completion artifact every branch needs. |
@@ -48,7 +48,7 @@ These sections are core execution steps or high-risk boundaries and should remai
 A future source-edit candidate should first prefer one disclosed reference file, not several scattered files, to preserve co-location and avoid weak pointer routing:
 
 ```text
-plugins/doc-watcher/skills/doc-alignment/references/alignment-reference.md
+plugins/watcher/skills/doc-alignment/references/alignment-reference.md
 ```
 
 The main skill should point to it with wording equivalent to:
@@ -80,7 +80,7 @@ A future source-edit candidate may:
 
 A future source-edit candidate must not:
 
-- Move Core Contract, Mode Selection, DocWatcher Audit Workflow, Review Workflow, Finding Severity, or Final Report behind a reference pointer.
+- Move Core Contract, Mode Selection, Watcher Doc Audit Workflow, Review Workflow, Finding Severity, or Final Report behind a reference pointer.
 - Turn scheduled or report-only audits into target-repo mutations.
 - Merge `housekeeping` cleanup behavior into `doc-alignment`.
 - Remove explicit failure reporting for broken links, stale paths, failed validation, or failed audit commands.
@@ -93,12 +93,12 @@ Before editing the source skill, run a fresh `prompt-strategy-loop` pass:
 1. Freeze candidate-specific oracle and no-change baseline.
 2. Produce an old-to-new section map showing every moved rule.
 3. Use one evaluator to check semantic preservation and one risk-reviewer to search for report-only, cleanup-boundary, validation, and source/cache regressions.
-4. Validate DocWatcher:
+4. Validate Watcher:
 
 ```bash
-/Users/max/.codex/venvs/my-codex/bin/python scripts/check_my_codex.py --skip-agents --plugin doc-watcher
+/Users/max/.codex/venvs/my-codex/bin/python scripts/check_my_codex.py --skip-agents --plugin watcher
 /Users/max/.codex/venvs/my-codex/bin/python plugins/workflow/skills/long-running-goal/scripts/check_md_links.py docs/todo
-git diff --check -- plugins/doc-watcher/skills/doc-alignment/SKILL.md docs/todo
+git diff --check -- plugins/watcher/skills/doc-alignment/SKILL.md docs/todo
 ```
 
 ## Residual Risk

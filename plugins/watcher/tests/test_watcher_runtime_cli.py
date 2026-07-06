@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import runpy
 import subprocess
 import sys
 import tempfile
@@ -169,24 +168,6 @@ class WatcherRuntimeCliTests(unittest.TestCase):
 
             self.assertEqual(calls, [["codex", "plugin", "remove", "old-plugin@my-codex"]])
             self.assertEqual(cached_plugin_names(codex_home, "my-codex"), set())
-
-    def test_legacy_skill_watcher_adapter_execs_consolidated_adapter(self) -> None:
-        legacy_adapter = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "codex_hook_adapter.py"
-        exec_calls: list[tuple[str, list[str]]] = []
-
-        def fake_execv(executable: str, args: list[str]) -> None:
-            exec_calls.append((executable, args))
-            raise SystemExit(0)
-
-        with mock.patch("os.execv", fake_execv):
-            with mock.patch.object(sys, "argv", [str(legacy_adapter), "--dry-run"]):
-                with self.assertRaises(SystemExit) as raised:
-                    runpy.run_path(str(legacy_adapter), run_name="__main__")
-
-        self.assertEqual(raised.exception.code, 0)
-        self.assertEqual(exec_calls[0][0], sys.executable)
-        self.assertIn("plugins/watcher/scripts/skill/codex_hook_adapter.py", exec_calls[0][1][2])
-        self.assertEqual(exec_calls[0][1][-1], "--dry-run")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ description: Use when generating a standalone HTML reference summary for a proje
 
 Use this skill to turn a bounded scope into a standalone HTML developer reference. Scope may be a project, directory, module, feature area, documentation chapter, or user-provided source material.
 
-Do not use it for documentation drift audits; use `doc-alignment` or DocWatcher when the task is to find stale or contradictory docs.
+Do not use it for documentation drift audits; use Watcher `doc-alignment` when the task is to find stale or contradictory docs.
 
 ## Output Contract
 

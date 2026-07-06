@@ -12,7 +12,7 @@ This repository is the development mainline for the plugins and personal Codex c
 - `workflow`: packages reusable workflow skills, including continuation-ready long-running goal plans with frozen YOLO non-stops and runtime hard stops, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and standalone summaries.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
 
-The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees may remain during the watcher migration, but they are no longer default marketplace install entries.
+The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees were removed after the Watcher migration. Git history remains the recovery path for those retired plugin sources.
 
 ## Orchestration Workflow
 

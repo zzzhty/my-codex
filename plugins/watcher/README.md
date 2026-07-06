@@ -30,7 +30,7 @@ Current migration scope:
 
 - Source skills and direct skill resources have moved under `plugins/watcher/skills/`.
 - Report/audit scripts live behind the unified `plugins/watcher/scripts/watcher` entrypoint.
-- DocWatcher cockpit backend/frontend and legacy patch/PR/provider/webhook surfaces are not active in this plugin batch.
+- The former DocWatcher cockpit backend/frontend and legacy patch/PR/provider/webhook surfaces were not migrated into the active plugin source. Git history remains the recovery path for those retired experiments.
 
 Use the unified CLI from the Watcher plugin root:
 
