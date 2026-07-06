@@ -15,7 +15,7 @@ Evidence:
 
 - `plugins/watcher/skills/doc-alignment/SKILL.md`
 - `plugins/watcher/README.md`
-- `docs/todo/skill-prompt-optimization.md`
+- `docs/todo/archive/skill-prompt-optimization.md`
 - `mattpocock-skills:writing-great-skills` rubric: information hierarchy, context pointers, co-location, single source of truth, and sprawl control.
 - `workflow:prompt-strategy-loop` rubric: no-change baseline, frozen oracle, independent evaluation, bounded writeback, and source/cache separation.
 

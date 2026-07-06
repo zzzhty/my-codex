@@ -25,6 +25,7 @@
 ## Delegation policy
 
 - Use subagents only when the user explicitly asks for subagents or the active environment/plan authorizes them. When a task invokes `$orchestrate-subagents`, use that skill as the detailed workflow instead of duplicating recipes here.
+- Broad read-only review requests, such as PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, authorize read-only subagent review through `$orchestrate-subagents`. Use this prompt shape: `Use $orchestrate-subagents for this read-only review. Spawn only read-only explorer/default reviewers; do not use worker or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.`
 - Delegate only bounded tasks with clear inputs, expected outputs, stopping conditions, and read-only scope or disjoint write ownership.
 - Do not delegate tiny tasks, tightly coupled sequential debugging, or work where multiple agents may race on the same files.
 - Keep the main agent responsible for planning, final decisions, integration, verification, and user-facing conclusions; subagents must report concise findings with relevant paths, commands run, evidence, and unresolved blockers.

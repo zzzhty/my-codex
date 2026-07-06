@@ -14,7 +14,7 @@ Reduce `long-running-goal` instruction sprawl only if a future candidate can pre
 Evidence:
 
 - `plugins/workflow/skills/long-running-goal/SKILL.md`
-- `docs/todo/skill-prompt-optimization.md`
+- `docs/todo/archive/skill-prompt-optimization.md`
 - `mattpocock-skills:writing-great-skills` rubric: predictability, description precision, information hierarchy, single source of truth, and sprawl control.
 - `workflow:prompt-strategy-loop` rubric: no-change baseline, frozen oracle, independent evaluation, bounded writeback, and source/cache separation.
 
