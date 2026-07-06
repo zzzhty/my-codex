@@ -69,7 +69,7 @@ $MY_CODEX_PYTHON
 ## Smoke Test
 
 ```bash
-printf '%s\n' '{"event_type":"skill_stop","skill_name":"demo","outcome":"failure","failure_type":"tool_error","notes":"token sk-1234567890 should redact","metadata":{"api_key":"secret"}}' \
+printf '%s\n' '{"event_type":"turn_summary","outcome":"unknown","task_outcome":"unknown","skill_attribution":{"primary":{"name":"demo","source":"manual","confidence":"unknown"},"supporting":[],"effective":["demo"],"mentioned":[]},"notes":"token sk-1234567890 should redact","metadata":{"api_key":"secret"}}' \
   | "$MY_CODEX_PYTHON" scripts/collect_event.py
 
 "$MY_CODEX_PYTHON" scripts/summarize_logs.py --skill demo --since 1d
@@ -200,7 +200,7 @@ python3 scripts/refresh_my_codex.py --plugin mattpocock-skills
 - Trigger: the `Skill Watcher Weekly Report` Codex automation, or an explicit user request to run the same report workflow.
 - Working directory: `plugins/skill-watcher`.
 - Command: `"$MY_CODEX_PYTHON" scripts/generate_report.py --incremental --since 7d`, with optional `--skill <skill-name>` when the user narrows scope.
-- Outputs: report path, event count, and outcome counts from the command output.
+- Outputs: report path, event count, and task outcome counts from the command output.
 - Report location: `$CODEX_HOME/skill-watcher/reports/`.
 - Incremental state location: `$CODEX_HOME/skill-watcher/report-state.json`.
 - Memory location: `$CODEX_HOME/automations/skill-watcher-weekly-report/memory.md` when the scheduled automation needs run memory.
@@ -212,26 +212,26 @@ python3 scripts/refresh_my_codex.py --plugin mattpocock-skills
 
 The Codex hook adapter stores summaries, lengths, hashes, tool names, outcomes, and redacted metadata. It does not store full prompts, full assistant messages, full shell commands, or full tool responses.
 
-Codex hook payloads do not provide a stable native skill identifier. Skill Watcher now monitors an allowlist of high-value skills and records only explainable attribution:
+Codex hook payloads do not provide a stable native skill identifier. Skill Watcher records explainable v2 attribution in a top-level `skill_attribution` object:
 
-- `provided`: hook payload explicitly supplied a monitored `skill_name`
-- `prompt_mention`: the user prompt explicitly mentioned a monitored skill name or alias
-- `assistant_announcement`: the assistant message explicitly mentioned a monitored skill name or alias
-- `unknown`: no reliable monitored-skill signal
+- `primary`: the entry skill for this turn, including source, typed alias, role, and confidence.
+- `supporting`: direct supporting skills declared by plugin-owned metadata.
+- `effective`: primary plus supporting skill names, used by default reporting.
+- `mentioned`: extra runtime text matches that are evidence only and do not prove workflow use.
 
-On `SessionStart`, Skill Watcher scans the current `my-codex` marketplace source for `plugins/*/skills/*/SKILL.md`, derives monitored names as `<plugin-name>:<skill-name>`, and writes the current allowlist to `$CODEX_HOME/skill-watcher/monitored-skills.json`. Subsequent hook events read that file before falling back to the built-in bootstrap list, so adding or renaming packaged skills does not require editing the adapter's static allowlist.
+On `SessionStart`, Skill Watcher reads installed plugin metadata manifests from `.codex-plugin/skill-watcher.json`, validates declared canonical names, legacy names, typed aliases, roles, and supporting-skill relationships, and writes the runtime metadata cache to `$CODEX_HOME/skill-watcher/skill-metadata-cache.json`.
 
-Override the allowlist with a comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable.
+Override the monitored skill set with a comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable.
 
 For monitored prompts, Skill Watcher records a redacted `user_skill_context` summary, length, and hash. This captures the extra information the user mentioned while invoking the skill as potential future improvement evidence, without storing the raw prompt.
 
 Noise filtering:
 
-- `SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
+- `SessionStart` refreshes `$CODEX_HOME/skill-watcher/skill-metadata-cache.json` and is not persisted by default.
 - `UserPromptSubmit` is persisted only when it identifies a monitored skill.
 - `PostToolUse` updates per-turn tool counts for the active monitored skill, but successful tool calls are not persisted by default.
 - failed `PostToolUse` events are persisted for the active monitored skill.
-- `Stop` writes one `turn_summary` event for the active monitored skill, then clears transient turn state.
+- `Stop` writes one `turn_summary` event for the active monitored skill attribution, records `tool_failure_count` separately from `task_outcome`, then clears transient turn state.
 - set `SKILL_WATCHER_DEBUG_ALL_EVENTS=1` to persist all normalized events for hook debugging.
 
 ## Proposal Status

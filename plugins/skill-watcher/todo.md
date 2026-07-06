@@ -27,7 +27,7 @@ This document tracks what is still unclosed after the MVP and V1 implementation.
 
 - Add a local service or CLI API for append-event, query-events, summarize, create-proposal, and mark-proposal-status.
 - Add SQLite as the primary query store while preserving JSONL import/export.
-- Add query indexes for timestamp, agent, workspace, session_id, skill_name, event_type, outcome, and failure_type.
+- Add query indexes for timestamp, agent, workspace, session_id, skill_attribution.effective, event_type, task_outcome, outcome, and failure_type.
 - Add multi-agent adapters or templates for Claude Code and GitHub Copilot.
 - Add a review surface for recent failures, reports, proposals, rejected edits, and snapshots.
 - Track skill path, content hash, version metadata, snapshot path, proposal status, validation result, and proposal status history.

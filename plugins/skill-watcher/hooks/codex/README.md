@@ -70,7 +70,7 @@ It observes these Codex lifecycle events by default:
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
+`SessionStart` refreshes `$CODEX_HOME/skill-watcher/skill-metadata-cache.json` and is not persisted by default.
 
 The adapter reads one Codex hook JSON object from stdin, infers monitored-skill attribution when possible, and appends only useful normalized events to `$CODEX_HOME/skill-watcher/logs/events.jsonl`.
 
@@ -84,18 +84,18 @@ The adapter reads one Codex hook JSON object from stdin, infers monitored-skill 
 
 For `PostToolUse`, responses with explicit non-zero exit status or error markers become `outcome: "failure"` and `failure_type: "tool_error"`. Empty or missing responses become `outcome: "unknown"`; other responses become `outcome: "success"`.
 
-By default, successful `PostToolUse` events are counted in transient turn state but are not persisted as individual log records. Failed `PostToolUse` events are persisted only when a monitored skill is active. `Stop` writes one monitored `turn_summary` event and clears transient state.
+By default, successful `PostToolUse` events are counted in transient turn state but are not persisted as individual log records. Failed `PostToolUse` events are persisted only when a monitored skill attribution is active. `Stop` writes one monitored `turn_summary` event and clears transient state.
 
 ## Monitored Skill Attribution
 
-Codex hook payloads do not include a stable native skill identifier. Skill Watcher therefore records only explainable monitored-skill attribution:
+Codex hook payloads do not include a stable native skill identifier. Skill Watcher therefore records a top-level v2 `skill_attribution` object:
 
-- `provided`: hook payload explicitly supplied a monitored `skill_name`
-- `prompt_mention`: the user prompt explicitly mentioned a monitored skill name or alias
-- `assistant_announcement`: the assistant message explicitly mentioned a monitored skill name or alias
-- `unknown`: no reliable monitored-skill signal
+- `primary`: the entry skill for the turn.
+- `supporting`: direct supporting skills from plugin-owned `.codex-plugin/skill-watcher.json` metadata.
+- `effective`: primary plus supporting skill names for default usage reporting.
+- `mentioned`: runtime text matches that are evidence only.
 
-The default monitored skill allowlist is every skill packaged by the `my-codex` marketplace. Override it with the comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable when a narrower run is needed.
+The default monitored skill set is every skill packaged by the `my-codex` marketplace after metadata validation. Override it with the comma-, semicolon-, or newline-separated `SKILL_WATCHER_MONITORED_SKILLS` environment variable when a narrower run is needed.
 
 For monitored prompts, the adapter stores a redacted `user_skill_context` summary, length, hash, and matched alias. This captures the extra information users mention while invoking a skill as improvement evidence without storing raw prompts.
 

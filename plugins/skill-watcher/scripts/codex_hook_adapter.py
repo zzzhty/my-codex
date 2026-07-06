@@ -18,10 +18,15 @@ from redact_event import redact_event, redact_string
 from runtime_paths import log_file_path, safe_slug as runtime_safe_slug, turns_dir, utc_now_text
 
 
+SCHEMA_VERSION = 2
 SUPPORTED_HOOK_EVENTS = {"SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"}
 SUMMARY_LIMIT = 160
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-ALLOWLIST_FILE = "monitored-skills.json"
+METADATA_CACHE_FILE = "skill-metadata-cache.json"
+SCHEMA_VERSION_FILE = "schema-version.json"
+DEFAULT_ROLE = "entrypoint"
+VALID_ROLES = {"entrypoint", "wrapper", "discipline", "specialized"}
+VALID_ALIAS_MATCHES = {"exact", "phrase", "token"}
 DEFAULT_MONITORED_SKILLS = (
     "skill-watcher:skill-maintainer",
     "skill-watcher:skill-compressor",
@@ -49,54 +54,13 @@ DEFAULT_MONITORED_SKILLS = (
     "mattpocock-skills:triage",
     "mattpocock-skills:writing-great-skills",
 )
-DEFAULT_SKILL_ALIASES = {
-    "skill-watcher:skill-maintainer": ("skill-maintainer", "skill maintainer", "skill watcher"),
-    "skill-watcher:skill-compressor": ("skill-compressor", "skill compressor", "skill compression"),
-    "doc-watcher:doc-alignment": ("doc-alignment", "doc watcher", "documentation alignment"),
-    "doc-watcher:housekeeping": ("housekeeping", "cleanup", "clean up", "repo cleanup"),
-    "workflow:long-running-goal": ("long-running-goal", "long running goal", "long-running goal"),
-    "workflow:orchestrate-subagents": ("orchestrate-subagents", "orchestrate subagents"),
-    "workflow:prompt-strategy-loop": (
-        "prompt-strategy-loop",
-        "prompt strategy loop",
-        "prompt loop",
-        "strategy loop",
-    ),
-    "workflow:summary-in-html": ("summary-in-html", "summary in html", "html summary", "developer summary"),
-    "workflow:sop": (
-        "sop",
-        "standard operating procedure",
-        "standard procedure",
-        "标准流程",
-        "标准处理流程",
-    ),
-    "mattpocock-skills:ask-matt": ("ask-matt", "ask matt", "which matt pocock skill"),
-    "mattpocock-skills:codebase-design": ("codebase-design", "codebase design", "deep modules"),
-    "mattpocock-skills:diagnosing-bugs": ("diagnosing-bugs", "diagnose", "diagnose this", "debug this"),
-    "mattpocock-skills:domain-modeling": ("domain-modeling", "domain modeling", "domain model"),
-    "mattpocock-skills:grill-me": ("grill-me", "grill me"),
-    "mattpocock-skills:grill-with-docs": ("grill-with-docs", "grill with docs"),
-    "mattpocock-skills:grilling": ("grilling", "grilling session"),
-    "mattpocock-skills:handoff": ("handoff", "handoff document"),
-    "mattpocock-skills:improve-codebase-architecture": (
-        "improve-codebase-architecture",
-        "improve codebase architecture",
-        "improve architecture",
-        "architecture review",
-    ),
-    "mattpocock-skills:prototype": ("prototype", "prototype this"),
-    "mattpocock-skills:tdd": ("tdd", "test-driven", "red-green-refactor"),
-    "mattpocock-skills:teach": ("teach", "teach me"),
-    "mattpocock-skills:to-issues": ("to-issues", "to issues"),
-    "mattpocock-skills:to-prd": ("to-prd", "to prd"),
-    "mattpocock-skills:triage": ("triage", "triage issues"),
-    "mattpocock-skills:writing-great-skills": ("writing-great-skills", "write-a-skill", "write a skill"),
-}
+DEFAULT_SKILL_ALIASES: dict[str, tuple[str, ...]] = {}
 FAILURE_TEXT_RE = re.compile(
     r"(?:exit(?:ed)?\s+(?:with\s+)?(?:code|status)\s+[1-9]\d*|"
     r"non[- ]zero\s+exit|traceback|exception|error)",
     re.IGNORECASE,
 )
+TOKEN_RE_TEMPLATE = r"(?<![a-z0-9_-]){alias}(?![a-z0-9_-])"
 
 
 @dataclass(frozen=True)
@@ -272,80 +236,218 @@ def discover_packaged_skills(marketplace_root: Path | None = None) -> tuple[str,
     return tuple(sorted(skills))
 
 
-def allowlist_path(state_dir: Path) -> Path:
-    return state_dir / ALLOWLIST_FILE
+def metadata_cache_path(state_dir: Path) -> Path:
+    return state_dir / METADATA_CACHE_FILE
+
+
+def schema_version_path(state_dir: Path) -> Path:
+    return state_dir / SCHEMA_VERSION_FILE
+
+
+def default_aliases_for_skill(skill_name: str) -> list[dict[str, str]]:
+    aliases = [{"value": skill_name, "kind": "skill_name", "match": "phrase"}]
+    if ":" in skill_name:
+        aliases.append({"value": skill_name.rsplit(":", 1)[-1], "kind": "slug", "match": "token"})
+    return aliases
+
+
+def normalize_alias(raw_alias: Any, *, manifest_path: Path, skill_name: str) -> dict[str, str]:
+    if isinstance(raw_alias, str):
+        raw_alias = {"value": raw_alias, "kind": "phrase", "match": "phrase"}
+    if not isinstance(raw_alias, dict):
+        raise SystemExit(f"invalid alias for {skill_name} in {manifest_path}: expected object")
+    value = raw_alias.get("value")
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(f"invalid alias for {skill_name} in {manifest_path}: missing value")
+    kind = raw_alias.get("kind")
+    match = raw_alias.get("match")
+    kind_value = kind if isinstance(kind, str) and kind.strip() else "phrase"
+    match_value = match if isinstance(match, str) and match.strip() else "phrase"
+    if match_value not in VALID_ALIAS_MATCHES:
+        raise SystemExit(f"invalid alias match for {skill_name} in {manifest_path}: {match_value}")
+    return {
+        "value": value.strip(),
+        "kind": kind_value.strip(),
+        "match": match_value,
+    }
+
+
+def normalize_manifest_skill(
+    raw_skill: Any,
+    *,
+    manifest_path: Path,
+    skill_name: str,
+) -> dict[str, Any]:
+    if raw_skill is None:
+        raw_skill = {}
+    if not isinstance(raw_skill, dict):
+        raise SystemExit(f"invalid skill metadata for {skill_name} in {manifest_path}: expected object")
+    role = raw_skill.get("role", DEFAULT_ROLE)
+    if not isinstance(role, str) or role not in VALID_ROLES:
+        raise SystemExit(f"invalid role for {skill_name} in {manifest_path}: {role!r}")
+    raw_aliases = raw_skill.get("aliases", default_aliases_for_skill(skill_name))
+    if not isinstance(raw_aliases, list):
+        raise SystemExit(f"invalid aliases for {skill_name} in {manifest_path}: expected list")
+    aliases = [normalize_alias(alias, manifest_path=manifest_path, skill_name=skill_name) for alias in raw_aliases]
+    raw_supporting = raw_skill.get("supporting_skills", [])
+    if not isinstance(raw_supporting, list):
+        raise SystemExit(f"invalid supporting_skills for {skill_name} in {manifest_path}: expected list")
+    supporting = []
+    for item in raw_supporting:
+        if not isinstance(item, str) or not item.strip():
+            raise SystemExit(f"invalid supporting skill for {skill_name} in {manifest_path}: {item!r}")
+        supporting.append(item.strip())
+    return {
+        "role": role,
+        "aliases": aliases,
+        "supporting_skills": sorted(dict.fromkeys(supporting)),
+    }
+
+
+def load_plugin_skill_metadata(plugin_dir: Path) -> tuple[dict[str, Any], dict[str, str]]:
+    plugin_name = plugin_name_from_manifest(plugin_dir)
+    packaged = {
+        f"{plugin_name}:{skill_name_from_frontmatter(skill_file)}"
+        for skill_file in sorted((plugin_dir / "skills").glob("*/SKILL.md"))
+    }
+    skills = {
+        skill_name: normalize_manifest_skill(None, manifest_path=plugin_dir, skill_name=skill_name)
+        for skill_name in sorted(packaged)
+    }
+    legacy_names: dict[str, str] = {}
+    manifest_path = plugin_dir / ".codex-plugin" / "skill-watcher.json"
+    if not manifest_path.is_file():
+        return skills, legacy_names
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"invalid skill metadata JSON {manifest_path}: line {exc.lineno}, column {exc.colno}") from exc
+    except OSError as exc:
+        raise SystemExit(f"failed to read skill metadata {manifest_path}: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise SystemExit(f"skill metadata manifest must be an object: {manifest_path}")
+    raw_skills = manifest.get("skills", {})
+    if not isinstance(raw_skills, dict):
+        raise SystemExit(f"skill metadata skills must be an object: {manifest_path}")
+    for skill_name, raw_skill in raw_skills.items():
+        if not isinstance(skill_name, str) or not skill_name.strip():
+            raise SystemExit(f"invalid skill metadata key in {manifest_path}: {skill_name!r}")
+        if skill_name not in packaged:
+            raise SystemExit(f"skill metadata references unpackaged skill {skill_name} in {manifest_path}")
+        skills[skill_name] = normalize_manifest_skill(raw_skill, manifest_path=manifest_path, skill_name=skill_name)
+    raw_legacy = manifest.get("legacy_names", {})
+    if not isinstance(raw_legacy, dict):
+        raise SystemExit(f"skill metadata legacy_names must be an object: {manifest_path}")
+    for old_name, new_name in raw_legacy.items():
+        if not isinstance(old_name, str) or not isinstance(new_name, str):
+            raise SystemExit(f"invalid legacy mapping in {manifest_path}: {old_name!r} -> {new_name!r}")
+        if new_name not in packaged:
+            raise SystemExit(f"legacy mapping points to unpackaged skill {new_name} in {manifest_path}")
+        legacy_names[old_name] = new_name
+    return skills, legacy_names
+
+
+def discover_skill_metadata(marketplace_root: Path | None = None) -> dict[str, Any]:
+    root = marketplace_root or marketplace_root_from_adapter()
+    skills: dict[str, Any] = {}
+    legacy_names: dict[str, str] = {}
+    for plugin_dir in marketplace_plugin_dirs(root):
+        if not (plugin_dir / "skills").is_dir():
+            continue
+        plugin_skills, plugin_legacy = load_plugin_skill_metadata(plugin_dir)
+        overlap = set(skills).intersection(plugin_skills)
+        if overlap:
+            raise SystemExit(f"duplicate skill metadata entries: {', '.join(sorted(overlap))}")
+        skills.update(plugin_skills)
+        legacy_names.update(plugin_legacy)
+    for skill_name, metadata in skills.items():
+        for supporting in metadata.get("supporting_skills", []):
+            if supporting not in skills:
+                raise SystemExit(f"skill metadata for {skill_name} references missing supporting skill {supporting}")
+    configured = parse_env_list(os.environ.get("SKILL_WATCHER_MONITORED_SKILLS"))
+    if configured:
+        configured_set = set(configured)
+        skills = {name: data for name, data in skills.items() if name in configured_set}
+        legacy_names = {old: new for old, new in legacy_names.items() if new in skills}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "generated_at": utc_now(),
+        "source_root": str(root),
+        "skills": dict(sorted(skills.items())),
+        "legacy_names": dict(sorted(legacy_names.items())),
+    }
+
+
+def write_schema_marker(state_dir: Path) -> None:
+    path = schema_version_path(state_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"schema_version": SCHEMA_VERSION, "updated_at": utc_now()}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def require_runtime_schema(state_dir: Path) -> None:
+    path = schema_version_path(state_dir)
+    if not path.is_file():
+        raise SystemExit(f"Skill Watcher schema is not initialized at {path}; run migration or SessionStart first")
+    cache_path = metadata_cache_path(state_dir)
+    if not cache_path.is_file():
+        raise SystemExit(f"Skill Watcher metadata cache is missing at {cache_path}; run migration or SessionStart first")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"invalid Skill Watcher schema marker {path}: {exc}") from exc
+    if not isinstance(data, dict) or data.get("schema_version") != SCHEMA_VERSION:
+        raise SystemExit(f"Skill Watcher schema mismatch at {path}; run migrate_skill_watcher_schema.py")
+
+
+def load_runtime_metadata(state_dir: Path | None = None, *, allow_discovery: bool = True) -> dict[str, Any]:
+    if state_dir is not None:
+        path = metadata_cache_path(state_dir)
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise SystemExit(f"invalid runtime metadata cache {path}: {exc}") from exc
+            if isinstance(data, dict) and data.get("schema_version") == SCHEMA_VERSION and isinstance(data.get("skills"), dict):
+                return data
+            raise SystemExit(f"runtime metadata cache schema mismatch at {path}; run migrate_skill_watcher_schema.py")
+    if allow_discovery:
+        return discover_skill_metadata()
+    return {"schema_version": SCHEMA_VERSION, "skills": {}, "legacy_names": {}}
 
 
 def load_dynamic_monitored_skills(state_dir: Path | None = None) -> tuple[str, ...]:
-    target_state_dir = state_dir or state_dir_from_env_or_arg(None)
-    path = allowlist_path(target_state_dir)
+    if state_dir is None:
+        return tuple(load_runtime_metadata(None).get("skills", {}).keys())
+    path = metadata_cache_path(state_dir)
     if not path.is_file():
         return ()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ()
-    skills = data.get("skills") if isinstance(data, dict) else None
-    if not isinstance(skills, list):
-        return ()
-    return tuple(str(skill).strip() for skill in skills if str(skill).strip())
+    data = load_runtime_metadata(state_dir, allow_discovery=False)
+    skills = data.get("skills")
+    return tuple(sorted(skills)) if isinstance(skills, dict) else ()
 
 
 def refresh_dynamic_monitored_skills(state_dir: Path) -> dict[str, Any]:
-    source_root = marketplace_root_from_adapter()
-    skills = discover_packaged_skills(source_root)
-    if skills:
-        path = allowlist_path(state_dir)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "generated_at": utc_now(),
-                    "source_root": str(source_root),
-                    "skills": list(skills),
-                },
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+    metadata = discover_skill_metadata()
+    path = metadata_cache_path(state_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_schema_marker(state_dir)
+    skills = metadata.get("skills") if isinstance(metadata.get("skills"), dict) else {}
+    legacy_names = metadata.get("legacy_names") if isinstance(metadata.get("legacy_names"), dict) else {}
     return {
-        "path": str(allowlist_path(state_dir)),
+        "path": str(path),
         "skill_count": len(skills),
-        "source_root": str(source_root),
+        "legacy_name_count": len(legacy_names),
+        "source_root": str(metadata.get("source_root") or ""),
         "updated": bool(skills),
     }
 
 
 def monitored_skills(state_dir: Path | None = None) -> tuple[str, ...]:
-    configured = parse_env_list(os.environ.get("SKILL_WATCHER_MONITORED_SKILLS"))
-    if configured:
-        return configured
-    dynamic = load_dynamic_monitored_skills(state_dir)
-    return dynamic or DEFAULT_MONITORED_SKILLS
-
-
-def aliases_for_skill(skill_name: str) -> tuple[str, ...]:
-    aliases = [skill_name]
-    if ":" in skill_name:
-        aliases.append(skill_name.rsplit(":", 1)[-1])
-    aliases.extend(DEFAULT_SKILL_ALIASES.get(skill_name, ()))
-    deduped: list[str] = []
-    for alias in aliases:
-        normalized = alias.strip().lower()
-        if normalized and normalized not in deduped:
-            deduped.append(normalized)
-    return tuple(deduped)
-
-
-def alias_matches(text: str, alias: str) -> bool:
-    escaped = re.escape(alias)
-    if len(alias) <= 4 and re.fullmatch(r"[a-z0-9_-]+", alias):
-        return re.search(rf"(?<![a-z0-9_-]){escaped}(?![a-z0-9_-])", text) is not None
-    return alias in text
+    return load_dynamic_monitored_skills(state_dir) or DEFAULT_MONITORED_SKILLS
 
 
 def text_for_matching(value: Any) -> str:
@@ -356,50 +458,196 @@ def text_for_matching(value: Any) -> str:
     return json_fingerprint(value)
 
 
-def match_monitored_skill(value: Any, *, state_dir: Path | None = None) -> dict[str, str] | None:
-    text = text_for_matching(value).lower()
-    if not text:
+def alias_matches(text: str, alias: str, match_strategy: str = "phrase") -> bool:
+    normalized_text = text.lower()
+    normalized_alias = alias.lower().strip()
+    if not normalized_text or not normalized_alias:
+        return False
+    if match_strategy == "exact":
+        return normalized_text.strip() == normalized_alias
+    escaped = re.escape(normalized_alias)
+    if match_strategy == "token":
+        return re.search(TOKEN_RE_TEMPLATE.format(alias=escaped), normalized_text) is not None
+    if re.fullmatch(r"[a-z0-9_ -]+", normalized_alias):
+        return re.search(TOKEN_RE_TEMPLATE.format(alias=escaped), normalized_text) is not None
+    return normalized_alias in normalized_text
+
+
+def canonical_skill_name(value: Any, metadata: dict[str, Any]) -> str | None:
+    if not isinstance(value, str) or not value.strip():
         return None
-    for skill_name in monitored_skills(state_dir):
-        for alias in aliases_for_skill(skill_name):
-            if alias_matches(text, alias):
-                return {"skill_name": skill_name, "matched_alias": alias}
-    return None
+    raw = value.strip()
+    skills = metadata.get("skills") if isinstance(metadata.get("skills"), dict) else {}
+    legacy_names = metadata.get("legacy_names") if isinstance(metadata.get("legacy_names"), dict) else {}
+    if raw in skills:
+        return raw
+    mapped = legacy_names.get(raw)
+    return mapped if isinstance(mapped, str) and mapped in skills else None
 
 
-def context_from_match(match: dict[str, str], *, attribution: str, confidence: str) -> dict[str, str]:
+def match_all_monitored_skills(
+    value: Any,
+    *,
+    state_dir: Path | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> list[dict[str, str]]:
+    text = text_for_matching(value)
+    if not text:
+        return []
+    resolved_metadata = metadata or load_runtime_metadata(state_dir)
+    skills = resolved_metadata.get("skills") if isinstance(resolved_metadata.get("skills"), dict) else {}
+    matches: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for skill_name, skill_data in skills.items():
+        aliases = skill_data.get("aliases") if isinstance(skill_data, dict) else []
+        if not isinstance(aliases, list):
+            continue
+        for alias in aliases:
+            if not isinstance(alias, dict):
+                continue
+            value = alias.get("value")
+            match_strategy = alias.get("match", "phrase")
+            if not isinstance(value, str) or not isinstance(match_strategy, str):
+                continue
+            if alias_matches(text, value, match_strategy):
+                if skill_name not in seen:
+                    matches.append(
+                        {
+                            "name": skill_name,
+                            "matched_alias": value,
+                            "alias_kind": str(alias.get("kind") or ""),
+                            "match": match_strategy,
+                        }
+                    )
+                    seen.add(skill_name)
+                break
+    return matches
+
+
+def match_monitored_skill(value: Any, *, state_dir: Path | None = None) -> dict[str, str] | None:
+    matches = match_all_monitored_skills(value, state_dir=state_dir)
+    return matches[0] if matches else None
+
+
+def supporting_skill_entries(primary_name: str, metadata: dict[str, Any]) -> list[dict[str, str]]:
+    skills = metadata.get("skills") if isinstance(metadata.get("skills"), dict) else {}
+    primary = skills.get(primary_name) if isinstance(skills.get(primary_name), dict) else {}
+    supporting = primary.get("supporting_skills") if isinstance(primary, dict) else []
+    if not isinstance(supporting, list):
+        return []
+    return [
+        {
+            "name": str(name),
+            "role": skill_role(str(name), metadata),
+            "source": "manifest_dependency",
+            "via": primary_name,
+        }
+        for name in supporting
+        if isinstance(name, str) and name in skills
+    ]
+
+
+def skill_role(skill_name: str, metadata: dict[str, Any]) -> str:
+    skills = metadata.get("skills") if isinstance(metadata.get("skills"), dict) else {}
+    skill = skills.get(skill_name) if isinstance(skills.get(skill_name), dict) else {}
+    role = skill.get("role") if isinstance(skill, dict) else None
+    return role if isinstance(role, str) and role else DEFAULT_ROLE
+
+
+def attribution_from_primary(
+    primary_match: dict[str, str],
+    *,
+    source: str,
+    confidence: str,
+    metadata: dict[str, Any],
+    mentioned_matches: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    primary_name = primary_match["name"]
+    primary = {
+        "name": primary_name,
+        "role": skill_role(primary_name, metadata),
+        "source": source,
+        "matched_alias": primary_match.get("matched_alias", ""),
+        "alias_kind": primary_match.get("alias_kind", ""),
+        "match": primary_match.get("match", ""),
+        "confidence": confidence,
+    }
+    supporting = supporting_skill_entries(primary_name, metadata)
+    effective = [primary_name] + [entry["name"] for entry in supporting]
+    mentioned = []
+    for match in mentioned_matches or []:
+        name = match["name"]
+        if name == primary_name:
+            continue
+        mentioned.append(
+            {
+                "name": name,
+                "source": source,
+                "matched_alias": match.get("matched_alias", ""),
+                "alias_kind": match.get("alias_kind", ""),
+                "match": match.get("match", ""),
+            }
+        )
     return {
-        "skill_name": match["skill_name"],
-        "skill_attribution": attribution,
-        "skill_confidence": confidence,
-        "matched_alias": match["matched_alias"],
+        "primary": primary,
+        "supporting": supporting,
+        "effective": sorted(dict.fromkeys(effective)),
+        "mentioned": mentioned,
     }
 
 
-def infer_skill_context(payload: dict[str, Any], *, state_dir: Path | None = None) -> dict[str, str] | None:
+def empty_attribution() -> dict[str, Any]:
+    return {
+        "primary": None,
+        "supporting": [],
+        "effective": [],
+        "mentioned": [],
+    }
+
+
+def infer_skill_attribution(payload: dict[str, Any], *, state_dir: Path | None = None) -> dict[str, Any] | None:
+    metadata = load_runtime_metadata(state_dir)
     provided = payload.get("skill_name") or payload.get("skill")
-    provided_match = match_monitored_skill(provided, state_dir=state_dir)
-    if provided_match:
-        return context_from_match(provided_match, attribution="provided", confidence="high")
+    canonical = canonical_skill_name(provided, metadata)
+    if canonical:
+        return attribution_from_primary(
+            {"name": canonical, "matched_alias": str(provided), "alias_kind": "skill_name", "match": "exact"},
+            source="provided",
+            confidence="high",
+            metadata=metadata,
+        )
 
     if "prompt" in payload:
-        prompt_match = match_monitored_skill(payload.get("prompt"), state_dir=state_dir)
-        if prompt_match:
-            return context_from_match(prompt_match, attribution="prompt_mention", confidence="high")
+        matches = match_all_monitored_skills(payload.get("prompt"), metadata=metadata)
+        if matches:
+            return attribution_from_primary(
+                matches[0],
+                source="prompt_mention",
+                confidence="high",
+                metadata=metadata,
+                mentioned_matches=matches,
+            )
 
     if "last_assistant_message" in payload:
-        assistant_match = match_monitored_skill(payload.get("last_assistant_message"), state_dir=state_dir)
-        if assistant_match:
-            return context_from_match(assistant_match, attribution="assistant_announcement", confidence="medium")
+        matches = match_all_monitored_skills(payload.get("last_assistant_message"), metadata=metadata)
+        if matches:
+            return attribution_from_primary(
+                matches[0],
+                source="assistant_announcement",
+                confidence="medium",
+                metadata=metadata,
+                mentioned_matches=matches,
+            )
 
     return None
 
 
-def user_skill_context(payload: dict[str, Any], context: dict[str, str] | None) -> dict[str, Any] | None:
-    if not context or context.get("skill_attribution") != "prompt_mention" or "prompt" not in payload:
+def user_skill_context(payload: dict[str, Any], attribution: dict[str, Any] | None) -> dict[str, Any] | None:
+    primary = attribution.get("primary") if isinstance(attribution, dict) else None
+    if not isinstance(primary, dict) or primary.get("source") != "prompt_mention" or "prompt" not in payload:
         return None
     summary = summarize_json_value(payload.get("prompt"), limit=240)
-    summary["matched_alias"] = context.get("matched_alias", "")
+    summary["matched_alias"] = primary.get("matched_alias", "")
     summary["source"] = "prompt"
     return summary
 
@@ -423,7 +671,7 @@ def load_turn_state(state_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
-    return data if isinstance(data, dict) else {}
+    return data if isinstance(data, dict) and data.get("schema_version") == SCHEMA_VERSION else {}
 
 
 def write_turn_state(state_dir: Path, payload: dict[str, Any], state: dict[str, Any]) -> None:
@@ -444,29 +692,25 @@ def clear_turn_state(state_dir: Path, payload: dict[str, Any]) -> None:
         return
 
 
-def state_skill_context(state: dict[str, Any]) -> dict[str, str] | None:
-    skill_name = str(state.get("skill_name") or "")
-    if not skill_name:
+def state_skill_attribution(state: dict[str, Any]) -> dict[str, Any] | None:
+    attribution = state.get("skill_attribution")
+    if not isinstance(attribution, dict) or not isinstance(attribution.get("primary"), dict):
         return None
-    return {
-        "skill_name": skill_name,
-        "skill_attribution": str(state.get("skill_attribution") or "unknown"),
-        "skill_confidence": str(state.get("skill_confidence") or "unknown"),
-        "matched_alias": str(state.get("matched_alias") or ""),
-    }
+    return attribution
 
 
-def initial_turn_state(payload: dict[str, Any], context: dict[str, str], usage_context: dict[str, Any] | None) -> dict[str, Any]:
+def initial_turn_state(
+    payload: dict[str, Any],
+    attribution: dict[str, Any],
+    usage_context: dict[str, Any] | None,
+) -> dict[str, Any]:
     state: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "session_id": str(payload.get("session_id") or ""),
         "turn_id": str(payload.get("turn_id") or ""),
-        "skill_name": context["skill_name"],
-        "skill_attribution": context["skill_attribution"],
-        "skill_confidence": context["skill_confidence"],
-        "matched_alias": context.get("matched_alias", ""),
+        "skill_attribution": attribution,
         "tool_count": 0,
-        "tool_failures": 0,
+        "tool_failure_count": 0,
         "tools_used": {},
         "started_at": utc_now(),
         "updated_at": utc_now(),
@@ -479,7 +723,7 @@ def initial_turn_state(payload: dict[str, Any], context: dict[str, str], usage_c
 def update_tool_stats(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     state["tool_count"] = int(state.get("tool_count") or 0) + 1
     if event.get("outcome") == "failure":
-        state["tool_failures"] = int(state.get("tool_failures") or 0) + 1
+        state["tool_failure_count"] = int(state.get("tool_failure_count") or 0) + 1
     tools = state.get("tools_used")
     if not isinstance(tools, dict):
         tools = {}
@@ -539,35 +783,32 @@ def detect_post_tool_outcome(tool_response: Any) -> tuple[str, str]:
 def normalize_hook_payload(
     payload: dict[str, Any],
     *,
-    skill_context: dict[str, str] | None = None,
+    skill_attribution: dict[str, Any] | None = None,
     state_dir: Path | None = None,
 ) -> dict[str, Any]:
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
     event_type = camel_to_snake(hook_event_name)
-    context = skill_context or infer_skill_context(payload, state_dir=state_dir)
-    skill_name = context["skill_name"] if context else "unknown"
-    skill_attribution = context["skill_attribution"] if context else "unknown"
-    skill_confidence = context["skill_confidence"] if context else "unknown"
+    attribution = skill_attribution or infer_skill_attribution(payload, state_dir=state_dir) or empty_attribution()
     tool_name = payload.get("tool_name")
 
     outcome = "unknown"
     failure_type = ""
     if hook_event_name == "PostToolUse":
         outcome, failure_type = detect_post_tool_outcome(payload.get("tool_response"))
-    elif hook_event_name == "UserPromptSubmit" and context:
+    elif hook_event_name == "UserPromptSubmit" and attribution.get("primary"):
         outcome = "success"
 
     event: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
         "agent": "codex",
         "event_type": event_type,
         "workspace": str(payload.get("cwd") or ""),
         "session_id": str(payload.get("session_id") or ""),
-        "skill_name": skill_name,
-        "skill_version": str(payload.get("skill_version") or ""),
         "trigger_reason": f"Codex hook {hook_event_name}",
         "tools_used": [str(tool_name)] if tool_name else [],
         "outcome": outcome,
         "failure_type": failure_type,
+        "skill_attribution": attribution,
         "notes": f"Observed Codex {hook_event_name} event.",
         "codex": {
             "hook_event_name": hook_event_name,
@@ -576,14 +817,10 @@ def normalize_hook_payload(
             "permission_mode": payload.get("permission_mode"),
             "transcript_path": payload.get("transcript_path"),
             "tool_use_id": payload.get("tool_use_id"),
-            "skill_attribution": skill_attribution,
-            "skill_confidence": skill_confidence,
-            "matched_alias": context.get("matched_alias", "") if context else "",
-            "monitored_skill": context is not None,
         },
     }
 
-    usage_context = user_skill_context(payload, context)
+    usage_context = user_skill_context(payload, attribution)
     if usage_context is not None:
         event["codex"]["user_skill_context"] = usage_context
 
@@ -615,15 +852,22 @@ def normalize_hook_payload(
         file_touched=None,
         check=None,
     )
-    return normalize_event(redact_event(event), args)
+    normalized = normalize_event(redact_event(event), args)
+    normalized.pop("skill_name", None)
+    normalized.pop("skill_version", None)
+    return normalized
+
+
+def has_primary_attribution(event: dict[str, Any]) -> bool:
+    attribution = event.get("skill_attribution")
+    return isinstance(attribution, dict) and isinstance(attribution.get("primary"), dict)
 
 
 def should_persist_event(event: dict[str, Any]) -> bool:
     if os.environ.get("SKILL_WATCHER_DEBUG_ALL_EVENTS", "").strip().lower() in {"1", "true", "yes", "on"}:
         return True
 
-    codex = event.get("codex") if isinstance(event.get("codex"), dict) else {}
-    if not codex.get("monitored_skill"):
+    if not has_primary_attribution(event):
         return False
 
     event_type = event.get("event_type")
@@ -638,17 +882,19 @@ def should_persist_event(event: dict[str, Any]) -> bool:
 
 def apply_turn_summary(event: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
     tool_count = int(state.get("tool_count") or 0)
-    tool_failures = int(state.get("tool_failures") or 0)
+    tool_failure_count = int(state.get("tool_failure_count") or 0)
     tools_used = state.get("tools_used") if isinstance(state.get("tools_used"), dict) else {}
 
     event["event_type"] = "turn_summary"
-    event["outcome"] = "failure" if tool_failures else "success"
-    event["failure_type"] = "tool_error" if tool_failures else ""
+    event["outcome"] = "unknown"
+    event["failure_type"] = ""
+    event["task_outcome"] = "unknown"
     event["notes"] = "Observed monitored Codex turn summary."
     event["tools_used"] = sorted(str(tool) for tool in tools_used.keys())
     event["codex"]["turn_summary"] = {
+        "task_outcome": "unknown",
         "tool_count": tool_count,
-        "tool_failures": tool_failures,
+        "tool_failure_count": tool_failure_count,
         "tools_used": tools_used,
     }
     if isinstance(state.get("user_skill_context"), dict):
@@ -661,30 +907,31 @@ def process_hook(payload: dict[str, Any], runtime_paths: HookRuntimePaths, *, pe
     if persist:
         ensure_runtime_dirs(target_state_dir)
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
-    allowlist_update = (
-        refresh_dynamic_monitored_skills(target_state_dir)
-        if persist and hook_event_name == "SessionStart"
-        else None
-    )
-    direct_context = infer_skill_context(payload, state_dir=target_state_dir)
+    metadata_update = None
+    if persist and hook_event_name == "SessionStart":
+        metadata_update = refresh_dynamic_monitored_skills(target_state_dir)
+    elif persist:
+        require_runtime_schema(target_state_dir)
+
+    direct_attribution = infer_skill_attribution(payload, state_dir=target_state_dir)
     state = load_turn_state(target_state_dir, payload)
-    context = direct_context or state_skill_context(state)
-    event = normalize_hook_payload(payload, skill_context=context, state_dir=target_state_dir)
-    if allowlist_update is not None:
-        event["codex"]["allowlist_update"] = allowlist_update
+    attribution = direct_attribution or state_skill_attribution(state)
+    event = normalize_hook_payload(payload, skill_attribution=attribution, state_dir=target_state_dir)
+    if metadata_update is not None:
+        event["codex"]["metadata_update"] = metadata_update
 
     if hook_event_name == "UserPromptSubmit":
-        if persist and direct_context:
+        if persist and direct_attribution:
             usage_context = event.get("codex", {}).get("user_skill_context")
-            write_turn_state(target_state_dir, payload, initial_turn_state(payload, direct_context, usage_context))
+            write_turn_state(target_state_dir, payload, initial_turn_state(payload, direct_attribution, usage_context))
         elif persist:
             clear_turn_state(target_state_dir, payload)
-    elif persist and hook_event_name == "PostToolUse" and context:
+    elif persist and hook_event_name == "PostToolUse" and attribution:
         if not state:
-            state = initial_turn_state(payload, context, None)
+            state = initial_turn_state(payload, attribution, None)
         state = update_tool_stats(state, event)
         write_turn_state(target_state_dir, payload, state)
-    elif hook_event_name == "Stop" and context:
+    elif hook_event_name == "Stop" and attribution:
         event = apply_turn_summary(event, state)
 
     persisted = should_persist_event(event)

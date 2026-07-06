@@ -30,7 +30,7 @@ from runtime_paths import expand_path, log_file_path, state_dir_from_env_or_arg
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize Skill Watcher JSONL logs.")
-    parser.add_argument("--skill", help="Filter by skill_name.")
+    parser.add_argument("--skill", help="Filter by effective skill name.")
     parser.add_argument("--since", help="Filter by relative time such as 1d or ISO timestamp.")
     parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/skill-watcher.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")

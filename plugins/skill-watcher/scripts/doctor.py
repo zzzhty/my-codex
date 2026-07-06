@@ -187,13 +187,15 @@ class Doctor:
         }
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
+            write_hook_event({**sample, "hook_event_name": "SessionStart"}, state_dir=state_dir)
             event = write_hook_event(sample, state_dir=state_dir)
             log_file = log_file_path(state_dir)
             raw = log_file.read_text(encoding="utf-8")
         if "sk-doctorsecret" in raw:
             self.fail("sample event leaked a secret-like token")
             return
-        if event.get("skill_name") != "mattpocock-skills:diagnosing-bugs":
+        primary = event.get("skill_attribution", {}).get("primary", {})
+        if primary.get("name") != "mattpocock-skills:diagnosing-bugs":
             self.fail("sample event did not infer the monitored diagnosing-bugs skill")
             return
         parsed = json.loads(raw.strip())

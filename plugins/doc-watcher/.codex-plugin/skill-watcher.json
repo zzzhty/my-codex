@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "doc-watcher:doc-alignment": {
+      "role": "discipline",
+      "aliases": [
+        {"value": "doc-watcher:doc-alignment", "kind": "skill_name", "match": "phrase"},
+        {"value": "doc-alignment", "kind": "slug", "match": "token"},
+        {"value": "doc watcher", "kind": "phrase", "match": "phrase"},
+        {"value": "documentation alignment", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "doc-watcher:housekeeping": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "doc-watcher:housekeeping", "kind": "skill_name", "match": "phrase"},
+        {"value": "housekeeping", "kind": "slug", "match": "token"},
+        {"value": "cleanup", "kind": "token", "match": "token"},
+        {"value": "clean up", "kind": "phrase", "match": "phrase"},
+        {"value": "repo cleanup", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": ["doc-watcher:doc-alignment"]
+    }
+  },
+  "legacy_names": {}
+}

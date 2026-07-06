@@ -33,6 +33,63 @@ OMITTED_SKILLS = {
         "Codex uses plugin marketplace metadata instead."
     ),
 }
+SKILL_WATCHER_ROLES = {
+    "ask-matt": "entrypoint",
+    "codebase-design": "discipline",
+    "diagnosing-bugs": "discipline",
+    "domain-modeling": "discipline",
+    "grill-me": "wrapper",
+    "grill-with-docs": "wrapper",
+    "grilling": "discipline",
+    "handoff": "specialized",
+    "improve-codebase-architecture": "wrapper",
+    "prototype": "specialized",
+    "tdd": "specialized",
+    "teach": "specialized",
+    "to-issues": "specialized",
+    "to-prd": "specialized",
+    "triage": "specialized",
+    "writing-great-skills": "specialized",
+}
+SKILL_WATCHER_SUPPORTING = {
+    "grill-me": ["grilling"],
+    "grill-with-docs": ["grilling", "domain-modeling"],
+    "improve-codebase-architecture": ["codebase-design"],
+}
+SKILL_WATCHER_ALIASES = {
+    "ask-matt": [("ask matt", "phrase", "phrase"), ("which matt pocock skill", "phrase", "phrase")],
+    "codebase-design": [("codebase design", "phrase", "phrase"), ("deep modules", "phrase", "phrase")],
+    "diagnosing-bugs": [
+        ("diagnose", "legacy", "token"),
+        ("diagnose this", "phrase", "phrase"),
+        ("debug this", "phrase", "phrase"),
+    ],
+    "domain-modeling": [("domain modeling", "phrase", "phrase"), ("domain model", "phrase", "phrase")],
+    "grill-me": [("grill me", "phrase", "phrase")],
+    "grill-with-docs": [("grill with docs", "phrase", "phrase")],
+    "grilling": [("grilling session", "phrase", "phrase")],
+    "handoff": [("handoff document", "phrase", "phrase")],
+    "improve-codebase-architecture": [
+        ("improve codebase architecture", "phrase", "phrase"),
+        ("improve architecture", "phrase", "phrase"),
+        ("architecture review", "phrase", "phrase"),
+    ],
+    "prototype": [("prototype this", "phrase", "phrase"), ("throwaway prototype", "phrase", "phrase")],
+    "tdd": [("test-driven", "phrase", "phrase"), ("red-green-refactor", "phrase", "phrase")],
+    "teach": [("teach me", "phrase", "phrase")],
+    "to-issues": [("to issues", "phrase", "phrase"), ("break into issues", "phrase", "phrase")],
+    "to-prd": [("to prd", "phrase", "phrase"), ("write PRD", "phrase", "phrase")],
+    "triage": [("triage issues", "phrase", "phrase")],
+    "writing-great-skills": [
+        ("write-a-skill", "legacy", "token"),
+        ("write a skill", "phrase", "phrase"),
+        ("create a skill", "phrase", "phrase"),
+    ],
+}
+SKILL_WATCHER_LEGACY_NAMES = {
+    "mattpocock-skills:diagnose": "mattpocock-skills:diagnosing-bugs",
+    "mattpocock-skills:write-a-skill": "mattpocock-skills:writing-great-skills",
+}
 CODEX_TEXT_REPLACEMENTS = {
     (
         "**`/setup-matt-pocock-skills`** — run before your first engineering flow to configure "
@@ -305,6 +362,58 @@ This plugin is the source of truth for these third-party skills in this Codex se
     (plugin_root / "README.md").write_text(text, encoding="utf-8")
 
 
+def skill_watcher_aliases(skill_name: str) -> list[dict[str, str]]:
+    aliases = [
+        {
+            "value": f"{TARGET_PLUGIN_NAME}:{skill_name}",
+            "kind": "skill_name",
+            "match": "phrase",
+        }
+    ]
+    if skill_name != "teach":
+        aliases.append({"value": skill_name, "kind": "slug", "match": "token"})
+    for value, kind, match in SKILL_WATCHER_ALIASES.get(skill_name, []):
+        aliases.append({"value": value, "kind": kind, "match": match})
+    return aliases
+
+
+def write_skill_watcher_metadata(plugin_root: Path, skill_names: list[str]) -> None:
+    skills: dict[str, dict[str, object]] = {}
+    packaged = set(skill_names)
+    for name in sorted(skill_names):
+        full_name = f"{TARGET_PLUGIN_NAME}:{name}"
+        supporting = [
+            f"{TARGET_PLUGIN_NAME}:{supporting_name}"
+            for supporting_name in SKILL_WATCHER_SUPPORTING.get(name, [])
+            if supporting_name in packaged
+        ]
+        skills[full_name] = {
+            "role": SKILL_WATCHER_ROLES.get(name, "specialized"),
+            "aliases": skill_watcher_aliases(name),
+            "supporting_skills": supporting,
+        }
+    legacy_names = {
+        old: new
+        for old, new in SKILL_WATCHER_LEGACY_NAMES.items()
+        if new.split(":", 1)[-1] in packaged
+    }
+    path = plugin_root / ".codex-plugin" / "skill-watcher.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "skills": skills,
+                "legacy_names": legacy_names,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def copy_license(source_root: Path, plugin_root: Path) -> None:
     shutil.copy2(source_root / "LICENSE", plugin_root / "LICENSE")
 
@@ -355,6 +464,7 @@ def sync_from_source(
     copy_license(source_root, plugin_root)
     update_plugin_manifest(plugin_root, version_from_tag(tag), preserve_existing_cachebuster=not cachebuster)
     write_readme(plugin_root, tag, commit, skill_names, omitted_skills)
+    write_skill_watcher_metadata(plugin_root, skill_names)
     if cachebuster:
         run_cachebuster(plugin_root)
     if run_validation:

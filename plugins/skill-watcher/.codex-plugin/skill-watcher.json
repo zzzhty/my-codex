@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "skill-watcher:skill-compressor": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "skill-watcher:skill-compressor", "kind": "skill_name", "match": "phrase"},
+        {"value": "skill-compressor", "kind": "slug", "match": "token"},
+        {"value": "skill compressor", "kind": "phrase", "match": "phrase"},
+        {"value": "skill compression", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "skill-watcher:skill-maintainer": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "skill-watcher:skill-maintainer", "kind": "skill_name", "match": "phrase"},
+        {"value": "skill-maintainer", "kind": "slug", "match": "token"},
+        {"value": "skill maintainer", "kind": "phrase", "match": "phrase"},
+        {"value": "skill watcher", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    }
+  },
+  "legacy_names": {}
+}

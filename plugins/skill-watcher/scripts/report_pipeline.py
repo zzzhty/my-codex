@@ -6,7 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -169,7 +169,7 @@ def filter_events(
 ) -> list[dict[str, Any]]:
     filtered: list[dict[str, Any]] = []
     for event in events:
-        if skill and event.get("skill_name") != skill:
+        if skill and skill not in effective_skill_names(event):
             continue
         if since is not None:
             timestamp = parse_timestamp(str(event.get("timestamp", "")))
@@ -177,6 +177,81 @@ def filter_events(
                 continue
         filtered.append(event)
     return filtered
+
+
+def skill_attribution(event: dict[str, Any]) -> dict[str, Any]:
+    value = event.get("skill_attribution")
+    return value if isinstance(value, dict) else {}
+
+
+def primary_skill_name(event: dict[str, Any]) -> str | None:
+    primary = skill_attribution(event).get("primary")
+    if isinstance(primary, dict) and isinstance(primary.get("name"), str):
+        return primary["name"]
+    return None
+
+
+def primary_skill_role(event: dict[str, Any]) -> str:
+    primary = skill_attribution(event).get("primary")
+    if isinstance(primary, dict) and isinstance(primary.get("role"), str):
+        return primary["role"]
+    return ""
+
+
+def supporting_skill_entries(event: dict[str, Any]) -> list[dict[str, Any]]:
+    supporting = skill_attribution(event).get("supporting")
+    return [item for item in supporting if isinstance(item, dict)] if isinstance(supporting, list) else []
+
+
+def supporting_skill_names(event: dict[str, Any]) -> list[str]:
+    names = []
+    for item in supporting_skill_entries(event):
+        name = item.get("name")
+        if isinstance(name, str) and name:
+            names.append(name)
+    return names
+
+
+def effective_skill_names(event: dict[str, Any]) -> list[str]:
+    effective = skill_attribution(event).get("effective")
+    if isinstance(effective, list):
+        names = [item for item in effective if isinstance(item, str) and item]
+        if names:
+            return names
+    primary = primary_skill_name(event)
+    names = [primary] if primary else []
+    names.extend(supporting_skill_names(event))
+    return sorted(dict.fromkeys(name for name in names if name))
+
+
+def turn_key(event: dict[str, Any]) -> tuple[str, str]:
+    session_id = str(event.get("session_id") or "")
+    codex = event.get("codex") if isinstance(event.get("codex"), dict) else {}
+    turn_id = str(codex.get("turn_id") or event.get("event_id") or "")
+    return (session_id, turn_id)
+
+
+def turn_summary_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [event for event in events if event.get("event_type") == "turn_summary"]
+
+
+def turn_task_outcome(event: dict[str, Any]) -> str:
+    codex = event.get("codex") if isinstance(event.get("codex"), dict) else {}
+    summary = codex.get("turn_summary") if isinstance(codex.get("turn_summary"), dict) else {}
+    value = summary.get("task_outcome") if isinstance(summary, dict) else None
+    if isinstance(value, str) and value:
+        return value
+    value = event.get("task_outcome")
+    if isinstance(value, str) and value:
+        return value
+    return str(event.get("outcome") or "unknown")
+
+
+def turn_tool_failure_count(event: dict[str, Any]) -> int:
+    codex = event.get("codex") if isinstance(event.get("codex"), dict) else {}
+    summary = codex.get("turn_summary") if isinstance(codex.get("turn_summary"), dict) else {}
+    value = summary.get("tool_failure_count") if isinstance(summary, dict) else None
+    return value if isinstance(value, int) else 0
 
 
 def count_values(events: list[dict[str, Any]], key: str) -> Counter[str]:
@@ -204,10 +279,93 @@ def count_codex_values(events: list[dict[str, Any]], key: str) -> Counter[str]:
     return counter
 
 
+def count_task_outcomes(events: list[dict[str, Any]]) -> Counter[str]:
+    counter: Counter[str] = Counter()
+    for event in turn_summary_events(events):
+        counter[turn_task_outcome(event)] += 1
+    return counter
+
+
+def count_tool_failure_observations(events: list[dict[str, Any]]) -> Counter[str]:
+    counter: Counter[str] = Counter()
+    for event in turn_summary_events(events):
+        failures = turn_tool_failure_count(event)
+        if failures:
+            counter["turns_with_tool_failures"] += 1
+            counter["tool_failure_count"] += failures
+    return counter
+
+
 def render_counter(counter: Counter[str]) -> list[str]:
     if not counter:
         return ["- none"]
     return [f"- `{key}`: {count}" for key, count in sorted(counter.items())]
+
+
+def render_table(headers: list[str], rows: list[list[Any]]) -> list[str]:
+    if not rows:
+        return ["- none"]
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("---" for _ in headers) + " |",
+    ]
+    for row in rows:
+        lines.append("| " + " | ".join(str(cell) for cell in row) + " |")
+    return lines
+
+
+def usage_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summaries = turn_summary_events(events)
+    stats: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "effective_turns": set(),
+            "primary_turns": set(),
+            "supporting_turns": set(),
+            "role": "",
+        }
+    )
+    for event in summaries:
+        key = turn_key(event)
+        primary = primary_skill_name(event)
+        if primary:
+            stats[primary]["primary_turns"].add(key)
+            stats[primary]["effective_turns"].add(key)
+            role = primary_skill_role(event)
+            if role:
+                stats[primary]["role"] = role
+        for item in supporting_skill_entries(event):
+            name = item.get("name")
+            if not isinstance(name, str) or not name:
+                continue
+            stats[name]["supporting_turns"].add(key)
+            stats[name]["effective_turns"].add(key)
+            role = item.get("role")
+            if isinstance(role, str) and role:
+                stats[name]["role"] = role
+    rows = []
+    for name, values in stats.items():
+        primary_count = len(values["primary_turns"])
+        supporting_count = len(values["supporting_turns"])
+        effective_count = len(values["effective_turns"])
+        if effective_count == 0:
+            usage_class = "zero effective usage"
+        elif primary_count == 0 and supporting_count > 0:
+            usage_class = "supporting-only"
+        elif effective_count < 10:
+            usage_class = "low effective usage"
+        else:
+            usage_class = "active"
+        rows.append(
+            {
+                "skill": name,
+                "role": values["role"] or "",
+                "effective_turns": effective_count,
+                "primary_turns": primary_count,
+                "supporting_turns": supporting_count,
+                "usage_class": usage_class,
+            }
+        )
+    return sorted(rows, key=lambda row: (-row["effective_turns"], row["skill"]))
 
 
 def render_samples(events: list[dict[str, Any]], key: str, *, limit: int = 5) -> list[str]:
@@ -223,6 +381,7 @@ def render_samples(events: list[dict[str, Any]], key: str, *, limit: int = 5) ->
 
 def render_skill_context_samples(events: list[dict[str, Any]], *, limit: int = 5) -> list[str]:
     samples: list[str] = []
+    seen: set[str] = set()
     for event in events:
         codex = event.get("codex")
         if not isinstance(codex, dict):
@@ -236,7 +395,11 @@ def render_skill_context_samples(events: list[dict[str, Any]], *, limit: int = 5
         for context in contexts:
             summary = context.get("summary")
             if isinstance(summary, str) and summary.strip():
-                samples.append(f"- {summary.strip()}")
+                value = summary.strip()
+                if value in seen:
+                    continue
+                seen.add(value)
+                samples.append(f"- {value}")
                 break
         if len(samples) >= limit:
             break
@@ -250,32 +413,54 @@ def build_report(
     since_raw: str | None,
     log_file: Path,
 ) -> str:
-    outcome_counts = count_values(events, "outcome")
+    raw_outcome_counts = count_values(events, "outcome")
+    task_outcome_counts = count_task_outcomes(events)
     failure_counts = count_values(events, "failure_type")
     event_type_counts = count_values(events, "event_type")
-    attribution_counts = count_codex_values(events, "skill_attribution")
+    tool_failure_counts = count_tool_failure_observations(events)
     failed_events = [event for event in events if event.get("outcome") == "failure" or event.get("failure_type")]
     feedback_events = [event for event in events if event.get("user_feedback")]
+    rows = usage_rows(events)
 
     lines = [
         "# Skill Watcher Report",
         "",
         f"- Log file: `{log_file}`",
-        f"- Skill filter: `{skill or 'all'}`",
+        f"- Effective skill filter: `{skill or 'all'}`",
         f"- Since: `{since_raw or 'all'}`",
         f"- Event count: {len(events)}",
+        f"- Turn summaries: {len(turn_summary_events(events))}",
+        "",
+        "## Usage By Effective Skill",
+        *render_table(
+            ["skill", "role", "effective turns", "primary turns", "supporting turns", "class"],
+            [
+                [
+                    f"`{row['skill']}`",
+                    row["role"] or "",
+                    row["effective_turns"],
+                    row["primary_turns"],
+                    row["supporting_turns"],
+                    row["usage_class"],
+                ]
+                for row in rows
+            ],
+        ),
         "",
         "## Event Types",
         *render_counter(event_type_counts),
         "",
-        "## Outcome Distribution",
-        *render_counter(outcome_counts),
+        "## Task Outcomes",
+        *render_counter(task_outcome_counts),
+        "",
+        "## Tool Failure Observations",
+        *render_counter(tool_failure_counts),
+        "",
+        "## Raw Event Outcomes",
+        *render_counter(raw_outcome_counts),
         "",
         "## Failure Summary",
         *render_counter(failure_counts),
-        "",
-        "## Skill Attribution",
-        *render_counter(attribution_counts),
         "",
         "## Failure Notes",
         *render_samples(failed_events, "notes"),
@@ -373,11 +558,8 @@ def update_report_state(
 
 
 def outcome_counts(events: list[dict[str, Any]]) -> Counter[str]:
-    counter: Counter[str] = Counter()
-    for event in events:
-        outcome = str(event.get("outcome") or "unknown")
-        counter[outcome] += 1
-    return counter
+    task_counts = count_task_outcomes(events)
+    return task_counts or count_values(events, "outcome")
 
 
 def default_report_path(state_dir: Path, skill: str | None) -> Path:

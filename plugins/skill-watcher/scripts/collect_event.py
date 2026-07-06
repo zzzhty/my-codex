@@ -22,7 +22,7 @@ from runtime_paths import (
 )
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_AGENT = "codex"
 EVENT_FIELDS = [
     "schema_version",
@@ -32,13 +32,13 @@ EVENT_FIELDS = [
     "event_type",
     "workspace",
     "session_id",
-    "skill_name",
-    "skill_version",
     "trigger_reason",
     "tools_used",
     "files_touched",
     "outcome",
+    "task_outcome",
     "failure_type",
+    "skill_attribution",
     "user_feedback",
     "tests_or_checks",
     "notes",
@@ -87,13 +87,22 @@ def normalize_event(event: dict[str, Any], args: argparse.Namespace) -> dict[str
     merge_flag(event, "event_type", args.event_type)
     merge_flag(event, "workspace", args.workspace)
     merge_flag(event, "session_id", args.session_id)
-    merge_flag(event, "skill_name", args.skill)
-    merge_flag(event, "skill_version", args.skill_version)
     merge_flag(event, "trigger_reason", args.trigger_reason)
     merge_flag(event, "outcome", args.outcome)
     merge_flag(event, "failure_type", args.failure_type)
     merge_flag(event, "user_feedback", args.user_feedback)
     merge_flag(event, "notes", args.notes)
+    if args.skill and "skill_attribution" not in event:
+        event["skill_attribution"] = {
+            "primary": {
+                "name": args.skill,
+                "source": "manual",
+                "confidence": "unknown",
+            },
+            "supporting": [],
+            "effective": [args.skill],
+            "mentioned": [],
+        }
 
     if args.tool:
         event["tools_used"] = normalize_list(event.get("tools_used")) + args.tool
@@ -109,13 +118,13 @@ def normalize_event(event: dict[str, Any], args: argparse.Namespace) -> dict[str
     event.setdefault("event_type", "unknown")
     event.setdefault("workspace", "")
     event.setdefault("session_id", "")
-    event.setdefault("skill_name", "")
-    event.setdefault("skill_version", "")
     event.setdefault("trigger_reason", "")
     event.setdefault("tools_used", [])
     event.setdefault("files_touched", [])
     event.setdefault("outcome", "unknown")
+    event.setdefault("task_outcome", "")
     event.setdefault("failure_type", "")
+    event.setdefault("skill_attribution", {"primary": None, "supporting": [], "effective": [], "mentioned": []})
     event.setdefault("user_feedback", "")
     event.setdefault("tests_or_checks", [])
     event.setdefault("notes", "")
@@ -148,8 +157,7 @@ def main() -> None:
     parser.add_argument("--event-type")
     parser.add_argument("--workspace")
     parser.add_argument("--session-id")
-    parser.add_argument("--skill")
-    parser.add_argument("--skill-version")
+    parser.add_argument("--skill", help="Primary skill name for manual v2 skill attribution.")
     parser.add_argument("--trigger-reason")
     parser.add_argument("--outcome")
     parser.add_argument("--failure-type")

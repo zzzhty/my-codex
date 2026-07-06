@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "mattpocock-skills:ask-matt": {
+      "role": "entrypoint",
+      "aliases": [
+        {"value": "mattpocock-skills:ask-matt", "kind": "skill_name", "match": "phrase"},
+        {"value": "ask-matt", "kind": "slug", "match": "token"},
+        {"value": "ask matt", "kind": "phrase", "match": "phrase"},
+        {"value": "which matt pocock skill", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:codebase-design": {
+      "role": "discipline",
+      "aliases": [
+        {"value": "mattpocock-skills:codebase-design", "kind": "skill_name", "match": "phrase"},
+        {"value": "codebase-design", "kind": "slug", "match": "token"},
+        {"value": "codebase design", "kind": "phrase", "match": "phrase"},
+        {"value": "deep modules", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:diagnosing-bugs": {
+      "role": "discipline",
+      "aliases": [
+        {"value": "mattpocock-skills:diagnosing-bugs", "kind": "skill_name", "match": "phrase"},
+        {"value": "diagnosing-bugs", "kind": "slug", "match": "token"},
+        {"value": "diagnose", "kind": "legacy", "match": "token"},
+        {"value": "diagnose this", "kind": "phrase", "match": "phrase"},
+        {"value": "debug this", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:domain-modeling": {
+      "role": "discipline",
+      "aliases": [
+        {"value": "mattpocock-skills:domain-modeling", "kind": "skill_name", "match": "phrase"},
+        {"value": "domain-modeling", "kind": "slug", "match": "token"},
+        {"value": "domain modeling", "kind": "phrase", "match": "phrase"},
+        {"value": "domain model", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:grill-me": {
+      "role": "wrapper",
+      "aliases": [
+        {"value": "mattpocock-skills:grill-me", "kind": "skill_name", "match": "phrase"},
+        {"value": "grill-me", "kind": "slug", "match": "token"},
+        {"value": "grill me", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": ["mattpocock-skills:grilling"]
+    },
+    "mattpocock-skills:grill-with-docs": {
+      "role": "wrapper",
+      "aliases": [
+        {"value": "mattpocock-skills:grill-with-docs", "kind": "skill_name", "match": "phrase"},
+        {"value": "grill-with-docs", "kind": "slug", "match": "token"},
+        {"value": "grill with docs", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": [
+        "mattpocock-skills:grilling",
+        "mattpocock-skills:domain-modeling"
+      ]
+    },
+    "mattpocock-skills:grilling": {
+      "role": "discipline",
+      "aliases": [
+        {"value": "mattpocock-skills:grilling", "kind": "skill_name", "match": "phrase"},
+        {"value": "grilling", "kind": "slug", "match": "token"},
+        {"value": "grilling session", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:handoff": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:handoff", "kind": "skill_name", "match": "phrase"},
+        {"value": "handoff", "kind": "slug", "match": "token"},
+        {"value": "handoff document", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:improve-codebase-architecture": {
+      "role": "wrapper",
+      "aliases": [
+        {"value": "mattpocock-skills:improve-codebase-architecture", "kind": "skill_name", "match": "phrase"},
+        {"value": "improve-codebase-architecture", "kind": "slug", "match": "token"},
+        {"value": "improve codebase architecture", "kind": "phrase", "match": "phrase"},
+        {"value": "improve architecture", "kind": "phrase", "match": "phrase"},
+        {"value": "architecture review", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": ["mattpocock-skills:codebase-design"]
+    },
+    "mattpocock-skills:prototype": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:prototype", "kind": "skill_name", "match": "phrase"},
+        {"value": "prototype", "kind": "slug", "match": "token"},
+        {"value": "prototype this", "kind": "phrase", "match": "phrase"},
+        {"value": "throwaway prototype", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:tdd": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:tdd", "kind": "skill_name", "match": "phrase"},
+        {"value": "tdd", "kind": "slug", "match": "token"},
+        {"value": "test-driven", "kind": "phrase", "match": "phrase"},
+        {"value": "red-green-refactor", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:teach": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:teach", "kind": "skill_name", "match": "phrase"},
+        {"value": "teach me", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:to-issues": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:to-issues", "kind": "skill_name", "match": "phrase"},
+        {"value": "to-issues", "kind": "slug", "match": "token"},
+        {"value": "to issues", "kind": "phrase", "match": "phrase"},
+        {"value": "break into issues", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:to-prd": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:to-prd", "kind": "skill_name", "match": "phrase"},
+        {"value": "to-prd", "kind": "slug", "match": "token"},
+        {"value": "to prd", "kind": "phrase", "match": "phrase"},
+        {"value": "write PRD", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:triage": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:triage", "kind": "skill_name", "match": "phrase"},
+        {"value": "triage", "kind": "slug", "match": "token"},
+        {"value": "triage issues", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    },
+    "mattpocock-skills:writing-great-skills": {
+      "role": "specialized",
+      "aliases": [
+        {"value": "mattpocock-skills:writing-great-skills", "kind": "skill_name", "match": "phrase"},
+        {"value": "writing-great-skills", "kind": "slug", "match": "token"},
+        {"value": "write-a-skill", "kind": "legacy", "match": "token"},
+        {"value": "write a skill", "kind": "phrase", "match": "phrase"},
+        {"value": "create a skill", "kind": "phrase", "match": "phrase"}
+      ],
+      "supporting_skills": []
+    }
+  },
+  "legacy_names": {
+    "mattpocock-skills:diagnose": "mattpocock-skills:diagnosing-bugs",
+    "mattpocock-skills:write-a-skill": "mattpocock-skills:writing-great-skills"
+  }
+}

@@ -19,9 +19,9 @@ sys.path.insert(0, str(SCRIPTS))
 
 from codex_hook_adapter import (  # noqa: E402
     DEFAULT_MONITORED_SKILLS,
-    DEFAULT_SKILL_ALIASES,
     HookRuntimePaths,
     discover_packaged_skills,
+    discover_skill_metadata,
     load_dynamic_monitored_skills,
     normalize_hook_payload,
     process_hook,
@@ -78,6 +78,7 @@ from update_mattpocock_skills import (  # noqa: E402
     load_upstream_skill_paths,
     strip_unsupported_frontmatter,
     update_plugin_manifest,
+    write_skill_watcher_metadata,
 )
 from update_proposal_status import update_status  # noqa: E402
 
@@ -275,6 +276,21 @@ class SkillWatcherTests(unittest.TestCase):
         )
         self.assertEqual(omitted, ["setup-matt-pocock-skills"])
         self.assertEqual(flattened_skill_names(packaged), ["diagnosing-bugs", "teach"])
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = Path(tmp)
+            write_skill_watcher_metadata(plugin, ["diagnosing-bugs", "teach"])
+            metadata = json.loads((plugin / ".codex-plugin" / "skill-watcher.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            metadata["legacy_names"]["mattpocock-skills:diagnose"],
+            "mattpocock-skills:diagnosing-bugs",
+        )
+        teach_alias_values = [
+            alias["value"]
+            for alias in metadata["skills"]["mattpocock-skills:teach"]["aliases"]
+        ]
+        self.assertIn("teach me", teach_alias_values)
+        self.assertNotIn("teach", teach_alias_values)
 
     def test_mattpocock_updater_can_preserve_existing_cachebuster(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -363,14 +379,21 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertTrue(DEFAULT_MONITORED_SKILLS)
         self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
         self.assertIn("skill-watcher:skill-compressor", DEFAULT_MONITORED_SKILLS)
-        self.assertIn("skill-watcher:skill-compressor", DEFAULT_SKILL_ALIASES)
         self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
-        self.assertIn("workflow:prompt-strategy-loop", DEFAULT_SKILL_ALIASES)
         self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_MONITORED_SKILLS)
-        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_SKILL_ALIASES)
         self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
         self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
+        metadata = discover_skill_metadata(REPO_ROOT)
+        self.assertEqual(set(metadata["skills"]), set(packaged))
+        self.assertEqual(
+            metadata["legacy_names"]["mattpocock-skills:diagnose"],
+            "mattpocock-skills:diagnosing-bugs",
+        )
+        self.assertEqual(
+            metadata["skills"]["mattpocock-skills:grill-with-docs"]["supporting_skills"],
+            ["mattpocock-skills:domain-modeling", "mattpocock-skills:grilling"],
+        )
 
         normalized = normalize_hook_payload(
             {
@@ -385,7 +408,8 @@ class SkillWatcherTests(unittest.TestCase):
         )
         serialized = json.dumps(normalized, sort_keys=True)
         self.assertEqual(normalized["event_type"], "post_tool_use")
-        self.assertEqual(normalized["skill_name"], "unknown")
+        self.assertNotIn("skill_name", normalized)
+        self.assertIsNone(normalized["skill_attribution"]["primary"])
         self.assertEqual(normalized["outcome"], "failure")
         self.assertEqual(normalized["failure_type"], "tool_error")
         self.assertIn("tool_input_summary", normalized["codex"])
@@ -449,18 +473,20 @@ class SkillWatcherTests(unittest.TestCase):
             dynamic_skills = load_dynamic_monitored_skills(state_dir)
 
         self.assertFalse(session_start["codex"]["persisted"])
-        self.assertEqual(session_start["codex"]["allowlist_update"]["skill_count"], len(packaged))
+        self.assertEqual(session_start["codex"]["metadata_update"]["skill_count"], len(packaged))
         self.assertEqual(dynamic_skills, tuple(packaged))
         self.assertFalse(unknown["codex"]["persisted"])
-        self.assertEqual(prompt["skill_name"], "mattpocock-skills:diagnosing-bugs")
-        self.assertEqual(prompt["codex"]["skill_attribution"], "prompt_mention")
+        self.assertEqual(prompt["skill_attribution"]["primary"]["name"], "mattpocock-skills:diagnosing-bugs")
+        self.assertEqual(prompt["skill_attribution"]["primary"]["source"], "prompt_mention")
         self.assertTrue(prompt["codex"]["persisted"])
         self.assertIn("user_skill_context", prompt["codex"])
         self.assertFalse(success["codex"]["persisted"])
         self.assertTrue(failure["codex"]["persisted"])
         self.assertEqual(summary["event_type"], "turn_summary")
         self.assertEqual(summary["codex"]["turn_summary"]["tool_count"], 2)
-        self.assertEqual(summary["codex"]["turn_summary"]["tool_failures"], 1)
+        self.assertEqual(summary["codex"]["turn_summary"]["tool_failure_count"], 1)
+        self.assertEqual(summary["codex"]["turn_summary"]["task_outcome"], "unknown")
+        self.assertEqual(summary["outcome"], "unknown")
         self.assertIn("user_skill_context", summary["codex"]["turn_summary"])
         self.assertEqual(len(lines), 3)
         self.assertNotIn("sk-testsecret123456789", "\n".join(lines))
@@ -471,9 +497,9 @@ class SkillWatcherTests(unittest.TestCase):
                 "prompt": "请使用标准流程整理这次重复任务。",
             }
         )
-        self.assertEqual(sop_prompt["skill_name"], "workflow:sop")
-        self.assertEqual(sop_prompt["codex"]["skill_attribution"], "prompt_mention")
-        self.assertEqual(sop_prompt["codex"]["matched_alias"], "标准流程")
+        self.assertEqual(sop_prompt["skill_attribution"]["primary"]["name"], "workflow:sop")
+        self.assertEqual(sop_prompt["skill_attribution"]["primary"]["source"], "prompt_mention")
+        self.assertEqual(sop_prompt["skill_attribution"]["primary"]["matched_alias"], "标准流程")
 
         sop_assistant = normalize_hook_payload(
             {
@@ -481,9 +507,9 @@ class SkillWatcherTests(unittest.TestCase):
                 "last_assistant_message": "I will use $sop for this recurring procedure.",
             }
         )
-        self.assertEqual(sop_assistant["skill_name"], "workflow:sop")
-        self.assertEqual(sop_assistant["codex"]["skill_attribution"], "assistant_announcement")
-        self.assertEqual(sop_assistant["codex"]["matched_alias"], "sop")
+        self.assertEqual(sop_assistant["skill_attribution"]["primary"]["name"], "workflow:sop")
+        self.assertEqual(sop_assistant["skill_attribution"]["primary"]["source"], "assistant_announcement")
+        self.assertEqual(sop_assistant["skill_attribution"]["primary"]["matched_alias"], "sop")
 
     def test_hook_runtime_dry_run_normalizes_without_writing_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -505,7 +531,7 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertTrue(result.persisted)
         self.assertEqual(result.hook_event_name, "UserPromptSubmit")
-        self.assertEqual(result.event["skill_name"], "mattpocock-skills:diagnosing-bugs")
+        self.assertEqual(result.event["skill_attribution"]["primary"]["name"], "mattpocock-skills:diagnosing-bugs")
 
     def test_hook_config_runtime_helpers_and_stale_schema_detection(self) -> None:
         with mock.patch.dict("os.environ", {"MY_CODEX_PYTHON": "/tmp/shared-python"}, clear=True):
@@ -699,8 +725,40 @@ class SkillWatcherTests(unittest.TestCase):
             log_file = log_file_path(state_dir)
             log_file.parent.mkdir(parents=True)
             events = [
-                {"timestamp": "2026-06-05T00:00:00Z", "skill_name": "demo", "outcome": "failure"},
-                {"timestamp": "2026-06-06T00:00:00Z", "skill_name": "demo", "outcome": "success"},
+                {
+                    "timestamp": "2026-06-05T00:00:00Z",
+                    "event_type": "turn_summary",
+                    "session_id": "s1",
+                    "outcome": "unknown",
+                    "task_outcome": "failure",
+                    "skill_attribution": {
+                        "primary": {"name": "demo", "role": "entrypoint"},
+                        "supporting": [{"name": "support", "role": "discipline"}],
+                        "effective": ["demo", "support"],
+                        "mentioned": [],
+                    },
+                    "codex": {
+                        "turn_id": "t1",
+                        "turn_summary": {"task_outcome": "failure", "tool_failure_count": 2},
+                    },
+                },
+                {
+                    "timestamp": "2026-06-06T00:00:00Z",
+                    "event_type": "turn_summary",
+                    "session_id": "s2",
+                    "outcome": "unknown",
+                    "task_outcome": "success",
+                    "skill_attribution": {
+                        "primary": {"name": "demo", "role": "entrypoint"},
+                        "supporting": [],
+                        "effective": ["demo"],
+                        "mentioned": [],
+                    },
+                    "codex": {
+                        "turn_id": "t2",
+                        "turn_summary": {"task_outcome": "success", "tool_failure_count": 0},
+                    },
+                },
             ]
             log_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
 
@@ -720,6 +778,8 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(result.event_count, 2)
         self.assertEqual(result.outcome_counts["failure"], 1)
         self.assertEqual(result.outcome_counts["success"], 1)
+        self.assertIn("supporting-only", result.report)
+        self.assertIn("`support`", result.report)
         self.assertIsNotNone(result.output)
         self.assertTrue(output_exists)
         self.assertEqual(result.state_path, state_dir / "report-state.json")
