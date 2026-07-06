@@ -116,7 +116,7 @@ def build_proposal(
             "",
             "## Validation Plan",
             "",
-            f"- Run `scripts/skill/validate_candidate.py --candidate-skill {skill_dir / 'SKILL.md'}` after drafting a candidate.",
+            f"- Run `scripts/watcher skill validate --candidate-skill {skill_dir / 'SKILL.md'}` after drafting a candidate.",
             "- Run any task-specific tests or benchmark checks before accepting the edit.",
             "",
         ]

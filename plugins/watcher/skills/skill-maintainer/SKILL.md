@@ -11,10 +11,10 @@ Use this skill to maintain or improve a Codex skill from Watcher skill-domain lo
 
 1. Locate Watcher skill-domain state under `$CODEX_HOME/watcher/skill/`.
 2. Read the target skill's current `SKILL.md`.
-3. From the Watcher plugin root, summarize evidence with `scripts/skill/summarize_logs.py`.
-4. From the Watcher plugin root, generate a proposal with `scripts/skill/propose_skill_patch.py`.
+3. From the Watcher plugin root, summarize evidence with `scripts/watcher skill summarize`.
+4. From the Watcher plugin root, generate a proposal with `scripts/watcher skill propose`.
 5. Review the proposal against the references before recommending any edit.
-6. From the Watcher plugin root, validate any candidate `SKILL.md` with `scripts/skill/validate_candidate.py`.
+6. From the Watcher plugin root, validate any candidate `SKILL.md` with `scripts/watcher skill validate`.
 
 ## Rules
 

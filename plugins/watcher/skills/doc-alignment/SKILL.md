@@ -37,15 +37,15 @@ Use implementation mode when the user asks to align, update, reorganize, prune, 
 Start configured repository audits with deterministic evidence:
 
 ```bash
-python3 scripts/doc/doctor.py --config config/repos.example.json
-python3 scripts/doc/commit_counter.py --config config/repos.example.json
-python3 scripts/doc/generate_report.py --config config/repos.example.json --mode commit-dependent --mark-audited --digest
+python3 scripts/watcher doc doctor --config config/repos.example.json
+python3 scripts/watcher doc commit-counter --config config/repos.example.json
+python3 scripts/watcher doc report --config config/repos.example.json --mode commit-dependent --mark-audited --digest
 ```
 
 Use `config/repos.json` when a private config exists. For one repo:
 
 ```bash
-python3 scripts/doc/audit_repo.py --repo <repo-path> --name <repo-name> --print-report
+python3 scripts/watcher doc audit --repo <repo-path> --name <repo-name> --print-report
 ```
 
 When `generate_report.py --mode commit-dependent` skips a repo, report it as skipped. Config changes make a repo due even below the commit threshold. If any repo fails, surface the repo, command/path, and exact failure text.
@@ -170,8 +170,8 @@ Add lightweight dry-runs or `--summary` commands when entry points provide them.
 For Watcher doc-domain validation:
 
 ```bash
-python3 scripts/doc/doctor.py --config config/repos.example.json
-python3 -m py_compile scripts/doc/*.py
+python3 scripts/watcher doc doctor --config config/repos.example.json
+python3 -m py_compile scripts/watcher_cli.py scripts/doc/*.py
 PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}"
 python3 "$PLUGIN_VALIDATOR" .
 ```

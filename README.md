@@ -169,6 +169,15 @@ Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgra
 
 Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
 
+Migrate legacy Watcher runtime roots explicitly before final checks:
+
+```bash
+python3 plugins/watcher/scripts/watcher migrate-state --dry-run
+python3 plugins/watcher/scripts/watcher migrate-state --apply
+```
+
+This moves `$CODEX_HOME/skill-watcher/` to `$CODEX_HOME/watcher/skill/` and `$CODEX_HOME/doc-watcher/` to `$CODEX_HOME/watcher/doc/`. It refuses to merge when a target directory already exists.
+
 Direct helper usage remains supported:
 
 ```bash
@@ -246,16 +255,16 @@ Install or refresh Watcher skill hooks from the source checkout:
 Unix:
 
 ```bash
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/skill/install_codex_hook.py" --dry-run
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/skill/install_codex_hook.py" --apply
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --dry-run
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --apply
 ```
 
 Windows PowerShell:
 
 ```powershell
 $python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
-& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\skill\install_codex_hook.py" --dry-run --python $python
-& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\skill\install_codex_hook.py" --apply --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --dry-run --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --apply --python $python
 ```
 
 After applying hooks, open `/hooks` in Codex and trust the Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.

@@ -55,7 +55,7 @@ class AuditFailure(RuntimeError):
 
 
 def resolve_state_dir(raw: str | None = None) -> Path:
-    return expand_path(raw or os.environ.get("DOC_WATCHER_STATE_DIR") or DEFAULT_STATE_DIR)
+    return expand_path(raw or os.environ.get("WATCHER_DOC_STATE_DIR") or DEFAULT_STATE_DIR)
 
 
 def expand_path(raw: str | Path) -> Path:

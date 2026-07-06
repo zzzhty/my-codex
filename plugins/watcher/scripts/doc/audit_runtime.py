@@ -53,6 +53,9 @@ def resolve_audit_state_dir(raw: str | None = None, configured: str | None = Non
     selected = raw or configured
     if selected:
         return expand_path(selected)
+    env_state_dir = os.environ.get("WATCHER_DOC_STATE_DIR")
+    if env_state_dir:
+        return expand_path(env_state_dir)
     codex_home = expand_path(os.environ.get("CODEX_HOME", "~/.codex"))
     return codex_home / "watcher" / "doc"
 

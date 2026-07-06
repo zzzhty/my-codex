@@ -13,6 +13,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+
+def _exec_consolidated_adapter() -> None:
+    watcher_adapter = (
+        Path(__file__).resolve().parents[2]
+        / "watcher"
+        / "scripts"
+        / "skill"
+        / "codex_hook_adapter.py"
+    )
+    if watcher_adapter.is_file():
+        os.execv(sys.executable, [sys.executable, "-B", str(watcher_adapter), *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    _exec_consolidated_adapter()
+
 from collect_event import append_event, ensure_runtime_dirs, expand_path, normalize_event, state_dir_from_env_or_arg
 from redact_event import redact_event, redact_string
 from runtime_paths import log_file_path, safe_slug as runtime_safe_slug, turns_dir, utc_now_text

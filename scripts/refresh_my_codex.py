@@ -279,6 +279,10 @@ def cached_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
     return {path.name for path in cache_root.iterdir() if path.is_dir()}
 
 
+def plugin_cache_dir(codex_home: Path, marketplace_name: str, plugin_name: str) -> Path:
+    return codex_home / "plugins" / "cache" / marketplace_name / plugin_name
+
+
 def stale_plugin_names(
     *,
     codex_home: Path,
@@ -288,6 +292,31 @@ def stale_plugin_names(
     discovered = configured_plugin_names(codex_home, marketplace_name) | cached_plugin_names(codex_home, marketplace_name)
     desired = set(desired_plugin_names)
     return sorted(discovered - desired)
+
+
+def remove_cached_plugin_dir(
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    plugin_name: str,
+    dry_run: bool,
+) -> None:
+    cache_root = codex_home / "plugins" / "cache" / marketplace_name
+    plugin_dir = plugin_cache_dir(codex_home, marketplace_name, plugin_name)
+    if not plugin_dir.exists():
+        return
+    try:
+        plugin_dir.resolve().relative_to(cache_root.resolve())
+    except ValueError as exc:
+        raise SystemExit(f"refusing to remove plugin cache outside marketplace cache root: {plugin_dir}") from exc
+    print(f"+ remove plugin cache {plugin_dir}", flush=True)
+    if dry_run:
+        return
+    clear_readonly_attributes(plugin_dir)
+    try:
+        shutil.rmtree(plugin_dir)
+    except OSError as exc:
+        raise SystemExit(f"failed to remove plugin cache {plugin_dir}: {exc}") from exc
 
 
 def prune_stale_plugins(
@@ -308,11 +337,21 @@ def prune_stale_plugins(
         print(f"No stale plugins to prune for marketplace `{marketplace_name}`.")
         return
 
+    configured = configured_plugin_names(codex_home, marketplace_name)
+    cached = cached_plugin_names(codex_home, marketplace_name)
     print("Stale plugins selected for pruning:")
     for name in stale:
         print(f"- {name}@{marketplace_name}")
     for name in stale:
-        run([codex, "plugin", "remove", f"{name}@{marketplace_name}"], env=env, dry_run=dry_run)
+        if name in configured:
+            run([codex, "plugin", "remove", f"{name}@{marketplace_name}"], env=env, dry_run=dry_run)
+        if name in cached:
+            remove_cached_plugin_dir(
+                codex_home=codex_home,
+                marketplace_name=marketplace_name,
+                plugin_name=name,
+                dry_run=dry_run,
+            )
 
 
 def tooling_python_from_args(args: argparse.Namespace, venv_path: Path) -> Path:
@@ -695,23 +734,24 @@ def main() -> None:
     if not args.skip_agents:
         run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)
 
-    hook_installer = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "install_codex_hook.py"
+    watcher_cli = REPO_ROOT / "plugins" / "watcher" / "scripts" / "watcher"
     if not args.skip_hooks:
         if not args.dry_run and not tooling_python.is_file():
             raise SystemExit(f"tooling Python does not exist: {tooling_python}")
-        if not hook_installer.is_file():
-            raise SystemExit(f"Watcher skill hook installer does not exist: {hook_installer}")
+        if not watcher_cli.is_file():
+            raise SystemExit(f"Watcher CLI does not exist: {watcher_cli}")
         run(
-            [str(tooling_python), str(hook_installer), "--apply", "--python", str(tooling_python)],
+            [str(tooling_python), str(watcher_cli), "skill", "install-hook", "--apply", "--python", str(tooling_python)],
             env=env,
             dry_run=args.dry_run,
         )
 
-    doctor = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "doctor.py"
     if not args.skip_doctor:
         if not args.dry_run and not tooling_python.is_file():
             raise SystemExit(f"tooling Python does not exist: {tooling_python}")
-        run([str(tooling_python), str(doctor)], env=env, dry_run=args.dry_run)
+        if not watcher_cli.is_file():
+            raise SystemExit(f"Watcher CLI does not exist: {watcher_cli}")
+        run([str(tooling_python), str(watcher_cli), "skill", "doctor"], env=env, dry_run=args.dry_run)
 
     if args.dry_run:
         print("dry-run only; no changes written")

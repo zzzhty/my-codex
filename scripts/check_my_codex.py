@@ -16,10 +16,13 @@ from refresh_my_codex import (
     MARKETPLACE_FILE,
     REPO_ROOT,
     build_env,
+    cached_plugin_names,
     command_text,
+    configured_plugin_names,
     expand_path,
     resolve_executable,
     selected_plugins,
+    stale_plugin_names,
     tooling_python_from_args,
 )
 
@@ -154,6 +157,38 @@ class CheckRunner:
             return
         self.ok(f"plugin cache contains installed manifests under {cache_root}")
 
+    def check_no_stale_my_codex_plugins(
+        self,
+        plugins: list[str],
+        *,
+        codex_home: Path,
+        marketplace_name: str,
+    ) -> None:
+        desired = [selector.split("@", 1)[0] for selector in plugins]
+        stale = stale_plugin_names(
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            desired_plugin_names=desired,
+        )
+        if stale:
+            configured = configured_plugin_names(codex_home, marketplace_name)
+            cached = cached_plugin_names(codex_home, marketplace_name)
+            details = []
+            for name in stale:
+                locations = []
+                if name in configured:
+                    locations.append("config")
+                if name in cached:
+                    locations.append("cache")
+                details.append(f"{name} ({'+'.join(locations) or 'unknown'})")
+            self.fail(
+                "stale my-codex plugins remain. "
+                "Run scripts/refresh_my_codex.py --prune-plugins. "
+                f"Stale={', '.join(details)}"
+            )
+            return
+        self.ok("no stale my-codex plugin config or cache entries remain")
+
     def check_hook_config(self, tooling_python: Path, *, hook_config: Path) -> None:
         if not hook_config.is_file():
             self.fail(f"Watcher skill hook config missing: {hook_config}")
@@ -228,6 +263,18 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"subagent support file is not synced: {output}")
 
+    def check_watcher_runtime_cutover(self, *, codex_home: Path) -> None:
+        legacy_roots = [codex_home / "skill-watcher", codex_home / "doc-watcher"]
+        existing = [path for path in legacy_roots if path.exists()]
+        if existing:
+            self.fail(
+                "legacy Watcher runtime roots still exist. "
+                "Run plugins/watcher/scripts/watcher migrate-state --apply. "
+                f"Existing={'; '.join(str(path) for path in existing)}"
+            )
+            return
+        self.ok("legacy Watcher runtime roots are absent")
+
     def finish(self, *, strict_warnings: bool) -> None:
         if strict_warnings and self.warnings:
             self.failures += self.warnings
@@ -268,8 +315,14 @@ def main() -> None:
     if not args.skip_plugins:
         runner.check_codex_plugin_list(codex, plugins, env=env)
         runner.check_plugin_cache(plugins, codex_home=codex_home)
+        runner.check_no_stale_my_codex_plugins(
+            plugins,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+        )
     if not args.skip_hooks:
         runner.check_hook_config(tooling_python, hook_config=codex_home / "hooks.json")
+    runner.check_watcher_runtime_cutover(codex_home=codex_home)
     if not args.skip_agents:
         runner.check_agent_sync(codex_home=codex_home, env=env)
     if not args.skip_plugin_validation:

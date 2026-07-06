@@ -173,7 +173,7 @@ class Doctor:
         if issues:
             self.fail(
                 "Watcher skill hook config has stale managed handlers at "
-                f"{DEFAULT_TARGET}. Run install_codex_hook.py --apply to refresh. Issues: {issues}"
+                f"{DEFAULT_TARGET}. Run scripts/watcher skill install-hook --apply to refresh. Issues: {issues}"
             )
 
     def check_sample_event(self) -> None:

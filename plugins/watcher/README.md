@@ -26,15 +26,18 @@ Packaged skills:
 - `skill-maintainer`: analyze skill usage evidence and propose bounded `SKILL.md` maintenance updates without automatic source mutation.
 - `skill-compressor`: reduce skill or plugin instruction footprint while preserving operational semantics.
 
-Current first-batch migration scope:
+Current migration scope:
 
 - Source skills and direct skill resources have moved under `plugins/watcher/skills/`.
-- Current report/audit scripts have moved under `plugins/watcher/scripts/doc/` and `plugins/watcher/scripts/skill/`.
+- Report/audit scripts live behind the unified `plugins/watcher/scripts/watcher` entrypoint.
 - DocWatcher cockpit backend/frontend and legacy patch/PR/provider/webhook surfaces are not active in this plugin batch.
 
-Use domain-qualified scripts until the unified `scripts/watcher` CLI is completed:
+Use the unified CLI from the Watcher plugin root:
 
 ```bash
-python3 scripts/doc/generate_report.py --config config/repos.example.json --print-report
-python3 scripts/skill/generate_report.py --since 7d
+python3 scripts/watcher doc report --config config/repos.example.json --print-report
+python3 scripts/watcher skill report --since 7d
+python3 scripts/watcher migrate-state --dry-run
 ```
+
+Run `python3 scripts/watcher migrate-state --apply` to move `$CODEX_HOME/skill-watcher/` to `$CODEX_HOME/watcher/skill/` and `$CODEX_HOME/doc-watcher/` to `$CODEX_HOME/watcher/doc/`. The migration refuses to merge if the target already exists.
