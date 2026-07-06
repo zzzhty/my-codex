@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh the local my-codex marketplace plugins and Skill Watcher hooks."""
+"""Refresh the local my-codex marketplace plugins and Watcher skill hooks."""
 
 from __future__ import annotations
 
@@ -612,7 +612,7 @@ def ensure_marketplace_source(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Refresh my-codex plugin installs and user-level Skill Watcher hooks."
+        description="Refresh my-codex plugin installs and user-level Watcher skill hooks."
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
     parser.add_argument("--codex", default=os.environ.get("CODEX_BIN", "codex"), help="Codex CLI executable.")
@@ -644,8 +644,8 @@ def main() -> None:
         help="Remove installed or cached marketplace plugins that are not selected for install by the manifest.",
     )
     parser.add_argument("--skip-agents", action="store_true", help="Do not sync the subagent support file into $CODEX_HOME/agents.")
-    parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Skill Watcher hooks.")
-    parser.add_argument("--skip-doctor", action="store_true", help="Do not run Skill Watcher doctor after refresh.")
+    parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Watcher skill hooks.")
+    parser.add_argument("--skip-doctor", action="store_true", help="Do not run Watcher skill doctor after refresh.")
     args = parser.parse_args()
 
     if not MARKETPLACE_FILE.is_file():
@@ -695,19 +695,19 @@ def main() -> None:
     if not args.skip_agents:
         run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)
 
-    hook_installer = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "install_codex_hook.py"
+    hook_installer = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "install_codex_hook.py"
     if not args.skip_hooks:
         if not args.dry_run and not tooling_python.is_file():
             raise SystemExit(f"tooling Python does not exist: {tooling_python}")
         if not hook_installer.is_file():
-            raise SystemExit(f"Skill Watcher hook installer does not exist: {hook_installer}")
+            raise SystemExit(f"Watcher skill hook installer does not exist: {hook_installer}")
         run(
             [str(tooling_python), str(hook_installer), "--apply", "--python", str(tooling_python)],
             env=env,
             dry_run=args.dry_run,
         )
 
-    doctor = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "doctor.py"
+    doctor = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "doctor.py"
     if not args.skip_doctor:
         if not args.dry_run and not tooling_python.is_file():
             raise SystemExit(f"tooling Python does not exist: {tooling_python}")
@@ -718,7 +718,7 @@ def main() -> None:
     else:
         print("refresh complete")
         if not args.skip_hooks:
-            print("open /hooks in Codex to review and trust refreshed Skill Watcher command hooks")
+            print("open /hooks in Codex to review and trust refreshed Watcher skill command hooks")
 
 
 if __name__ == "__main__":

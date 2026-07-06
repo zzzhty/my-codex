@@ -5,22 +5,10 @@
   },
   "plugins": [
     {
-      "name": "skill-watcher",
+      "name": "watcher",
       "source": {
         "source": "local",
-        "path": "./plugins/skill-watcher"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "doc-watcher",
-      "source": {
-        "source": "local",
-        "path": "./plugins/doc-watcher"
+        "path": "./plugins/watcher"
       },
       "policy": {
         "installation": "AVAILABLE",

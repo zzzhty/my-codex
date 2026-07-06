@@ -1,0 +1,31 @@
+{
+  "repos": [
+    {
+      "name": "my-codex",
+      "path": "../../..",
+      "docs": [
+        "README.md",
+        "AGENTS.md",
+        "CONTEXT.md",
+        "docs/adr",
+        "plugins/watcher/README.md",
+        "plugins/watcher/.codex-plugin/plugin.json",
+        "plugins/watcher/.codex-plugin/skill-watcher.json",
+        "plugins/watcher/skills",
+        "plugins/workflow/README.md",
+        "plugins/workflow/.codex-plugin/plugin.json",
+        "plugins/workflow/skills"
+      ],
+      "source_of_truth": [
+        "README.md",
+        "AGENTS.md",
+        "CONTEXT.md",
+        "docs/adr",
+        "plugins/watcher/README.md",
+        "plugins/workflow/README.md"
+      ],
+      "watch_terms": [],
+      "commit_threshold": 5
+    }
+  ]
+}

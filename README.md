@@ -8,10 +8,11 @@ This repository is the development mainline for the plugins and personal Codex c
 
 ## Plugins
 
-- `skill-watcher`: observes Codex skill usage, produces report/proposal artifacts, and packages evidence-backed maintenance and semantic-compression skills.
-- `doc-watcher`: audits configured local repositories for documentation semantic drift, exposes a local audit cockpit, and packages `doc-alignment` plus `housekeeping` workflows.
+- `watcher`: observes Codex skill usage, audits documentation drift, and packages `doc-alignment`, `housekeeping`, `skill-maintainer`, and `skill-compressor` workflows.
 - `workflow`: packages reusable workflow skills, including continuation-ready long-running goal plans with frozen YOLO non-stops and runtime hard stops, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and standalone summaries.
 - `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
+
+The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees may remain during the watcher migration, but they are no longer default marketplace install entries.
 
 ## Orchestration Workflow
 
@@ -50,8 +51,7 @@ export MY_CODEX_PYTHON="${MY_CODEX_PYTHON:-$CODEX_HOME/venvs/my-codex/bin/python
 export PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py}"
 
 codex plugin marketplace add "$MY_CODEX_ROOT"
-codex plugin add skill-watcher@my-codex
-codex plugin add doc-watcher@my-codex
+codex plugin add watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 ```
@@ -66,8 +66,7 @@ $env:PLUGIN_VALIDATOR = "$env:CODEX_HOME\skills\.system\plugin-creator\scripts\v
 
 Set-Location $env:MY_CODEX_ROOT
 codex plugin marketplace add $env:MY_CODEX_ROOT
-codex plugin add skill-watcher@my-codex
-codex plugin add doc-watcher@my-codex
+codex plugin add watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 ```
@@ -112,11 +111,11 @@ The shared interpreter is:
 $MY_CODEX_PYTHON
 ```
 
-Use this interpreter for Codex hooks, Skill Watcher maintenance scripts, and skill/plugin validation that needs my-codex tooling dependencies.
+Use this interpreter for Codex hooks, Watcher maintenance scripts, and skill/plugin validation that needs my-codex tooling dependencies.
 
 ## Windows/Unix Compatibility Notes
 
-This repository is the Windows-oriented checkout of the original Unix-first `zzzhty/my-codex` workflow. The compatibility surface is intentionally narrow: it does not add separate plugins, skills, manifests, or top-level modules for Windows. Windows support lives in install documentation, shared tooling venv path selection, Skill Watcher hook command generation, hook schema alignment, and Windows-aware error messages.
+This repository is the Windows-oriented checkout of the original Unix-first `zzzhty/my-codex` workflow. The compatibility surface is intentionally narrow: it does not add separate plugins, skills, manifests, or top-level modules for Windows. Windows support lives in install documentation, shared tooling venv path selection, Watcher hook command generation, hook schema alignment, and Windows-aware error messages.
 
 Key path differences:
 
@@ -132,7 +131,7 @@ On Windows, use `Copy-Item` for `AGENTS.md` instead of a symlink. File symlink b
 - Windows: `Scripts\python.exe`
 - Unix: `bin/python`
 
-If a Skill Watcher script fails because `PyYAML` is missing, refresh the shared tooling venv from the repository root:
+If a Watcher script fails because `PyYAML` is missing, refresh the shared tooling venv from the repository root:
 
 Unix:
 
@@ -148,7 +147,7 @@ py scripts\bootstrap_tooling_env.py
 
 ## Marketplace And Hook Debugging
 
-Refresh the marketplace plugin cache and Skill Watcher hooks with the platform wrapper:
+Refresh the marketplace plugin cache and Watcher skill hooks with the platform wrapper:
 
 Unix:
 
@@ -164,7 +163,7 @@ Windows PowerShell:
 
 The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
-`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Skill Watcher doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Watcher skill doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
 
 Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
 
@@ -196,9 +195,9 @@ Windows PowerShell:
 py scripts\check_my_codex.py
 ```
 
-The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Skill Watcher hook schema, subagent support-file sync state, plugin validation, and Skill Watcher doctor. It does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
+The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Watcher skill hook schema, subagent support-file sync state, plugin validation, and Watcher skill doctor. It does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
 
-After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
+After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
 The platform wrappers sync global instructions after validation. Windows compares SHA256 hashes and copies `AGENTS.md` after confirmation when `$CODEX_HOME\AGENTS.md` differs or is missing. Unix checks whether `$CODEX_HOME/AGENTS.md` is already a symlink to this checkout's `AGENTS.md`; if it points elsewhere or is missing, it asks before replacing it with `ln -sfn`.
 
@@ -212,13 +211,12 @@ $env:PLUGIN_VALIDATOR = "$env:CODEX_HOME\skills\.system\plugin-creator\scripts\v
 
 py scripts\bootstrap_tooling_env.py
 codex plugin marketplace add $env:MY_CODEX_ROOT
-codex plugin add skill-watcher@my-codex
-codex plugin add doc-watcher@my-codex
+codex plugin add watcher@my-codex
 codex plugin add workflow@my-codex
 codex plugin add mattpocock-skills@my-codex
 ```
 
-Skill Watcher installs user-level Codex command hooks in `$CODEX_HOME/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
+Watcher installs user-level Codex command hooks in `$CODEX_HOME/hooks.json`. It does not use plugin manifest hooks and does not modify `.codex-plugin/plugin.json`.
 
 The generated hook handlers observe:
 
@@ -227,7 +225,7 @@ The generated hook handlers observe:
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` refreshes `$CODEX_HOME/skill-watcher/monitored-skills.json` and is not persisted by default.
+`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default.
 
 Expected command-hook schema:
 
@@ -237,32 +235,32 @@ Expected command-hook schema:
   "async": false,
   "command": "...",
   "timeoutSec": 10,
-  "statusMessage": "Skill Watcher: observe <event>"
+  "statusMessage": "Watcher skill: observe <event>"
 }
 ```
 
 Windows hook commands are rendered with Windows command-line quoting and should point at `Scripts\python.exe`. Unix hook commands use POSIX quoting and should point at `bin/python`.
 
-Install or refresh Skill Watcher hooks from the source checkout:
+Install or refresh Watcher skill hooks from the source checkout:
 
 Unix:
 
 ```bash
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --dry-run
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/skill-watcher/scripts/install_codex_hook.py" --apply
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/skill/install_codex_hook.py" --dry-run
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/skill/install_codex_hook.py" --apply
 ```
 
 Windows PowerShell:
 
 ```powershell
 $python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
-& $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --dry-run --python $python
-& $python "$env:MY_CODEX_ROOT\plugins\skill-watcher\scripts\install_codex_hook.py" --apply --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\skill\install_codex_hook.py" --dry-run --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\skill\install_codex_hook.py" --apply --python $python
 ```
 
-After applying hooks, open `/hooks` in Codex and trust the Skill Watcher command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
+After applying hooks, open `/hooks` in Codex and trust the Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
-Runtime Skill Watcher state is written under `$CODEX_HOME/skill-watcher/`:
+Runtime Watcher skill state is written under `$CODEX_HOME/watcher/skill/`:
 
 ```text
 logs/events.jsonl
@@ -276,7 +274,7 @@ turns/
 
 The hook adapter records summaries, lengths, hashes, tool names, outcomes, and redacted metadata. It does not store full prompts, full assistant messages, full shell commands, full tool responses, file contents, secrets, or private business data.
 
-Skill Watcher monitors the skills packaged by the `my-codex` marketplace by default and can be narrowed with `SKILL_WATCHER_MONITORED_SKILLS`. Because Codex hook payloads do not provide a stable native skill id, attribution is recorded as `provided`, `prompt_mention`, `assistant_announcement`, or `unknown`. Successful tool calls are counted in transient turn state but are not persisted as individual records; failed tool calls and one `turn_summary` are persisted for active monitored skills.
+Watcher monitors the skills packaged by the `my-codex` marketplace by default and can be narrowed with `WATCHER_SKILL_MONITORED_SKILLS`. Because Codex hook payloads do not provide a stable native skill id, attribution is recorded as `provided`, `prompt_mention`, `assistant_announcement`, or `unknown`. Successful tool calls are counted in transient turn state but are not persisted as individual records; failed tool calls and one `turn_summary` are persisted for active monitored skills.
 
 When the user explicitly invokes a monitored skill, the adapter stores a redacted `user_skill_context` summary/hash for the extra information mentioned with that skill. This is intended as future skill-improvement evidence without retaining the raw prompt.
 
@@ -287,8 +285,7 @@ Unix:
 ```bash
 python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 python3 -m json.tool .agents/plugins/install-manifest.json >/dev/null
-"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/skill-watcher"
-"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/doc-watcher"
+"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/workflow"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
 ```
@@ -298,8 +295,7 @@ Windows PowerShell:
 ```powershell
 & $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\marketplace.json | Out-Null
 & $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\install-manifest.json | Out-Null
-& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\skill-watcher"
-& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\doc-watcher"
+& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\workflow"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
 ```
@@ -310,8 +306,7 @@ Windows PowerShell:
 .agents/plugins/marketplace.json
 .agents/plugins/install-manifest.json
 plugins/
-  skill-watcher/
-  doc-watcher/
+  watcher/
   workflow/
   mattpocock-skills/
 requirements.txt

@@ -24,8 +24,8 @@ from refresh_my_codex import (
 )
 
 
-SKILL_WATCHER_SCRIPTS = REPO_ROOT / "plugins" / "skill-watcher" / "scripts"
-sys.path.insert(0, str(SKILL_WATCHER_SCRIPTS))
+WATCHER_SKILL_SCRIPTS = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill"
+sys.path.insert(0, str(WATCHER_SKILL_SCRIPTS))
 
 from codex_hook_config import HOOK_EVENTS, adapter_path, load_config  # noqa: E402
 from doctor import find_managed_hook_issues  # noqa: E402
@@ -156,7 +156,7 @@ class CheckRunner:
 
     def check_hook_config(self, tooling_python: Path, *, hook_config: Path) -> None:
         if not hook_config.is_file():
-            self.fail(f"Skill Watcher hook config missing: {hook_config}")
+            self.fail(f"Watcher skill hook config missing: {hook_config}")
             return
         try:
             config = load_config(hook_config)
@@ -170,18 +170,18 @@ class CheckRunner:
         )
         if issues:
             self.fail(
-                "Skill Watcher hook config has stale managed handlers. "
+                "Watcher skill hook config has stale managed handlers. "
                 f"Run scripts/refresh_my_codex.py. Issues: {issues}"
             )
             return
         expected = set(HOOK_EVENTS)
         if matched_events != expected:
             self.fail(
-                "Skill Watcher hook config event coverage mismatch: "
+                "Watcher skill hook config event coverage mismatch: "
                 f"expected {sorted(expected)}, found {sorted(matched_events)}"
             )
             return
-        self.ok(f"Skill Watcher hooks match current schema: {hook_config}")
+        self.ok(f"Watcher skill hooks match current schema: {hook_config}")
 
     def check_plugin_validation(
         self,
@@ -205,13 +205,13 @@ class CheckRunner:
                 self.fail(f"plugin validation failed for {plugin_name}: {output}")
 
     def check_doctor(self, tooling_python: Path, *, env: dict[str, str]) -> None:
-        doctor = REPO_ROOT / "plugins" / "skill-watcher" / "scripts" / "doctor.py"
+        doctor = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "doctor.py"
         result = self.run_command([str(tooling_python), str(doctor)], env=env)
         if result.returncode == 0:
-            self.ok("Skill Watcher doctor passed")
+            self.ok("Watcher skill doctor passed")
         else:
             output = (result.stderr or result.stdout).strip()
-            self.fail(f"Skill Watcher doctor failed: {output}")
+            self.fail(f"Watcher skill doctor failed: {output}")
 
     def check_agent_sync(self, *, codex_home: Path, env: dict[str, str]) -> None:
         sync_script = REPO_ROOT / "scripts" / "sync_codex_agents.py"
@@ -247,15 +247,10 @@ def main() -> None:
     parser.add_argument("--marketplace-name", default="my-codex", help="Configured marketplace name.")
     parser.add_argument("--plugin", action="append", help="Plugin name or selector to check. May be repeated.")
     parser.add_argument("--skip-plugins", action="store_true", help="Skip `codex plugin list` and plugin cache checks.")
-    parser.add_argument("--skip-hooks", action="store_true", help="Skip Skill Watcher hook config checks.")
+    parser.add_argument("--skip-hooks", action="store_true", help="Skip Watcher skill hook config checks.")
     parser.add_argument("--skip-agents", action="store_true", help="Skip subagent support-file sync checks.")
     parser.add_argument("--skip-plugin-validation", action="store_true", help="Skip plugin validator checks.")
-    parser.add_argument("--skip-doctor", action="store_true", help="Skip Skill Watcher doctor.")
-    parser.add_argument(
-        "--skip-skill-watcher-doctor",
-        action="store_true",
-        help="Alias for --skip-doctor.",
-    )
+    parser.add_argument("--skip-doctor", action="store_true", help="Skip Watcher skill doctor.")
     parser.add_argument("--strict-warnings", action="store_true", help="Treat warnings as failures.")
     args = parser.parse_args()
 
@@ -279,7 +274,7 @@ def main() -> None:
         runner.check_agent_sync(codex_home=codex_home, env=env)
     if not args.skip_plugin_validation:
         runner.check_plugin_validation(tooling_python, plugins, env=env, validator=validator)
-    if not args.skip_doctor and not args.skip_skill_watcher_doctor:
+    if not args.skip_doctor:
         runner.check_doctor(tooling_python, env=env)
     runner.finish(strict_warnings=args.strict_warnings)
 

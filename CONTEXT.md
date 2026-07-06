@@ -1,6 +1,6 @@
-# Skill Watcher
+# Watcher
 
-This context describes the language used to evaluate Skill Watcher usage data for Codex skills and plugin-provided skill systems.
+This context describes the language used to evaluate Watcher usage data for Codex skills, documentation audits, and plugin-provided skill systems.
 
 ## Language
 
@@ -45,7 +45,7 @@ A skill name or alias observed in runtime text that may provide attribution evid
 _Avoid_: supporting skill, effective skill
 
 **Skill Metadata Manifest**:
-A plugin-owned machine-readable declaration at `.codex-plugin/skill-watcher.json` containing canonical names, legacy names, aliases, roles, and skill dependency map entries that Skill Watcher can consume.
+A plugin-owned machine-readable declaration at `.codex-plugin/skill-watcher.json` containing canonical names, legacy names, aliases, roles, and skill dependency map entries that Watcher can consume.
 _Avoid_: README inference, directory scan as source of truth
 
 **Incremental Metadata Index**:
@@ -61,7 +61,7 @@ A metadata classification that explains how a skill is normally used in a skill 
 _Avoid_: usage count bucket, deletion signal
 
 **Runtime Metadata Cache**:
-A Skill Watcher-generated cache of installed skill metadata manifests used by hooks at runtime.
+A Watcher-generated cache of installed skill metadata manifests used by hooks at runtime.
 _Avoid_: plugin source of truth, hand-maintained allowlist
 
 **Skill Attribution**:
@@ -76,6 +76,26 @@ _Avoid_: raw event aggregate, tool event count
 A record that a tool call failed during a turn; it is diagnostic evidence, not a task outcome by itself.
 _Avoid_: skill failure, task failure
 
-**Skill Watcher Schema Migration**:
-An explicit reset of Skill Watcher runtime state from one event schema to another, with old logs archived rather than mixed with new events.
+**Watcher Skill Schema Migration**:
+An explicit reset of Watcher skill-domain runtime state from one event schema to another, with old logs archived rather than mixed with new events.
 _Avoid_: automatic compatibility, mixed-schema log
+
+**Watcher Consolidation**:
+Combining watcher plugin packaging, shared runtime helpers, validation, and maintenance surfaces while preserving separate skill invocation boundaries.
+_Avoid_: skill merger, giant watcher skill
+
+**Watcher Runtime Root**:
+The consolidated runtime state root at `$CODEX_HOME/watcher/`, with domain-specific state under `skill/` and `doc/`.
+_Avoid_: shared flat reports directory, old per-plugin runtime root
+
+**Watcher Plugin**:
+The canonical plugin package named `watcher` that owns both documentation audit and skill usage watcher domains.
+_Avoid_: doc-watcher as umbrella, skill-watcher as umbrella
+
+**Legacy Attribution Name**:
+An old skill identity kept only as reporting and migration metadata so historical or residual signals can resolve to the current canonical watcher skill.
+_Avoid_: active skill name, compatibility entrypoint
+
+**Watcher CLI**:
+The consolidated command entrypoint `scripts/watcher`, organized by domain subcommands such as `skill` and `doc`.
+_Avoid_: many top-level watcher wrappers, flat universal report command

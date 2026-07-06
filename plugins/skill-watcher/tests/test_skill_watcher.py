@@ -10,9 +10,10 @@ from pathlib import Path
 from unittest import mock
 
 
-ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = ROOT.parents[1]
-SCRIPTS = ROOT / "scripts"
+TEST_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = TEST_ROOT.parents[1]
+ROOT = REPO_ROOT / "plugins" / "watcher"
+SCRIPTS = ROOT / "scripts" / "skill"
 ROOT_SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(ROOT_SCRIPTS))
 sys.path.insert(0, str(SCRIPTS))
@@ -135,7 +136,7 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertIn(r"\u25b6", "".join(stdout.writes))
 
-    def test_doc_watcher_plugin_validation_uses_tooling_python(self) -> None:
+    def test_watcher_plugin_validation_uses_tooling_python(self) -> None:
         runner = CheckRunner()
         calls = []
 
@@ -149,7 +150,7 @@ class SkillWatcherTests(unittest.TestCase):
 
         runner.check_plugin_validation(
             tooling_python,
-            ["doc-watcher@my-codex"],
+            ["watcher@my-codex"],
             env={},
             validator=validator,
         )
@@ -160,8 +161,7 @@ class SkillWatcherTests(unittest.TestCase):
 
     def test_install_manifest_drives_default_plugin_selection(self) -> None:
         expected = [
-            "skill-watcher",
-            "doc-watcher",
+            "watcher",
             "workflow",
             "mattpocock-skills",
         ]
@@ -175,8 +175,8 @@ class SkillWatcherTests(unittest.TestCase):
             [f"{plugin}@my-codex" for plugin in expected],
         )
         self.assertEqual(
-            selected_plugins(["doc-watcher"], "my-codex", action="install"),
-            ["doc-watcher@my-codex"],
+            selected_plugins(["watcher"], "my-codex", action="install"),
+            ["watcher@my-codex"],
         )
         self.assertEqual(
             selected_plugins(["external@other-market"], "my-codex", action="install"),
@@ -373,13 +373,14 @@ class SkillWatcherTests(unittest.TestCase):
 
     def test_codex_hook_lifecycle_filters_summarizes_and_guards_skill_list(self) -> None:
         packaged = sorted(
-            f"{skill_file.parents[2].name}:{skill_file.parent.name}"
-            for skill_file in (REPO_ROOT / "plugins").glob("*/skills/*/SKILL.md")
+            f"{plugin_name}:{skill_file.parent.name}"
+            for plugin_name in default_plugin_names("install", marketplace_name="my-codex")
+            for skill_file in (REPO_ROOT / "plugins" / plugin_name / "skills").glob("*/SKILL.md")
         )
         self.assertTrue(DEFAULT_MONITORED_SKILLS)
         self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
-        self.assertIn("skill-watcher:skill-compressor", DEFAULT_MONITORED_SKILLS)
-        self.assertIn("doc-watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
+        self.assertIn("watcher:skill-compressor", DEFAULT_MONITORED_SKILLS)
+        self.assertIn("watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
         self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
         self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_MONITORED_SKILLS)
         self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
@@ -547,12 +548,12 @@ class SkillWatcherTests(unittest.TestCase):
             self.assertEqual(default_python(), Path("/tmp/tooling-python"))
 
         python = Path(r"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe")
-        adapter = Path(r"C:\Users\Max Smith\Projects\my-codex\plugins\skill-watcher\scripts\codex_hook_adapter.py")
+        adapter = Path(r"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\skill\codex_hook_adapter.py")
         with mock.patch("codex_hook_config.os.name", "nt"):
             self.assertEqual(
                 skill_watcher_command(python, adapter),
                 r'"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe" -B '
-                r'"C:\Users\Max Smith\Projects\my-codex\plugins\skill-watcher\scripts\codex_hook_adapter.py"',
+                r'"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\skill\codex_hook_adapter.py"',
             )
 
         self.assertEqual(marketplace_source_arg("https://github.com/example/my-codex"), "https://github.com/example/my-codex")
@@ -568,12 +569,12 @@ class SkillWatcherTests(unittest.TestCase):
         installed, _ = install_skill_watcher_hooks(
             existing,
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/skill-watcher/scripts/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
         )
         installed_again, removed = install_skill_watcher_hooks(
             installed,
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/skill-watcher/scripts/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
         )
         uninstalled, removed_on_uninstall = remove_skill_watcher_hooks(installed)
 
@@ -594,7 +595,7 @@ class SkillWatcherTests(unittest.TestCase):
 
         old_handler = {
             "type": "command",
-            "command": "/tmp/python /tmp/skill-watcher/scripts/codex_hook_adapter.py",
+            "command": "/tmp/python /tmp/watcher/scripts/skill/codex_hook_adapter.py",
             "timeout": 10,
             "statusMessage": "Skill Watcher: observe UserPromptSubmit",
         }
@@ -606,7 +607,7 @@ class SkillWatcherTests(unittest.TestCase):
                 }
             },
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/skill-watcher/scripts/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
         )
 
         self.assertEqual(matched_events, {"SessionStart", "UserPromptSubmit"})
@@ -630,7 +631,7 @@ class SkillWatcherTests(unittest.TestCase):
             for dirname in ("logs", "reports", "proposals", "snapshots", "rejected", "backups", "turns"):
                 self.assertTrue((state_dir / dirname).is_dir())
 
-            with mock.patch.dict("os.environ", {"SKILL_WATCHER_STATE_DIR": str(state_dir)}, clear=False):
+            with mock.patch.dict("os.environ", {"WATCHER_SKILL_STATE_DIR": str(state_dir)}, clear=False):
                 self.assertEqual(runtime_state_dir_from_env_or_arg(None), state_dir)
             self.assertEqual(runtime_state_dir_from_env_or_arg(str(state_dir / "explicit")), state_dir / "explicit")
             self.assertEqual(runtime_safe_slug("skill watcher:demo", fallback="x"), "skill-watcher-demo")

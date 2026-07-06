@@ -3,12 +3,7 @@
   "marketplace": "my-codex",
   "plugins": [
     {
-      "name": "skill-watcher",
-      "install": true,
-      "check": true
-    },
-    {
-      "name": "doc-watcher",
+      "name": "watcher",
       "install": true,
       "check": true
     },
