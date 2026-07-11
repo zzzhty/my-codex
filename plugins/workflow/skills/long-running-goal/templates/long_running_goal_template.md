@@ -9,16 +9,17 @@
 1. 先确认项目已有的 planning root 和 goal directory。`<planning-root>` 是更大的文档/计划树；`<goal-dir>` 是直接存放 active goal 文件的目录。不要对已经是 goal directory 的路径再追加 `/todo`。
 2. 复制本文件到目标计划路径，例如：
 
-```bash
+```bash placeholder-example
 cp <skill-folder>/templates/long_running_goal_template.md <goal-dir>/<goal_slug>_long_running_goal_plan.md
 ```
 
 3. 创建或执行实现前先应用 `components/planning-preflight.md`：默认先运行 `grill-with-docs` 确定具体实施方案；只有用户显式表示不需要 grill 时才跳过，并在本文件记录 skip。
 4. 将标题、目标描述、目标路径、Planning preflight marker、Loop Blueprint、阶段名称、验证命令和 checkpoint evidence 替换为当前任务内容。
-5. 执行过程中只更新复制后的 goal 文件，不更新本模板。
-6. 每个阶段完成后必须补齐代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
-7. 按任务规模增删 `M<N>` 阶段；删除不用的阶段，按顺序新增需要的阶段，并同步更新阶段状态表、Checkpoint evidence、Close Gate 和推荐 Goal Prompt。
-8. Close 前必须确认所有阶段 `Done`，并记录最终验证结果。
+5. “阶段状态表”是 lifecycle 状态的汇总事实源；若阶段正文也写 `状态`，必须与表中对应行一致。`Done` 行必须同时为 `Review=Passed`、`Checkpoint=Done`，`Closed` 时所有阶段和 Close 行均须完成。
+6. 执行过程中只更新复制后的 goal 文件，不更新本模板。
+7. 每个阶段完成后必须补齐代码证据、行为证据、测试证据、文档证据、回滚证据和剩余风险。
+8. 按任务规模增删 `M<N>` 阶段；删除不用的阶段，按顺序新增需要的阶段，并同步更新阶段状态表、Checkpoint evidence、Close Gate 和推荐 Goal Prompt。
+9. Close 前必须确认所有阶段 `Done`，并记录最终验证结果；归档后用 `check_todo_index.py --mode closed --archived-goal ...`，无归档删除时用 `--mode absent` 验证 active 导航清理。
 
 ## Goal 摘要
 
@@ -168,7 +169,7 @@ git diff --check -- <changed-paths>
 
 Checkpoint evidence format：
 
-```text
+```text placeholder-example
 Checkpoint component: <Pending / Done>
 Checkpoint type: <git commit / current HEAD / artifact revision / not applicable>
 Revision: <commit hash / HEAD hash / artifact path / issue or task revision / n/a>
@@ -365,6 +366,8 @@ Checkpoint evidence：
 | Close | Not Started | Pending | Pending |
 
 ## Close Gate
+
+所有 M 阶段完成后，先将 Close 行和整体状态设为 `In Progress` 并补齐以下证据；只有本 gate 全部通过后，才将 Close 行设为 `Done / Passed / Done`、整体状态设为 `Closed`。
 
 Close 前必须满足：
 

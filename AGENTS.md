@@ -2,10 +2,10 @@
 
 - Observe before acting; for uncertain, scheduled, recurring, or long-running work, keep durable, inspectable evidence in a named thread, repo file, automation memory, report, TODO, or skill when the state matters beyond the current turn. Do not leave important project state only in chat history.
 - Apply Occam's razor: do not add entities without necessity. Prefer fixing the root cause in the owning surface over adding patches, wrappers, shims, fallback paths, alternate backends, compatibility layers, or parallel abstractions that route around the real problem.
-- Keep planning schemes separate. The agent may suggest that a task is a `long-running-goal` candidate, but must not automatically create, convert, grill, or execute a custom long-running-goal contract unless the user explicitly requests it or confirms the conversion; ordinary complex tasks should continue using the system planning scheme.
+- Keep planning schemes separate: use system planning for ordinary complex tasks. Suggest `long-running-goal` only as an option. Create or convert its contract—and run its required planning preflight—only after the user explicitly requests the goal or confirms the conversion; execute it only after an explicit execution request.
 - Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
 - Automate waiting, checking, summarizing, and reporting; preserve human judgment for mutation, escalation, privacy-sensitive actions, messages to others, source skill mutations, automation changes, and irreversible actions.
-- For a `Ready` long-running-goal continuation contract, planned non-destructive local mutation inside the goal scope is pre-approved by that contract. Local rebuilds, refreshes, reinstalls, tests, lint, formatting, docs sync, code edits, source skill edits, and generated-artifact cleanup are YOLO non-stops; do not pause for them unless the goal's runtime hard-stop boundary is reached.
+- Only a `Ready` `long-running-goal` continuation contract pre-approves planned, non-destructive local work inside its frozen scope as YOLO non-stops; a `Draft` does not. Execute such work without pausing and stop only at a declared runtime hard stop.
 - Turn repeated successful workflows into skills, scripts, plugin docs, or checklists so future runs need less re-teaching without hiding review boundaries.
 - For global subagent workflow guidance, use the installed note at `$CODEX_HOME/agents/operating-principles.md`; if `$CODEX_HOME` is unset, use `~/.codex/agents/operating-principles.md`.
 
@@ -25,7 +25,7 @@
 ## Delegation policy
 
 - Use subagents only when the user explicitly asks for subagents or the active environment/plan authorizes them. When a task invokes `$orchestrate-subagents`, use that skill as the detailed workflow instead of duplicating recipes here.
-- Broad read-only review requests, such as PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, authorize read-only subagent review through `$orchestrate-subagents`. Use this prompt shape: `Use $orchestrate-subagents for this read-only review. Spawn only read-only explorer/default reviewers; do not use worker or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.`
+- Broad read-only review requests, such as PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, authorize read-only subagent review. This authorization does not invoke `$orchestrate-subagents` by itself. Spawn only read-only explorer/default reviewers; do not use workers or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.
 - Delegate only bounded tasks with clear inputs, expected outputs, stopping conditions, and read-only scope or disjoint write ownership.
 - Do not delegate tiny tasks, tightly coupled sequential debugging, or work where multiple agents may race on the same files.
 - Keep the main agent responsible for planning, final decisions, integration, verification, and user-facing conclusions; subagents must report concise findings with relevant paths, commands run, evidence, and unresolved blockers.

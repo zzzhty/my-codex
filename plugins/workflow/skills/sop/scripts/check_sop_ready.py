@@ -36,7 +36,7 @@ def main() -> int:
     visible_text = strip_fenced_blocks(text)
     errors: list[str] = []
 
-    errors.extend(placeholder_errors(visible_text))
+    errors.extend(placeholder_errors(text))
 
     required_patterns = {
         "summary": r"(?m)^##\s*(摘要|Summary)\b",

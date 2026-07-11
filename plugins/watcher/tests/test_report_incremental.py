@@ -8,14 +8,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "scripts" / "doc"
+SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-for module_name in ("audit_runtime", "commit_counter", "generate_report"):
-    sys.modules.pop(module_name, None)
 
-from audit_runtime import repo_read_status  # noqa: E402
-from commit_counter import load_state, mark_current, repo_status  # noqa: E402
-from generate_report import finding_delta, finding_records  # noqa: E402
+from watcher_runtime.doc.audit_runtime import repo_read_status  # noqa: E402
+from watcher_runtime.doc.commit_counter import load_state, mark_current, repo_status  # noqa: E402
+from watcher_runtime.doc.report import finding_delta, finding_records  # noqa: E402
 
 
 def run(command: list[str], cwd: Path) -> None:

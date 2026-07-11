@@ -1,6 +1,6 @@
 {
   "name": "watcher",
-  "version": "0.1.0+codex.20260707000000",
+  "version": "0.1.0+codex.20260710090848",
   "description": "Observe Codex skill usage and audit documentation drift from one consolidated watcher plugin.",
   "author": {
     "name": "Local developer"

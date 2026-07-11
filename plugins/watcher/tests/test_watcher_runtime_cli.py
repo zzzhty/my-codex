@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import importlib
+import inspect
 import io
 import subprocess
 import sys
@@ -13,49 +15,68 @@ from unittest import mock
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PLUGIN_ROOT.parents[1]
 SCRIPTS = PLUGIN_ROOT / "scripts"
-DOC_SCRIPTS = SCRIPTS / "doc"
 ROOT_SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(ROOT_SCRIPTS))
-sys.path.insert(0, str(DOC_SCRIPTS))
 sys.path.insert(0, str(SCRIPTS))
 
-import audit_repo  # noqa: E402
-import audit_runtime  # noqa: E402
-import watcher_cli  # noqa: E402
+from watcher_runtime import cli as watcher_cli  # noqa: E402
+from watcher_runtime.doc import audit_repo, audit_runtime  # noqa: E402
 from refresh_my_codex import cached_plugin_names, prune_stale_plugins  # noqa: E402
 
 
 class WatcherRuntimeCliTests(unittest.TestCase):
-    def test_cli_dispatches_skill_report_to_existing_script(self) -> None:
-        calls: list[list[str]] = []
+    def test_named_runtime_domains_do_not_share_bare_module_identity(self) -> None:
+        doc_report = importlib.import_module("watcher_runtime.doc.report")
+        skill_report = importlib.import_module("watcher_runtime.skill.report")
 
-        def fake_run(command: list[str]) -> subprocess.CompletedProcess[str]:
-            calls.append(command)
-            return subprocess.CompletedProcess(command, 0)
+        self.assertIsNot(doc_report, skill_report)
+        self.assertTrue(hasattr(doc_report, "finding_delta"))
+        self.assertFalse(hasattr(skill_report, "finding_delta"))
 
-        with mock.patch("watcher_cli.subprocess.run", fake_run):
+    def test_cli_dispatches_skill_report_to_named_handler(self) -> None:
+        with mock.patch("watcher_runtime.skill.report.main", return_value=0) as handler:
             exit_code = watcher_cli.main(["skill", "report", "--since", "7d"])
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(calls[0][0], sys.executable)
-        self.assertEqual(Path(calls[0][1]).name, "generate_report.py")
-        self.assertEqual(Path(calls[0][1]).parent.name, "skill")
-        self.assertEqual(calls[0][2:], ["--since", "7d"])
+        handler.assert_called_once_with(["--since", "7d"])
 
-    def test_cli_dispatches_doc_report_to_existing_script(self) -> None:
-        calls: list[list[str]] = []
-
-        def fake_run(command: list[str]) -> subprocess.CompletedProcess[str]:
-            calls.append(command)
-            return subprocess.CompletedProcess(command, 0)
-
-        with mock.patch("watcher_cli.subprocess.run", fake_run):
+    def test_cli_dispatches_doc_report_to_named_handler(self) -> None:
+        with mock.patch("watcher_runtime.doc.report.main", return_value=0) as handler:
             exit_code = watcher_cli.main(["doc", "report", "--digest"])
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(Path(calls[0][1]).name, "generate_report.py")
-        self.assertEqual(Path(calls[0][1]).parent.name, "doc")
-        self.assertEqual(calls[0][2:], ["--digest"])
+        handler.assert_called_once_with(["--digest"])
+
+    def test_command_registry_exposes_one_argv_handler_interface(self) -> None:
+        for domain, commands in watcher_cli.COMMAND_MODULES.items():
+            for command, module_name in commands.items():
+                with self.subTest(domain=domain, command=command):
+                    handler = importlib.import_module(module_name).main
+                    self.assertEqual(list(inspect.signature(handler).parameters), ["argv"])
+
+    def test_every_registered_command_owns_canonical_help(self) -> None:
+        for domain, commands in watcher_cli.COMMAND_MODULES.items():
+            for command in commands:
+                with self.subTest(domain=domain, command=command):
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout), self.assertRaises(SystemExit) as raised:
+                        watcher_cli.main([domain, command, "--help"])
+                    self.assertEqual(raised.exception.code, 0)
+                    self.assertTrue(stdout.getvalue().startswith(f"usage: watcher {domain} {command}"))
+
+    def test_os_cli_help_uses_canonical_command_names(self) -> None:
+        watcher = SCRIPTS / "watcher"
+        for domain in ("skill", "doc"):
+            with self.subTest(domain=domain):
+                completed = subprocess.run(
+                    [sys.executable, "-B", str(watcher), domain, "report", "--help"],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertTrue(completed.stdout.startswith(f"usage: watcher {domain} report"))
+                self.assertNotIn("generate_report.py", completed.stdout)
 
     def test_migrate_state_defaults_to_dry_run_without_moving(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,7 +150,7 @@ class WatcherRuntimeCliTests(unittest.TestCase):
                 self.assertEqual(audit_runtime.resolve_audit_state_dir(), current)
 
             with mock.patch.dict("os.environ", {"DOC_WATCHER_STATE_DIR": str(legacy)}, clear=True):
-                with mock.patch("audit_repo.DEFAULT_STATE_DIR", default):
+                with mock.patch("watcher_runtime.doc.audit_repo.DEFAULT_STATE_DIR", default):
                     self.assertEqual(audit_repo.resolve_state_dir(None), default)
 
     def test_prune_stale_plugins_removes_cache_only_entries(self) -> None:

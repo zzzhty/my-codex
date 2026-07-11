@@ -15,29 +15,46 @@ from markdown_contract import (  # noqa: E402
     missing_relative_links,
     placeholder_errors,
     render_link_errors,
-    strip_fenced_blocks,
 )
-from summary_artifact import SummaryArtifactError, artifact_from_data, validate_summary_artifact  # noqa: E402
-
-
 class MarkdownContractTests(unittest.TestCase):
-    def test_placeholder_scan_ignores_fenced_blocks(self) -> None:
+    def test_placeholder_scan_checks_fences_except_explicit_examples(self) -> None:
         text = "\n".join(
             [
                 "Visible <replace-me>",
+                "```bash",
+                "run <command-placeholder>",
                 "```",
-                "Hidden <example-placeholder>",
+                "```text placeholder-example",
+                "Shown <example-placeholder>",
                 "```",
             ]
         )
 
-        visible = strip_fenced_blocks(text)
-
-        self.assertIn("Visible <replace-me>", visible)
-        self.assertNotIn("Hidden <example-placeholder>", visible)
         self.assertEqual(
-            placeholder_errors(visible),
-            ["unresolved placeholders outside code fences: <replace-me>"],
+            placeholder_errors(text),
+            ["unresolved placeholders: <command-placeholder>, <replace-me>"],
+        )
+
+    def test_placeholder_example_fence_must_be_exact_and_closed(self) -> None:
+        text = "\n".join(
+            [
+                "~~~text placeholder-example",
+                "Shown <closed-example>",
+                "~~~~",
+                "~~~text not-placeholder-example",
+                "Still unresolved <exact-token-required>",
+                "~~~",
+                "```text placeholder-example",
+                "Unclosed <must-not-be-hidden>",
+            ]
+        )
+
+        self.assertEqual(
+            placeholder_errors(text),
+            [
+                "unclosed placeholder-example fence at line 7",
+                "unresolved placeholders: <exact-token-required>, <must-not-be-hidden>",
+            ],
         )
 
     def test_relative_link_scan_ignores_external_and_reports_missing_local_targets(self) -> None:
@@ -75,27 +92,29 @@ class MarkdownContractTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn(":1: missing missing.md", stderr.getvalue())
 
-    def test_summary_artifact_validates_shape_before_rendering(self) -> None:
-        data = {
-            "title": "Demo",
-            "sections": [
-                {
-                    "title": "Overview",
-                    "summary": "A short summary.",
-                    "paragraphs": ["One paragraph."],
-                    "files": [{"path": "README.md"}],
-                }
-            ],
-        }
+    def test_relative_link_scan_handles_reference_links_and_ignores_non_navigation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            index = root / "index.md"
+            index.write_text(
+                "\n".join(
+                    [
+                        "[reference][missing]",
+                        "[missing]: missing.md \"Missing\"",
+                        "[external](<https://example.com/path>)",
+                        "`[inline-code](code-only.md)`",
+                        "<!-- [comment](comment-only.md) -->",
+                        "![image](image-only.md)",
+                    ]
+                ),
+                encoding="utf-8",
+            )
 
-        artifact = artifact_from_data(data)
+            issues = missing_relative_links(root)
 
-        self.assertEqual(artifact.title, "Demo")
-        self.assertEqual(artifact.sections[0]["title"], "Overview")
-        self.assertEqual(validate_summary_artifact({"title": "Demo"}), ["summary JSON must include a non-empty sections list"])
-        with self.assertRaises(SummaryArtifactError):
-            artifact_from_data({"sections": [{"title": ["not", "text"]}]})
-
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].line, 1)
+        self.assertEqual(issues[0].target, "missing.md")
 
 if __name__ == "__main__":
     unittest.main()

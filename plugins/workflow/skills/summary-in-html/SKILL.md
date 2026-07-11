@@ -71,6 +71,8 @@ Include only useful fields:
 }
 ```
 
+The renderer validates nested list members before writing HTML: paragraphs, bullets, and blind spots are strings; files use `{path, note?}`; code blocks use `{text, language?}`; evidence uses `{path, label?}`; and assets use `{path, alt, caption}`. File and evidence paths must be non-empty, and every asset field must be non-empty.
+
 ## Visual Assets
 
 Generate or place images only when the user explicitly asks for visuals. Read `references/visual_asset_contract.md` before creating or placing image assets.

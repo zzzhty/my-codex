@@ -2,9 +2,6 @@
 
 ## Active Design Notes
 
-- [AGENTS Future Plan](agents-prompt-optimization.md): open C2 follow-up for long-running-goal safety wording in root `AGENTS.md`.
-- [Doc Alignment Progressive Disclosure Proposal](doc-alignment-progressive-disclosure-proposal.md): guarded future disclosure plan for branch-heavy Watcher `doc-alignment` reference.
-- [Long-Running Goal Skill Compression Proposal](long-running-goal-skill-compression-proposal.md): semantic inventory and guarded future compression plan for the Workflow `long-running-goal` skill.
 - [Subagent Orchestration Follow-Up](subagent-orchestration-follow-up.md): future plan for validated read-only review contracts, custom-agent TOML criteria, and targeted Superpowers-inspired workflow improvements.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
@@ -20,3 +17,6 @@ No closed long-running goal index is currently tracked.
 ## Archive
 
 - [Skill Prompt Optimization Report](archive/skill-prompt-optimization.md): historical report from the pre-consolidation `doc-watcher` and `skill-watcher` source layout.
+- [Doc Alignment Progressive Disclosure Record](archive/doc-alignment-progressive-disclosure-proposal.md): accepted oracle, implementation map, and semantic-review evidence for the disclosed Watcher skill reference.
+- [Long-Running Goal Skill Compression Record](archive/long-running-goal-skill-compression-proposal.md): accepted compression inventory plus the lifecycle/index validation hardening follow-up.
+- [AGENTS Prompt Optimization Record](archive/agents-prompt-optimization.md): closed C2 wording compression with root-specific semantic inventory and independent safety review.

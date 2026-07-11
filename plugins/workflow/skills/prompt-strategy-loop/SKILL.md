@@ -58,4 +58,4 @@ Stop and report instead of optimizing when there is no evidence or oracle, requi
 
 ## Workflow Boundaries
 
-Use `long-running-goal` when prompt/strategy iteration becomes a durable multi-milestone objective. Use `orchestrate-subagents` when the current environment exposes subagent tools for evaluation or when the user explicitly asks for subagent orchestration. Keep this skill focused on evidence, candidates, independent evaluation, selection, and writeback.
+Use `long-running-goal` when prompt/strategy iteration becomes a durable multi-milestone objective. For independent evaluation, use subagent tools only when the active environment or plan authorizes delegation. This evaluator delegation does not invoke `orchestrate-subagents`; invoke that skill only when the user names it or explicitly asks for subagent orchestration. If delegation is unavailable, follow the Core Rule and stop at an unverified proposal. Keep this skill focused on evidence, candidates, independent evaluation, selection, and writeback.

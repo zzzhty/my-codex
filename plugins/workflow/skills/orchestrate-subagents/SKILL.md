@@ -1,11 +1,11 @@
 ---
 name: orchestrate-subagents
-description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks Codex to use subagents or parallel agents for a complex task, including PR review, architecture review, debugging, failure triage, migration, refactor planning, impact analysis, test discovery, API/schema inspection, documentation alignment, and multi-file implementation planning.
+description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks Codex to use subagents, parallel agents, or multi-agent delegation; tool availability, environment authorization, and task parallelizability alone are not triggers.
 ---
 
 # Orchestrate Subagents
 
-Use this skill only when the user invokes `$orchestrate-subagents` or explicitly asks to use subagents. Do not use it to justify implicit delegation; otherwise follow the active environment's normal subagent policy.
+This skill defines the detailed workflow after a user-requested trigger. Tool availability, environment authorization, or task parallelizability alone do not trigger it, and invoking it does not expand the active environment's delegation authority.
 
 ## Core Contract
 

@@ -19,6 +19,8 @@ $CODEX_HOME/watcher/
     └── skill-metadata-cache.json
 ```
 
+On `SessionStart`, Watcher rebuilds `skill-metadata-cache.json` from the local marketplace catalog and plugin-owned manifests. Catalog/plugin identity mismatches, malformed manifests, unsupported metadata schemas, and invalid skill relationships stop the refresh with a visible error; Watcher does not fall back to scanning `plugins/*`.
+
 Packaged skills:
 
 - `doc-alignment`: audit or align documentation, scripts, skills, runbooks, operational entry points, and planning folders against current source of truth.
@@ -30,6 +32,7 @@ Current migration scope:
 
 - Source skills and direct skill resources have moved under `plugins/watcher/skills/`.
 - Report/audit scripts live behind the unified `plugins/watcher/scripts/watcher` entrypoint.
+- Python implementations live in the named `scripts/watcher_runtime/skill` and `scripts/watcher_runtime/doc` packages; callers and tests use those modules through `main(argv)`, not direct script paths.
 - The former DocWatcher cockpit backend/frontend and legacy patch/PR/provider/webhook surfaces were not migrated into the active plugin source. Git history remains the recovery path for those retired experiments.
 
 Use the unified CLI from the Watcher plugin root:

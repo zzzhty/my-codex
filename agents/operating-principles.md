@@ -62,8 +62,8 @@ Subagent work has one current workflow layer in this repository.
 Current runtime workflow:
 
 - Use the `workflow` plugin's `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
-- For broad read-only review requests, including PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, use this prompt shape: `Use $orchestrate-subagents for this read-only review. Spawn only read-only explorer/default reviewers; do not use worker or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.`
-- Treat `plugins/workflow/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
+- Broad read-only review requests, including PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, authorize read-only subagent review. This authorization does not invoke `$orchestrate-subagents` by itself. Spawn only read-only explorer/default reviewers; do not use workers or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.
+- When `$orchestrate-subagents` is invoked, treat `plugins/workflow/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
 - Use the currently available Codex roles such as `explorer`, `worker`, and `default`, with task-local labels like `code-mapper` or `test-verifier`.
 - Keep the parent agent responsible for planning, write-scope decisions, integration, final validation, and the user-facing conclusion.
 

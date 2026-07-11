@@ -14,17 +14,34 @@ This repository is the development mainline for the plugins and personal Codex c
 
 The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees were removed after the Watcher migration. Git history remains the recovery path for those retired plugin sources.
 
+## Matt Pocock Upstream Sync
+
+The repo-owned updater for the `mattpocock-skills` package lives outside the Watcher runtime. From the repository root, run:
+
+```bash
+python scripts/update_mattpocock_skills.py
+```
+
+By default it selects the latest upstream semantic-version tag, clones the source under `~/.codex/sources`, replaces the packaged skill tree, reapplies Codex adaptations, regenerates the plugin README and Watcher metadata, updates the plugin cachebuster, and validates the plugin and every packaged skill. Use `--source-dir <upstream-checkout> --tag <vX.Y.Z>` to sync from an existing checkout.
+
+After reviewing the source diff, refresh only the updated package when needed:
+
+```bash
+python scripts/refresh_my_codex.py --plugin mattpocock-skills
+```
+
 ## Orchestration Workflow
 
-Use the `workflow` plugin's `$orchestrate-subagents` skill when a task
-explicitly needs bounded Codex subagents. Invoke the workflow directly instead
-of relying on implicit auto-delegation:
+Use the `workflow` plugin's `$orchestrate-subagents` skill when the user invokes
+it or explicitly asks for bounded Codex subagents or parallel agents. Ordinary
+environment-authorized delegation does not invoke this skill by itself:
 
 ```text
 Use $orchestrate-subagents to review this branch against main.
 ```
 
-The full workflow lives in
+The same workflow can be requested in natural language, such as `Use parallel
+subagents to review this branch against main.` The full workflow lives in
 `plugins/workflow/skills/orchestrate-subagents/SKILL.md`. Keep root docs
 limited to install, validation, and entry-point guidance.
 
@@ -161,7 +178,7 @@ Windows PowerShell:
 .\scripts\upgrade_my_codex.ps1
 ```
 
-The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
+The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. On Windows, the wrapper prefers `CODEX_BIN`, then the user-local OpenAI Codex CLI under `%LOCALAPPDATA%\OpenAI\Codex\bin`, then VS Code's ChatGPT extension CLI, and only then `codex` from `PATH`. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
 `scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Watcher skill doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
 
@@ -204,7 +221,7 @@ Windows PowerShell:
 py scripts\check_my_codex.py
 ```
 
-The check script verifies the local marketplace file, shared tooling Python, `codex plugin list` installation status, plugin cache manifests, Watcher skill hook schema, subagent support-file sync state, plugin validation, and Watcher skill doctor. It does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
+The check script verifies the local marketplace file, shared tooling Python, exact source/installed/cache plugin name and version identity, Watcher skill hook schema, subagent support-file sync state, plugin validation, and Watcher skill doctor. A stale cache version cannot satisfy the check when the source's current version is missing. The script does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
 
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
@@ -234,7 +251,7 @@ The generated hook handlers observe:
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default.
+`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default. Metadata discovery treats the marketplace catalog and plugin manifests as one strict contract: missing or malformed catalog data, catalog/manifest identity drift, unknown `skill-watcher.json` schema versions, and invalid skill references fail visibly instead of falling back to a directory scan or silently dropping metadata.
 
 Expected command-hook schema:
 
@@ -297,6 +314,7 @@ python3 -m json.tool .agents/plugins/install-manifest.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/workflow"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
+"$MY_CODEX_PYTHON" -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 Windows PowerShell:
@@ -307,6 +325,7 @@ Windows PowerShell:
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\workflow"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
+& $env:MY_CODEX_PYTHON -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 ## Layout
@@ -323,7 +342,9 @@ scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py
 scripts/refresh_my_codex.py
 scripts/sync_codex_agents.py
+scripts/update_mattpocock_skills.py
 scripts/upgrade_my_codex.ps1
 scripts/upgrade_my_codex.sh
+tests/
 agents/
 ```

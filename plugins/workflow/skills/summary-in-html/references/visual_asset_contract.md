@@ -68,3 +68,7 @@ Every visual must have:
 3. Local file path.
 4. A note in the final response if any visual detail is inferred rather than
    directly supported by inspected files.
+
+The summary artifact validator rejects an asset before rendering unless `path`,
+`alt`, and `caption` are all non-empty strings. File existence remains a
+post-render HTML validation concern.

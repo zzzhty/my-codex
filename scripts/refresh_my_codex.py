@@ -38,17 +38,49 @@ def command_text(command: list[str]) -> str:
     return shlex.join(command)
 
 
+def latest_files(root: Path, pattern: str) -> list[Path]:
+    if not root.is_dir():
+        return []
+    return sorted(root.rglob(pattern), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def codex_executable_candidates(raw: str) -> list[str]:
+    if sys.platform != "win32" or raw.lower() != "codex":
+        return [raw] if raw else []
+
+    candidates: list[str] = []
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        bin_root = Path(local_app_data) / "OpenAI" / "Codex" / "bin"
+        candidates.extend(str(path) for path in latest_files(bin_root, "codex.exe"))
+
+    user_profile = os.environ.get("USERPROFILE")
+    if user_profile:
+        extension_root = Path(user_profile) / ".vscode" / "extensions"
+        extensions = sorted(extension_root.glob("openai.chatgpt-*"), key=lambda path: path.stat().st_mtime, reverse=True)
+        for extension in extensions:
+            candidate = extension / "bin" / "windows-x86_64" / "codex.exe"
+            if candidate.is_file():
+                candidates.append(str(candidate))
+
+    candidates.append(raw)
+    return list(dict.fromkeys(candidates))
+
+
 def resolve_executable(raw: str) -> str:
-    expanded = os.path.expandvars(os.path.expanduser(raw))
-    if any(separator in expanded for separator in (os.sep, os.altsep) if separator):
-        path = Path(expanded)
-        if path.is_file():
-            return str(path)
-        raise SystemExit(f"executable does not exist: {path}")
-    resolved = shutil.which(expanded)
-    if resolved is None:
-        raise SystemExit(f"executable not found on PATH: {raw}")
-    return resolved
+    checked: list[str] = []
+    for candidate in codex_executable_candidates(raw):
+        expanded = os.path.expandvars(os.path.expanduser(candidate))
+        checked.append(candidate)
+        if any(separator in expanded for separator in (os.sep, os.altsep) if separator):
+            path = Path(expanded)
+            if path.is_file():
+                return str(path)
+            continue
+        resolved = shutil.which(expanded)
+        if resolved is not None:
+            return resolved
+    raise SystemExit("executable not found. Checked:\n" + "\n".join(checked))
 
 
 def marketplace_source_arg(raw: str) -> str:
@@ -73,6 +105,8 @@ def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool =
         result = subprocess.run(command, check=check, env=env)
     except FileNotFoundError as exc:
         raise SystemExit(f"command not found: {command[0]}") from exc
+    except PermissionError as exc:
+        raise SystemExit(f"command not executable: {command[0]}: {exc}") from exc
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"command failed with exit code {exc.returncode}: {command_text(command)}") from exc
     return result.returncode
@@ -81,7 +115,7 @@ def run(command: list[str], *, env: dict[str, str], dry_run: bool, check: bool =
 def codex_version(codex: str, *, env: dict[str, str]) -> str:
     try:
         result = subprocess.run([codex, "--version"], env=env, capture_output=True, text=True)
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         return "unknown"
     if result.returncode != 0:
         return "unknown"
@@ -94,6 +128,8 @@ def require_codex_subcommand(codex: str, label: str, args: list[str], *, env: di
         result = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except FileNotFoundError as exc:
         raise SystemExit(f"command not found: {command[0]}") from exc
+    except PermissionError as exc:
+        raise SystemExit(f"command not executable: {command[0]}: {exc}") from exc
     if result.returncode == 0:
         return
 

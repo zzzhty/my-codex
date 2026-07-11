@@ -31,6 +31,16 @@ The updater intentionally keeps these upstream skills out of the Codex plugin pa
 
 - `setup-matt-pocock-skills`: Claude setup flow that writes Agent skills blocks into CLAUDE.md/AGENTS.md; Codex uses plugin marketplace metadata instead.
 
+## Updating From Upstream
+
+From the `my-codex` repository root, run:
+
+```bash
+python scripts/update_mattpocock_skills.py
+```
+
+The updater replaces the packaged skill tree from the selected upstream tag, reapplies Codex adaptations, regenerates the plugin README and Watcher metadata, updates the cachebuster, and validates the plugin and every packaged skill.
+
 ## Compatibility Notes
 
 This plugin flattens the upstream Claude plugin skill paths into Codex's `skills/<name>/` layout while preserving each published skill directory's contents.

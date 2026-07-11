@@ -26,7 +26,7 @@ Any prompt, rubric, evaluator instruction, or agent strategy that affects behavi
 
 ## Template And Location
 
-Use `templates/sop_template.md`. Copy it into the existing SOP/runbook/operations/workflow/plugin-doc area, replace all placeholders, then mark the SOP `Ready`.
+Use `templates/sop_template.md`. Copy it into the existing SOP/runbook/operations/workflow/plugin-doc area, replace all placeholders, then mark the SOP `Ready`. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
 
 Prefer locations in this order: user-specified path; existing `docs/sop/`, `docs/runbooks/`, `runbooks/`, `docs/workflows/`, or `docs/operations/`; plugin README or skill README when the SOP belongs to a plugin; otherwise `docs/sop/<sop-slug>.md`. Do not create a new SOP tree when an equivalent runbook/workflow directory exists.
 

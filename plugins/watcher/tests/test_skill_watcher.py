@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,15 +14,13 @@ from unittest import mock
 TEST_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TEST_ROOT.parents[1]
 ROOT = REPO_ROOT / "plugins" / "watcher"
-SCRIPTS = ROOT / "scripts" / "skill"
+SCRIPTS = ROOT / "scripts"
 ROOT_SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(ROOT_SCRIPTS))
 sys.path.insert(0, str(SCRIPTS))
-for module_name in ("doctor", "generate_report", "summarize_logs"):
-    sys.modules.pop(module_name, None)
 
-from codex_hook_adapter import (  # noqa: E402
-    DEFAULT_MONITORED_SKILLS,
+import refresh_my_codex  # noqa: E402
+from watcher_runtime.skill.codex_hook_adapter import (  # noqa: E402
     HookRuntimePaths,
     discover_packaged_skills,
     discover_skill_metadata,
@@ -30,15 +29,15 @@ from codex_hook_adapter import (  # noqa: E402
     process_hook,
     write_hook_event,
 )
-from codex_hook_config import (  # noqa: E402
+from watcher_runtime.skill.codex_hook_config import (  # noqa: E402
     default_python,
     install_skill_watcher_hooks,
     remove_skill_watcher_hooks,
     skill_watcher_command,
 )
 from check_my_codex import CheckRunner, decode_subprocess_output  # noqa: E402
-from doctor import find_managed_hook_issues  # noqa: E402
-from generate_report import (  # noqa: E402
+from watcher_runtime.skill.doctor import find_managed_hook_issues  # noqa: E402
+from watcher_runtime.skill.report_pipeline import (  # noqa: E402
     event_hash,
     load_report_state,
     report_state_key,
@@ -46,17 +45,18 @@ from generate_report import (  # noqa: E402
     state_since,
     update_report_state,
 )
-from propose_skill_patch import build_proposal  # noqa: E402
-from redact_event import REDACTION, redact_event  # noqa: E402
+from watcher_runtime.skill.propose_skill_patch import build_proposal  # noqa: E402
+from watcher_runtime.skill.redact_event import REDACTION, redact_event  # noqa: E402
 from refresh_my_codex import (  # noqa: E402
     cached_plugin_names,
     configured_plugin_names,
     default_plugin_names,
     marketplace_source_arg,
+    resolve_executable,
     selected_plugins,
     stale_plugin_names,
 )
-from runtime_paths import (  # noqa: E402
+from watcher_runtime.skill.runtime_paths import (  # noqa: E402
     ensure_runtime_dirs as runtime_ensure_runtime_dirs,
     hook_backup_dir,
     log_file_path,
@@ -66,24 +66,14 @@ from runtime_paths import (  # noqa: E402
     state_dir_from_env_or_arg as runtime_state_dir_from_env_or_arg,
     turns_dir,
 )
-from report_pipeline import (  # noqa: E402
+from watcher_runtime.skill.report_pipeline import (  # noqa: E402
     ReportOutputPolicy,
     ReportQuery,
     generate_report as run_report_pipeline,
 )
 from sync_codex_agents import load_sources  # noqa: E402
-from summarize_logs import parse_since, read_events_since  # noqa: E402
-from update_mattpocock_skills import (  # noqa: E402
-    OMITTED_SKILLS,
-    apply_codex_text_adaptations,
-    filter_packaged_skill_paths,
-    flattened_skill_names,
-    load_upstream_skill_paths,
-    strip_unsupported_frontmatter,
-    update_plugin_manifest,
-    write_skill_watcher_metadata,
-)
-from update_proposal_status import update_status  # noqa: E402
+from watcher_runtime.skill.report_pipeline import parse_since, read_events_since  # noqa: E402
+from watcher_runtime.skill.proposal_artifact import update_status  # noqa: E402
 
 
 WINDOWS_PWSH_ENCODING_TEST = unittest.skipUnless(
@@ -138,6 +128,38 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertIn(r"\u25b6", "".join(stdout.writes))
 
+    def test_check_runner_reports_permission_error_without_traceback(self) -> None:
+        runner = CheckRunner()
+
+        def denied_run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            raise PermissionError("denied")
+
+        with mock.patch("check_my_codex.subprocess.run", denied_run):
+            result = runner.run_command(["codex", "plugin", "list"], env={})
+
+        self.assertEqual(result.returncode, 126)
+        self.assertIn("command not executable: codex", result.stderr)
+
+    def test_windows_codex_resolution_prefers_user_local_cli_before_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local_cli = root / "LocalAppData" / "OpenAI" / "Codex" / "bin" / "abc123" / "codex.exe"
+            local_cli.parent.mkdir(parents=True)
+            local_cli.write_text("", encoding="utf-8")
+            path_cli = root / "WindowsApps" / "OpenAI.Codex" / "codex.exe"
+
+            with mock.patch.object(refresh_my_codex.sys, "platform", "win32"):
+                with mock.patch.dict(
+                    os.environ,
+                    {
+                        "LOCALAPPDATA": str(root / "LocalAppData"),
+                        "USERPROFILE": str(root / "UserProfile"),
+                    },
+                    clear=False,
+                ):
+                    with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
+                        self.assertEqual(resolve_executable("codex"), str(local_cli))
+
     def test_watcher_plugin_validation_uses_tooling_python(self) -> None:
         runner = CheckRunner()
         calls = []
@@ -160,6 +182,31 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(calls[0][0][0], str(tooling_python))
         self.assertEqual(calls[0][0][1], str(validator))
         self.assertIsNone(calls[0][1])
+
+    def test_check_runner_uses_canonical_watcher_doctor_entrypoint(self) -> None:
+        runner = CheckRunner()
+        calls: list[list[str]] = []
+
+        def fake_run_command(command, *, env, cwd=None):  # type: ignore[no-untyped-def]
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, "ok", "")
+
+        runner.run_command = fake_run_command  # type: ignore[method-assign]
+        tooling_python = Path("C:/tooling/python.exe")
+
+        runner.check_doctor(tooling_python, env={})
+
+        self.assertEqual(
+            calls,
+            [
+                [
+                    str(tooling_python),
+                    str(ROOT / "scripts" / "watcher"),
+                    "skill",
+                    "doctor",
+                ]
+            ],
+        )
 
     def test_install_manifest_drives_default_plugin_selection(self) -> None:
         expected = [
@@ -217,104 +264,6 @@ class SkillWatcherTests(unittest.TestCase):
                 )
 
         self.assertIn("missing-plugin", str(raised.exception))
-
-    def test_mattpocock_updater_flattens_manifest_strips_frontmatter_and_omits_claude_setup(self) -> None:
-        text = (
-            "---\n"
-            "name: teach\n"
-            "description: Teach the user.\n"
-            "argument-hint: What would you like to learn?\n"
-            "disable-model-invocation: true\n"
-            "---\n"
-            "\n"
-            "# Teach\n"
-        )
-
-        cleaned = strip_unsupported_frontmatter(text)
-
-        self.assertIn("name: teach", cleaned)
-        self.assertIn("description: Teach the user.", cleaned)
-        self.assertNotIn("argument-hint", cleaned)
-        self.assertNotIn("disable-model-invocation", cleaned)
-        self.assertIn("setup-matt-pocock-skills", OMITTED_SKILLS)
-        adapted = apply_codex_text_adaptations(
-            "The issue tracker and triage label vocabulary should have been provided to you — "
-            "run `/setup-matt-pocock-skills` if not."
-        )
-        self.assertNotIn("/setup-matt-pocock-skills", adapted)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            source = Path(tmp)
-            manifest = source / ".claude-plugin" / "plugin.json"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(
-                json.dumps(
-                    {
-                        "name": "mattpocock-skills",
-                        "skills": [
-                            "./skills/engineering/diagnosing-bugs",
-                            "./skills/productivity/setup-matt-pocock-skills",
-                            "./skills/productivity/teach",
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-
-            paths = load_upstream_skill_paths(source)
-            packaged, omitted = filter_packaged_skill_paths(paths)
-
-        self.assertEqual(
-            paths,
-            [
-                "./skills/engineering/diagnosing-bugs",
-                "./skills/productivity/setup-matt-pocock-skills",
-                "./skills/productivity/teach",
-            ],
-        )
-        self.assertEqual(
-            packaged,
-            ["./skills/engineering/diagnosing-bugs", "./skills/productivity/teach"],
-        )
-        self.assertEqual(omitted, ["setup-matt-pocock-skills"])
-        self.assertEqual(flattened_skill_names(packaged), ["diagnosing-bugs", "teach"])
-        with tempfile.TemporaryDirectory() as tmp:
-            plugin = Path(tmp)
-            write_skill_watcher_metadata(plugin, ["diagnosing-bugs", "teach"])
-            metadata = json.loads((plugin / ".codex-plugin" / "skill-watcher.json").read_text(encoding="utf-8"))
-
-        self.assertEqual(
-            metadata["legacy_names"]["mattpocock-skills:diagnose"],
-            "mattpocock-skills:diagnosing-bugs",
-        )
-        teach_alias_values = [
-            alias["value"]
-            for alias in metadata["skills"]["mattpocock-skills:teach"]["aliases"]
-        ]
-        self.assertIn("teach me", teach_alias_values)
-        self.assertNotIn("teach", teach_alias_values)
-
-    def test_mattpocock_updater_can_preserve_existing_cachebuster(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            plugin = Path(tmp)
-            manifest = plugin / ".codex-plugin" / "plugin.json"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(
-                json.dumps(
-                    {
-                        "name": "mattpocock-skills",
-                        "version": "1.0.1+codex.old-token",
-                        "interface": {},
-                    }
-                ),
-                encoding="utf-8",
-            )
-
-            update_plugin_manifest(plugin, "1.0.2", preserve_existing_cachebuster=True)
-
-            data = json.loads(manifest.read_text(encoding="utf-8"))
-
-        self.assertEqual(data["version"], "1.0.2+codex.old-token")
 
     def test_stale_plugin_detection_includes_config_and_cache(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -379,12 +328,6 @@ class SkillWatcherTests(unittest.TestCase):
             for plugin_name in default_plugin_names("install", marketplace_name="my-codex")
             for skill_file in (REPO_ROOT / "plugins" / plugin_name / "skills").glob("*/SKILL.md")
         )
-        self.assertTrue(DEFAULT_MONITORED_SKILLS)
-        self.assertLessEqual(set(DEFAULT_MONITORED_SKILLS), set(packaged))
-        self.assertIn("watcher:skill-compressor", DEFAULT_MONITORED_SKILLS)
-        self.assertIn("watcher:housekeeping", DEFAULT_MONITORED_SKILLS)
-        self.assertIn("workflow:prompt-strategy-loop", DEFAULT_MONITORED_SKILLS)
-        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", DEFAULT_MONITORED_SKILLS)
         self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
         self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
         metadata = discover_skill_metadata(REPO_ROOT)
@@ -514,6 +457,217 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(sop_assistant["skill_attribution"]["primary"]["source"], "assistant_announcement")
         self.assertEqual(sop_assistant["skill_attribution"]["primary"]["matched_alias"], "sop")
 
+    def test_metadata_discovery_rejects_invalid_marketplace_contracts(self) -> None:
+        cases = (
+            ("missing", None, "marketplace file missing"),
+            ("invalid-json", "{not-json\n", "invalid marketplace JSON"),
+            ("invalid-plugins", json.dumps({"plugins": {}}), "plugins must be a list"),
+            ("invalid-entry", json.dumps({"plugins": ["bad"]}), "entry #1 must be an object"),
+            (
+                "missing-name",
+                json.dumps({"plugins": [{"source": {"source": "local", "path": "./plugins/demo"}}]}),
+                "entry #1 name missing",
+            ),
+            (
+                "unknown-source-kind",
+                json.dumps({"plugins": [{"name": "demo", "source": {"source": "git"}}]}),
+                "unsupported marketplace source kind",
+            ),
+            (
+                "missing-local-plugin",
+                json.dumps(
+                    {
+                        "plugins": [
+                            {
+                                "name": "missing",
+                                "source": {"source": "local", "path": "./plugins/missing"},
+                            }
+                        ]
+                    }
+                ),
+                "local plugin path missing",
+            ),
+        )
+        for label, marketplace_text, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                marketplace = root / ".agents" / "plugins" / "marketplace.json"
+                if marketplace_text is not None:
+                    marketplace.parent.mkdir(parents=True)
+                    marketplace.write_text(marketplace_text, encoding="utf-8")
+
+                with self.assertRaises(SystemExit) as raised:
+                    discover_skill_metadata(root)
+
+                self.assertIn(expected, str(raised.exception))
+
+    def test_metadata_discovery_rejects_invalid_plugin_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin = root / "plugins" / "demo"
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text(
+                json.dumps(
+                    {
+                        "plugins": [
+                            {
+                                "name": "demo",
+                                "source": {"source": "local", "path": "./plugins/demo"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            skill = plugin / "skills" / "foo" / "SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("---\nname: foo\ndescription: Test.\n---\n", encoding="utf-8")
+            manifest = plugin / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text("{not-json\n", encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("invalid plugin manifest JSON", str(raised.exception))
+
+    def test_metadata_discovery_rejects_catalog_manifest_name_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin = root / "plugins" / "demo"
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text(
+                json.dumps(
+                    {
+                        "plugins": [
+                            {
+                                "name": "catalog-name",
+                                "source": {"source": "local", "path": "./plugins/demo"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            manifest = plugin / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                json.dumps({"name": "manifest-name", "version": "1.0.0"}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("marketplace/plugin manifest name mismatch", str(raised.exception))
+
+    def test_metadata_discovery_requires_known_manifest_schema(self) -> None:
+        for schema_version in (None, 999):
+            with self.subTest(schema_version=schema_version), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin = root / "plugins" / "demo"
+                marketplace = root / ".agents" / "plugins" / "marketplace.json"
+                marketplace.parent.mkdir(parents=True)
+                marketplace.write_text(
+                    json.dumps(
+                        {
+                            "plugins": [
+                                {
+                                    "name": "demo",
+                                    "source": {"source": "local", "path": "./plugins/demo"},
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
+                plugin_manifest.parent.mkdir(parents=True)
+                plugin_manifest.write_text(
+                    json.dumps({"name": "demo", "version": "1.0.0"}),
+                    encoding="utf-8",
+                )
+                skill = plugin / "skills" / "foo" / "SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text("---\nname: foo\ndescription: Test.\n---\n", encoding="utf-8")
+                metadata = {"skills": {}, "legacy_names": {}}
+                if schema_version is not None:
+                    metadata["schema_version"] = schema_version
+                (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
+                    json.dumps(metadata),
+                    encoding="utf-8",
+                )
+
+                with self.assertRaises(SystemExit) as raised:
+                    discover_skill_metadata(root)
+
+                self.assertIn("unsupported skill metadata schema_version", str(raised.exception))
+
+    def test_metadata_discovery_rejects_duplicate_legacy_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            entries = []
+            for plugin_name in ("alpha", "beta"):
+                plugin = root / "plugins" / plugin_name
+                entries.append(
+                    {
+                        "name": plugin_name,
+                        "source": {"source": "local", "path": f"./plugins/{plugin_name}"},
+                    }
+                )
+                plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
+                plugin_manifest.parent.mkdir(parents=True)
+                plugin_manifest.write_text(
+                    json.dumps({"name": plugin_name, "version": "1.0.0"}),
+                    encoding="utf-8",
+                )
+                skill_name = f"{plugin_name}:entry"
+                skill = plugin / "skills" / "entry" / "SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text("---\nname: entry\ndescription: Test.\n---\n", encoding="utf-8")
+                (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "skills": {},
+                            "legacy_names": {"legacy:shared": skill_name},
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text(json.dumps({"plugins": entries}), encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("duplicate legacy skill metadata entries", str(raised.exception))
+
+    def test_session_start_surfaces_metadata_discovery_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            state_dir = Path(tmp) / "state"
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text("{not-json\n", encoding="utf-8")
+
+            with mock.patch.dict("os.environ", {"MY_CODEX_ROOT": str(root)}, clear=False):
+                with self.assertRaises(SystemExit) as raised:
+                    process_hook(
+                        {
+                            "hook_event_name": "SessionStart",
+                            "session_id": "metadata-failure",
+                        },
+                        HookRuntimePaths(state_dir=state_dir, log_file=log_file_path(state_dir)),
+                    )
+
+            self.assertFalse((state_dir / "skill-metadata-cache.json").exists())
+
+        self.assertIn("invalid marketplace JSON", str(raised.exception))
+
     def test_hook_runtime_dry_run_normalizes_without_writing_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
@@ -550,12 +704,12 @@ class SkillWatcherTests(unittest.TestCase):
             self.assertEqual(default_python(), Path("/tmp/tooling-python"))
 
         python = Path(r"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe")
-        adapter = Path(r"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\skill\codex_hook_adapter.py")
-        with mock.patch("codex_hook_config.os.name", "nt"):
+        adapter = Path(r"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\watcher")
+        with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "nt"):
             self.assertEqual(
                 skill_watcher_command(python, adapter),
                 r'"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe" -B '
-                r'"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\skill\codex_hook_adapter.py"',
+                r'"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\watcher" skill observe',
             )
 
         self.assertEqual(marketplace_source_arg("https://github.com/example/my-codex"), "https://github.com/example/my-codex")
@@ -571,12 +725,12 @@ class SkillWatcherTests(unittest.TestCase):
         installed, _ = install_skill_watcher_hooks(
             existing,
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/watcher"),
         )
         installed_again, removed = install_skill_watcher_hooks(
             installed,
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/watcher"),
         )
         uninstalled, removed_on_uninstall = remove_skill_watcher_hooks(installed)
 
@@ -588,7 +742,7 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(uninstalled["hooks"], {"PostToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "/usr/bin/true"}]}]})
         for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):
             handlers = [handler for group in installed["hooks"][event] for handler in group["hooks"]]
-            managed = [handler for handler in handlers if "codex_hook_adapter.py" in handler["command"]]
+            managed = [handler for handler in handlers if "skill observe" in handler["command"]]
             self.assertTrue(managed)
             for handler in managed:
                 self.assertIs(handler["async"], False)
@@ -609,7 +763,7 @@ class SkillWatcherTests(unittest.TestCase):
                 }
             },
             python_path=Path("/tmp/python"),
-            adapter=Path("/tmp/watcher/scripts/skill/codex_hook_adapter.py"),
+            adapter=Path("/tmp/watcher/scripts/watcher"),
         )
 
         self.assertEqual(matched_events, {"SessionStart", "UserPromptSubmit"})

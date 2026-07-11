@@ -32,7 +32,7 @@ def paragraph(text: str) -> str:
     return f"<p>{esc(text)}</p>"
 
 
-def render_list(items: list[Any]) -> str:
+def render_list(items: list[str]) -> str:
     if not items:
         return ""
     lis = "\n".join(f"<li>{esc(item)}</li>" for item in items)
@@ -44,7 +44,7 @@ def render_files(files: list[dict[str, Any]]) -> str:
         return ""
     rows: list[str] = []
     for item in files:
-        path = esc(item.get("path", ""))
+        path = esc(item["path"])
         note = item.get("note")
         note_html = f"<div class=\"muted\">{esc(note)}</div>" if note else ""
         rows.append(f"<li><code>{path}</code>{note_html}</li>")
@@ -55,7 +55,7 @@ def render_code_blocks(blocks: list[dict[str, Any]]) -> str:
     rendered: list[str] = []
     for block in blocks:
         language = esc(block.get("language", "text"))
-        text = esc(block.get("text", ""))
+        text = esc(block["text"])
         rendered.append(f"<pre><code data-language=\"{language}\">{text}</code></pre>")
     return "\n".join(rendered)
 
@@ -104,7 +104,7 @@ def render_meta(data: dict[str, Any]) -> str:
         chips = []
         for item in evidence:
             label = item.get("label", "Evidence")
-            path = item.get("path", "")
+            path = item["path"]
             chips.append(f"<span class=\"pill\">{esc(label)}: {esc(path)}</span>")
         rows.append("<div>" + " ".join(chips) + "</div>")
     if not rows:
@@ -117,9 +117,9 @@ def render_visuals(assets: list[dict[str, Any]]) -> str:
         return ""
     figures: list[str] = []
     for asset in assets:
-        src = esc(asset.get("path", ""))
-        alt = esc(asset.get("alt", ""))
-        caption = esc(asset.get("caption", asset.get("alt", "")))
+        src = esc(asset["path"])
+        alt = esc(asset["alt"])
+        caption = esc(asset["caption"])
         figures.append(
             "<figure class=\"visual\">"
             f"<img src=\"{src}\" alt=\"{alt}\">"
@@ -129,7 +129,7 @@ def render_visuals(assets: list[dict[str, Any]]) -> str:
     return "\n".join(figures)
 
 
-def render_blind_spots(items: list[Any]) -> str:
+def render_blind_spots(items: list[str]) -> str:
     if not items:
         return ""
     return "<section id=\"blind-spots\">\n<h2>Blind Spots</h2>\n" + render_list(items) + "\n</section>"

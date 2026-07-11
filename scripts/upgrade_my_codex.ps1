@@ -73,7 +73,6 @@ function Get-LatestCodexCliCandidates {
     if ($env:CODEX_BIN) {
         $candidates.Add($env:CODEX_BIN)
     }
-    $candidates.Add("codex")
 
     $binRoot = Join-Path $env:LOCALAPPDATA "OpenAI\Codex\bin"
     if (Test-Path -LiteralPath $binRoot -PathType Container) {
@@ -93,6 +92,8 @@ function Get-LatestCodexCliCandidates {
                 }
             }
     }
+
+    $candidates.Add("codex")
 
     return $candidates.ToArray()
 }

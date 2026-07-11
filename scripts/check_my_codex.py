@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -13,7 +14,6 @@ from pathlib import Path
 from refresh_my_codex import (
     CODEX_HOME,
     DEFAULT_VENV,
-    MARKETPLACE_FILE,
     REPO_ROOT,
     build_env,
     cached_plugin_names,
@@ -27,11 +27,11 @@ from refresh_my_codex import (
 )
 
 
-WATCHER_SKILL_SCRIPTS = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill"
-sys.path.insert(0, str(WATCHER_SKILL_SCRIPTS))
+WATCHER_SCRIPTS = REPO_ROOT / "plugins" / "watcher" / "scripts"
+sys.path.insert(0, str(WATCHER_SCRIPTS))
 
-from codex_hook_config import HOOK_EVENTS, adapter_path, load_config  # noqa: E402
-from doctor import find_managed_hook_issues  # noqa: E402
+from watcher_runtime.skill.codex_hook_config import HOOK_EVENTS, adapter_path, load_config  # noqa: E402
+from watcher_runtime.skill.doctor import find_managed_hook_issues  # noqa: E402
 
 
 def configure_output_streams() -> None:
@@ -56,6 +56,106 @@ def print_text(message: str) -> None:
         encoding = sys.stdout.encoding or "utf-8"
         safe = message.encode(encoding, errors="backslashreplace").decode(encoding, errors="replace")
         print(safe)
+
+
+def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+    if not manifest.is_file():
+        raise ValueError(f"{label} manifest missing: {manifest}")
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"{label} manifest is not valid JSON: {manifest}: line {exc.lineno}, column {exc.colno}"
+        ) from exc
+    except OSError as exc:
+        raise ValueError(f"{label} manifest cannot be read: {manifest}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"{label} manifest must be an object: {manifest}")
+    identity = []
+    for field in ("name", "version"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{label} manifest {field} must be a non-empty string: {manifest}")
+        identity.append(value.strip())
+    return identity[0], identity[1]
+
+
+def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]:
+    marketplace = source_root / ".agents" / "plugins" / "marketplace.json"
+    if not marketplace.is_file():
+        raise ValueError(f"marketplace file missing: {marketplace}")
+    try:
+        data = json.loads(marketplace.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"marketplace file is not valid JSON: {marketplace}: line {exc.lineno}, column {exc.colno}"
+        ) from exc
+    except OSError as exc:
+        raise ValueError(f"marketplace file cannot be read: {marketplace}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"marketplace must be an object: {marketplace}")
+    marketplace_name = data.get("name")
+    if not isinstance(marketplace_name, str) or not marketplace_name.strip():
+        raise ValueError(f"marketplace name must be a non-empty string: {marketplace}")
+    plugins = data.get("plugins")
+    if not isinstance(plugins, list):
+        raise ValueError(f"marketplace plugins field is not a list: {marketplace}")
+
+    sources: dict[str, Path] = {}
+    for index, entry in enumerate(plugins, start=1):
+        if not isinstance(entry, dict):
+            raise ValueError(f"marketplace plugin entry #{index} must be an object: {marketplace}")
+        plugin_name = entry.get("name")
+        if not isinstance(plugin_name, str) or not plugin_name.strip():
+            raise ValueError(f"marketplace plugin entry #{index} name missing: {marketplace}")
+        plugin_name = plugin_name.strip()
+        if plugin_name in sources:
+            raise ValueError(f"duplicate marketplace plugin name {plugin_name!r}: {marketplace}")
+        source = entry.get("source")
+        if not isinstance(source, dict):
+            raise ValueError(f"marketplace plugin entry #{index} source must be an object: {marketplace}")
+        source_kind = source.get("source")
+        if source_kind != "local":
+            raise ValueError(
+                f"unsupported marketplace source kind {source_kind!r} for {plugin_name!r}: {marketplace}"
+            )
+        raw_path = source.get("path")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError(f"marketplace local plugin entry #{index} path missing: {marketplace}")
+        plugin_dir = expand_path(raw_path.strip())
+        if not plugin_dir.is_absolute():
+            plugin_dir = source_root / plugin_dir
+        plugin_dir = plugin_dir.resolve()
+        if not plugin_dir.is_dir():
+            raise ValueError(f"marketplace local plugin path missing: {plugin_dir}")
+        manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+        manifest_name, _ = plugin_manifest_identity(manifest, label="source")
+        if manifest_name != plugin_name:
+            raise ValueError(
+                f"marketplace/source manifest name mismatch for entry #{index}; "
+                f"catalog has {plugin_name!r}, manifest has {manifest_name!r} at {manifest}"
+            )
+        sources[plugin_name] = plugin_dir
+    return marketplace_name.strip(), sources
+
+
+def codex_plugin_rows(output: str) -> dict[tuple[str, str], tuple[str, str]]:
+    rows: dict[tuple[str, str], tuple[str, str]] = {}
+    marketplace_name: str | None = None
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        marketplace_match = re.fullmatch(r"Marketplace `([^`]+)`", line)
+        if marketplace_match:
+            marketplace_name = marketplace_match.group(1)
+            continue
+        if not line or line.startswith("PLUGIN") or marketplace_name is None:
+            continue
+        columns = re.split(r"\s{2,}", line, maxsplit=3)
+        if len(columns) >= 3:
+            plugin_name, separator, listed_marketplace = columns[0].rpartition("@")
+            if separator and plugin_name and listed_marketplace == marketplace_name:
+                rows[(marketplace_name, plugin_name)] = (columns[1], columns[2])
+    return rows
 
 
 class CheckRunner:
@@ -86,30 +186,36 @@ class CheckRunner:
             )
         except FileNotFoundError as exc:
             return subprocess.CompletedProcess(command, 127, "", f"command not found: {exc.filename}")
+        except PermissionError as exc:
+            return subprocess.CompletedProcess(command, 126, "", f"command not executable: {command[0]}: {exc}")
 
-    def check_marketplace_file(self, expected_plugins: list[str]) -> None:
-        if not MARKETPLACE_FILE.is_file():
-            self.fail(f"marketplace file missing: {MARKETPLACE_FILE}")
-            return
+    def check_marketplace_file(
+        self,
+        expected_plugins: list[str],
+        *,
+        source_root: Path = REPO_ROOT,
+    ) -> dict[str, Path] | None:
         try:
-            data = json.loads(MARKETPLACE_FILE.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            self.fail(f"marketplace file is not valid JSON: {MARKETPLACE_FILE}: {exc}")
-            return
-        if data.get("name") != "my-codex":
-            self.fail(f"marketplace name mismatch in {MARKETPLACE_FILE}: {data.get('name')!r}")
-            return
-        marketplace_plugins = data.get("plugins")
-        if not isinstance(marketplace_plugins, list):
-            self.fail(f"marketplace plugins field is not a list: {MARKETPLACE_FILE}")
-            return
-        present = {str(plugin.get("name")) for plugin in marketplace_plugins if isinstance(plugin, dict)}
+            marketplace_name, sources = marketplace_plugin_sources(source_root)
+        except ValueError as exc:
+            self.fail(str(exc))
+            return None
+        selector_marketplaces = {selector.partition("@")[2] for selector in expected_plugins if "@" in selector}
+        if selector_marketplaces != {marketplace_name}:
+            self.fail(
+                f"marketplace name mismatch: catalog has {marketplace_name!r}, "
+                f"selectors require {', '.join(sorted(selector_marketplaces)) or 'none'}"
+            )
+            return None
+        present = set(sources)
         expected = {selector.split("@", 1)[0] for selector in expected_plugins}
         missing = sorted(expected - present)
         if missing:
             self.fail(f"marketplace is missing plugins: {', '.join(missing)}")
-            return
-        self.ok(f"marketplace file includes expected plugins: {MARKETPLACE_FILE}")
+            return None
+        marketplace = source_root / ".agents" / "plugins" / "marketplace.json"
+        self.ok(f"marketplace file includes exact local plugin identities: {marketplace}")
+        return sources
 
     def check_tooling_python(self, tooling_python: Path, *, env: dict[str, str]) -> None:
         if not tooling_python.is_file():
@@ -122,40 +228,123 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"tooling Python cannot import PyYAML: {tooling_python}: {output}")
 
-    def check_codex_plugin_list(self, codex: str, plugins: list[str], *, env: dict[str, str]) -> None:
+    def check_codex_plugin_list(
+        self,
+        codex: str,
+        plugins: list[str],
+        *,
+        env: dict[str, str],
+        plugin_sources: dict[str, Path],
+    ) -> None:
         result = self.run_command([codex, "plugin", "list"], env=env)
         if result.returncode != 0:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"`codex plugin list` failed: {output}")
             return
         output = result.stdout
-        if "Marketplace `my-codex`" not in output:
-            self.fail("`codex plugin list` does not include Marketplace `my-codex`")
-            return
-        failures = []
-        for plugin in plugins:
-            if plugin not in output:
-                failures.append(f"{plugin} missing from plugin list")
-            elif "installed, enabled" not in next((line for line in output.splitlines() if plugin in line), ""):
-                failures.append(f"{plugin} is not installed, enabled")
+        rows = codex_plugin_rows(output)
+        failures: list[str] = []
+        for selector in plugins:
+            plugin_name, separator, marketplace_name = selector.partition("@")
+            if not separator or not plugin_name or not marketplace_name:
+                failures.append(f"invalid plugin selector: {selector!r}")
+                continue
+            plugin_dir = plugin_sources.get(plugin_name)
+            if plugin_dir is None:
+                failures.append(f"{selector}: no source path from marketplace catalog")
+                continue
+            source_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+            try:
+                source_name, source_version = plugin_manifest_identity(source_manifest, label="source")
+            except ValueError as exc:
+                failures.append(f"{selector}: {exc}")
+                continue
+            if source_name != plugin_name:
+                failures.append(
+                    f"{selector}: source manifest name mismatch at {source_manifest}; "
+                    f"expected {plugin_name!r}, found {source_name!r}"
+                )
+                continue
+            installed = rows.get((marketplace_name, plugin_name))
+            if installed is None:
+                failures.append(f"{selector}: missing from `codex plugin list`")
+                continue
+            status, installed_version = installed
+            if status != "installed, enabled":
+                failures.append(f"{selector}: expected status 'installed, enabled', found {status!r}")
+            if installed_version != source_version:
+                failures.append(
+                    f"{selector}: installed version mismatch; expected source version {source_version!r}, "
+                    f"found {installed_version!r}"
+                )
         if failures:
-            self.fail("; ".join(failures))
+            self.fail("plugin source/installed identity check failed: " + "; ".join(failures))
             return
-        self.ok("codex plugin list shows expected my-codex plugins installed and enabled")
+        self.ok("codex plugin list matches source plugin name/version identities and enabled status")
 
-    def check_plugin_cache(self, plugins: list[str], *, codex_home: Path) -> None:
-        missing = []
+    def check_plugin_cache(
+        self,
+        plugins: list[str],
+        *,
+        codex_home: Path,
+        plugin_sources: dict[str, Path],
+    ) -> None:
+        failures: list[str] = []
         cache_root = codex_home / "plugins" / "cache"
         for selector in plugins:
-            plugin_name, _, marketplace_name = selector.partition("@")
+            plugin_name, separator, marketplace_name = selector.partition("@")
+            if not separator or not plugin_name or not marketplace_name:
+                failures.append(f"invalid plugin selector: {selector!r}")
+                continue
+            plugin_dir = plugin_sources.get(plugin_name)
+            if plugin_dir is None:
+                failures.append(f"{selector}: no source path from marketplace catalog")
+                continue
+            source_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+            try:
+                source_name, source_version = plugin_manifest_identity(source_manifest, label="source")
+            except ValueError as exc:
+                failures.append(f"{selector}: {exc}")
+                continue
+            if source_name != plugin_name:
+                failures.append(
+                    f"{selector}: source manifest name mismatch at {source_manifest}; "
+                    f"expected {plugin_name!r}, found {source_name!r}"
+                )
+                continue
             plugin_root = cache_root / marketplace_name / plugin_name
-            manifests = sorted(plugin_root.glob("*/.codex-plugin/plugin.json"))
-            if not manifests:
-                missing.append(str(plugin_root))
-        if missing:
-            self.fail("plugin cache missing installed manifests: " + "; ".join(missing))
+            cache_manifest = plugin_root / source_version / ".codex-plugin" / "plugin.json"
+            if not cache_manifest.is_file():
+                found_versions = (
+                    sorted(path.name for path in plugin_root.iterdir() if path.is_dir())
+                    if plugin_root.is_dir()
+                    else []
+                )
+                found_text = ", ".join(found_versions) if found_versions else "none"
+                failures.append(
+                    f"{selector}: exact cache manifest missing for source version {source_version!r}; "
+                    f"expected {cache_manifest}; found versions: {found_text}"
+                )
+                continue
+            try:
+                cache_name, cache_version = plugin_manifest_identity(cache_manifest, label="cache")
+            except ValueError as exc:
+                failures.append(f"{selector}: {exc}")
+                continue
+            if cache_name != source_name:
+                failures.append(
+                    f"{selector}: cache manifest name mismatch at {cache_manifest}; "
+                    f"expected {source_name!r}, found {cache_name!r}"
+                )
+            if cache_version != source_version:
+                failures.append(
+                    f"{selector}: cache manifest version mismatch at {cache_manifest}; "
+                    f"expected {source_version!r}, found {cache_version!r}"
+                )
+        if failures:
+            self.fail("plugin source/cache identity check failed: " + "; ".join(failures))
             return
-        self.ok(f"plugin cache contains installed manifests under {cache_root}")
+        self.ok(f"plugin source/cache manifest identity matches under {cache_root}")
 
     def check_no_stale_my_codex_plugins(
         self,
@@ -240,8 +429,8 @@ class CheckRunner:
                 self.fail(f"plugin validation failed for {plugin_name}: {output}")
 
     def check_doctor(self, tooling_python: Path, *, env: dict[str, str]) -> None:
-        doctor = REPO_ROOT / "plugins" / "watcher" / "scripts" / "skill" / "doctor.py"
-        result = self.run_command([str(tooling_python), str(doctor)], env=env)
+        watcher = REPO_ROOT / "plugins" / "watcher" / "scripts" / "watcher"
+        result = self.run_command([str(tooling_python), str(watcher), "skill", "doctor"], env=env)
         if result.returncode == 0:
             self.ok("Watcher skill doctor passed")
         else:
@@ -310,11 +499,11 @@ def main() -> None:
     validator = Path(env["PLUGIN_VALIDATOR"])
 
     runner = CheckRunner()
-    runner.check_marketplace_file(plugins)
+    plugin_sources = runner.check_marketplace_file(plugins)
     runner.check_tooling_python(tooling_python, env=env)
-    if not args.skip_plugins:
-        runner.check_codex_plugin_list(codex, plugins, env=env)
-        runner.check_plugin_cache(plugins, codex_home=codex_home)
+    if not args.skip_plugins and plugin_sources is not None:
+        runner.check_codex_plugin_list(codex, plugins, env=env, plugin_sources=plugin_sources)
+        runner.check_plugin_cache(plugins, codex_home=codex_home, plugin_sources=plugin_sources)
         runner.check_no_stale_my_codex_plugins(
             plugins,
             codex_home=codex_home,

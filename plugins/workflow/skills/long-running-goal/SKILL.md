@@ -23,7 +23,7 @@ If the request changes the goal plan itself, update the planning document and in
 
 ## Goal File And Template
 
-Use `templates/long_running_goal_template.md` for new goals unless the repo has a stronger local convention. Copy it into the active goal directory, replace all `<...>` placeholders, and do not mark the goal `Ready` while placeholders remain.
+Use `templates/long_running_goal_template.md` for new goals unless the repo has a stronger local convention. Copy it into the active goal directory, replace all `<...>` placeholders, and do not mark the goal `Ready` while placeholders remain. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
 
 Find the planning area in this order: user-specified path, existing active goal/TODO directories such as `docs/todo/`, current-doc indexes that already reference active work, then `docs/todo/<goal_slug>_long_running_goal_plan.md` as a fallback. Do not create a parallel planning tree when a live one already exists, and do not append `/todo` to a directory that is already the goal directory.
 
@@ -45,40 +45,15 @@ Use bundled components as internal workflow steps, not as standalone user-facing
 1. `components/planning-preflight.md`: before goal creation/conversion or first implementation without a completed marker, run `grill-with-docs`; skip only by explicit user instruction and record the skip marker.
 2. `components/checkpoint.md`: before any milestone or close step is `Done`, record revision evidence without default empty commits.
 
-## Create Or Upgrade
+## Branch Routing
 
-In this section, `upgrade` means converting or reshaping an existing TODO, PRD, issue, checklist, or rough plan into a long-running-goal contract. It does not mean ordinary runtime evolution during milestone execution.
+- Before you create or upgrade a goal, or define a Loop-shaped execution harness, read `references/create-and-loop.md` and satisfy every matching completion criterion before marking the goal `Ready`.
+- For a production cutover that compares a new implementation with an authoritative old path, read `references/production-cutover.md` before freezing modes or claiming speedup.
+- Before you execute, resume, continue, advance, evolve, or close a goal, read `references/execute-and-close.md`; follow the goal file and finish its matching execution or close criterion.
 
-1. Read current truth before drafting: root instructions, README/area overviews, active TODO or goal indexes, current guides, status/boundary registers, validation logs, runtime audits, architecture/contract docs, and existing goal/archive docs.
-2. Apply `components/planning-preflight.md` before freezing the goal unless the user explicitly skips the grill.
-3. Create or reshape the goal file as a continuation contract, preserve useful findings from existing TODOs, and record the planning-preflight marker or skip marker.
-4. Freeze the contract before implementation:
-   - product semantics, owner boundaries, compatibility surface, future/non-goals
-   - sequential milestones, usually `M0 Contract Review / Design Freeze`, implementation milestones, docs/release closeout, then `Close`
-   - milestone scope, review gate, validation commands, evidence slots, checkpoint expectations
-   - execution shape: manual staged execution or Loop-shaped execution
-   - pre-approved YOLO local operations, pre-approved external reads/writes, runtime hard stops
-   - Loop harness fields when applicable: trigger, inputs, triage/orchestration, isolation, connector boundaries, independent verifier, durable learning
-5. Keep foreseeable approval out of runtime execution. Human approval gates, external-write permission, destructive-action permission, connector permission, and unresolved design approval must be settled before `Ready`; otherwise keep the goal `Draft`.
-6. Add close criteria and a reusable continuation prompt that names the exact goal path and repeats the sequential milestone, YOLO boundary, Loop harness, evidence, hard-stop, and close-gate rules.
+Load every reference whose condition matches a combined task. These pointers disclose branch detail only; the inline supersession, `Ready`, pre-approval/YOLO, runtime hard-stop, and Codex goal-tool contracts always apply.
 
-## Loop Blueprint Harness
-
-Do not force automation into small or one-off plans. For manual staged execution, say `Not applicable` with the reason.
-
-When a goal uses recurring triggers, multiple agents, worktrees, connectors, external side effects, or automated triage, make the harness explicit before implementation starts. The plan must answer:
-
-1. Trigger: what starts or resumes the loop.
-2. Inputs: which source-of-truth artifacts are read.
-3. Triage and orchestration: how findings become scoped tasks and who owns each step.
-4. Worktree and isolation: shared checkout, separate worktrees/branches, or serialized edits.
-5. Skills and context: mandatory skills, runbooks, docs, specs, or prior decisions.
-6. Connector read/write boundaries: readable/mutable systems, pre-approved writes, and writes that keep the goal `Draft` until approved.
-7. Independent verification: subagent, script, test, reviewer, or gate that checks producer work without trusting self-evaluation.
-8. Runtime hard stops: exact technical breakpoints where execution stops and asks the user.
-9. Durable learning: where results are written back, such as a skill, TODO, report, validation log, runbook, automation memory, or current doc.
-
-If the goal claims automation, connector writes, subagent orchestration, worktree parallelism, or any future approval breakpoint but leaves the corresponding harness or pre-approval field unspecified, keep it `Draft`.
+After creating, upgrading, or evolving a goal, update only the current docs that need concise pointers; keep detailed milestone plans in the goal file.
 
 ## Pre-Approval And YOLO Boundary
 
@@ -114,49 +89,6 @@ When creating an active Codex goal, set the objective to the project outcome, se
 
 During ordinary milestone execution, update the goal document and project evidence. Do not use goal completion as a substitute for milestone status, gates, commits, validation logs, or final reporting.
 
-## Production Cutover Gate
-
-For cutovers that compare a new implementation against an authoritative old path, freeze default, full-shadow diagnostic, and production/shadow-reduced modes before implementation. Full-shadow keeps both paths running and records diffs. The old path remains rollback until a review gate records a default/full-shadow/production comparison matrix, correctness evidence, mode-specific timing evidence, and the decision to change defaults.
-
-Do not claim production speedup by disabling shadow checks while still depending on old-path metadata, output contracts, or side effects. Production timing counts only after the new path owns the metadata/output contract it needs, old hot-path work is actually skipped, reuse/allocator assumptions are frozen when relevant, and correctness gates still pass.
-
-## Execute, Checkpoint, And Evolve
-
-When the user asks to execute a goal, follow the goal file rather than improvising. After context transition, interruption, or compaction, re-read the newest user request and active goal document before resuming.
-
-Before the first implementation milestone, confirm the goal file records a completed planning-preflight marker from `components/planning-preflight.md` or an explicit user-skip marker. If not, run the preflight component before mutating implementation files.
-
-For each milestone:
-
-1. Mark it `In Progress`.
-2. Implement only its scope.
-3. If a gate, validation rule, rollback path, milestone boundary, Loop field, or skill strategy is too weak for observed risk, pause mutation only long enough to update the contract; do not ask for permission unless a runtime hard stop applies.
-4. Run the milestone validation commands.
-5. Record changed files, behavior impact, command results, doc sync, rollback path, remaining risk, and checkpoint evidence.
-6. If the milestone exercises a Loop Blueprint, also record trigger/input path, orchestration or worktree isolation evidence, connector read/write evidence, independent verification, YOLO actions, and runtime hard-stop decisions.
-7. Apply `components/checkpoint.md`.
-8. Mark milestone `Done`, review `Passed`, and checkpoint `Done` only after evidence is recorded.
-
-When a review gate passes, enter the next milestone automatically. When it fails, keep fixing and diagnosing in scope while the next useful step is clear; stop only at the runtime hard-stop boundary.
-
-When execution exposes a weak gate, validation rule, rollback path, milestone boundary, Loop field, or skill strategy, state the gap and evidence, update the reusable strategy first when the rule belongs in this skill or template, update the active goal next, validate the edits, record changed strategy files and reason in goal evidence, then resume the original milestone. If the evolved rule invalidates completed work, reopen affected milestone evidence or mark the gate failed and fix the issue. Do not silently weaken acceptance criteria after implementation, bypass gates with fallback/alternate backends/fake success/hidden partial success/silent degradation, or repackage deprecated surfaces as current semantics unless the goal explicitly requires it and docs are updated.
-
-Use a Git commit as checkpoint evidence only when the project already uses version control and the user or local workflow expects checkpoint commits. Otherwise record an equivalent revision, issue/task history, artifact path, review note, or `Not applicable: no VCS in this workspace`.
-
-## Current Docs And Close
-
-After creating, upgrading, or evolving a goal, update only the current docs that need concise pointers: active TODO/goal index, development/runtime/status docs, boundary registers, validation logs, or runtime test checklists. Keep detailed milestone plans in the goal file.
-
-When all milestones are done:
-
-1. Change goal status to `Closed` while preparing close evidence.
-2. Fill close execution evidence before removing or archiving the active goal.
-3. Sync durable outcomes into current docs, indexes, validation logs, and status/boundary registers.
-4. Follow local archive conventions; do not invent dated archive trees or checked-in closed copies just to preserve history.
-5. Remove closed goals from active navigation, or archive/delete the goal file according to local convention.
-6. Run `git diff --check -- <changed-paths>` and `check_md_links.py` when Markdown links changed.
-7. Record close checkpoint evidence. If version control is active and expected, use the local close commit/revision format, such as `<goal_slug> close: <summary>`.
-
 ## Bundled Helpers
 
 Use these scripts when they match the project surface:
@@ -164,10 +96,10 @@ Use these scripts when they match the project surface:
 ```bash
 python <skill-folder>/scripts/check_goal_ready.py <goal-file>
 python <skill-folder>/scripts/check_md_links.py <planning-root>
-python <skill-folder>/scripts/check_todo_index.py <goal-file> <index-file> [<index-file> ...]
+python <skill-folder>/scripts/check_todo_index.py [--mode active|closed|absent] [--archived-goal <archive-path>] <goal-file> <index-file> [<index-file> ...]
 ```
 
-`check_goal_ready.py` catches unresolved placeholders and missing core sections. `check_md_links.py` checks relative Markdown links. `check_todo_index.py` verifies the active goal is discoverable from TODO or README indexes.
+`check_goal_ready.py` validates placeholders, lifecycle/status-table consistency, preflight fields, Loop harness fields, close evidence, and obvious YOLO/hard-stop contradictions. It validates the written contract, not whether evidence or permission claims are true. `check_md_links.py` checks relative Markdown links. `check_todo_index.py` defaults to exact-link `active` validation; use `closed` with `--archived-goal` after archiving, or `absent` after deletion without an archive.
 
 ## Quality Bar
 
