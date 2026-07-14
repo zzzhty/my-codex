@@ -59,6 +59,8 @@ When implementation is requested, act directly after enough context is known. Wh
 
 Subagent work has one current workflow layer in this repository.
 
+Keep capability, authority, and workflow invocation separate: `multi_agent` exposes the capability; the active environment, applicable `AGENTS.md`, or an active plan authorizes visible local delegation; `$orchestrate-subagents` defines the orchestration workflow only after a user-requested trigger. Server-side Ultra orchestration is outside this local observable surface unless an explicit runtime contract proves otherwise; do not infer visible local `spawn_agent` behavior from model names or capability metadata.
+
 Current runtime workflow:
 
 - Use the `workflow` plugin's `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.

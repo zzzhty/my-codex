@@ -7,7 +7,9 @@
         {"value": "workflow:long-running-goal", "kind": "skill_name", "match": "phrase"},
         {"value": "long-running-goal", "kind": "slug", "match": "token"},
         {"value": "long running goal", "kind": "phrase", "match": "phrase"},
-        {"value": "long-running goal", "kind": "phrase", "match": "phrase"}
+        {"value": "long-running goal", "kind": "phrase", "match": "phrase"},
+        {"value": "long-running goal sequence", "kind": "phrase", "match": "phrase"},
+        {"value": "umbrella long-running goal", "kind": "phrase", "match": "phrase"}
       ],
       "supporting_skills": []
     },

@@ -1,6 +1,6 @@
 ---
 name: long-running-goal
-description: Use when creating, upgrading, executing, resuming, continuing, evolving, or closing a continuation-ready long-running goal plan for a project, especially when work needs ordered milestones, validation/review gates, checkpoint evidence, Loop Blueprint/harness boundaries, frozen YOLO non-stops, runtime hard stops, current-doc synchronization, strategy/plan evolution, close/archive hygiene, or request-supersession decisions for an active goal context.
+description: Use when creating, upgrading, executing, resuming, continuing, evolving, or closing a continuation-ready long-running goal plan or strict serial Long-Running Goal Sequence for a project, especially when work needs ordered milestones or child goals, validation/review gates, checkpoint evidence, Loop Blueprint/harness boundaries, frozen YOLO non-stops, runtime hard stops, current-doc synchronization, strategy/plan evolution, close/archive hygiene, or request-supersession decisions for an active goal context.
 ---
 
 # Long Running Goal
@@ -23,7 +23,7 @@ If the request changes the goal plan itself, update the planning document and in
 
 ## Goal File And Template
 
-Use `templates/long_running_goal_template.md` for new goals unless the repo has a stronger local convention. Copy it into the active goal directory, replace all `<...>` placeholders, and do not mark the goal `Ready` while placeholders remain. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
+Use `templates/long_running_goal_template.md` for one goal and `templates/long_running_goal_sequence_template.md` for a `Sequence Child Goals` branch unless the repo has a stronger local convention. Copy it into the active goal directory, replace all `<...>` placeholders, and do not mark the goal `Ready` while placeholders remain. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
 
 Find the planning area in this order: user-specified path, existing active goal/TODO directories such as `docs/todo/`, current-doc indexes that already reference active work, then `docs/todo/<goal_slug>_long_running_goal_plan.md` as a fallback. Do not create a parallel planning tree when a live one already exists, and do not append `/todo` to a directory that is already the goal directory.
 
@@ -48,6 +48,7 @@ Use bundled components as internal workflow steps, not as standalone user-facing
 ## Branch Routing
 
 - Before you create or upgrade a goal, or define a Loop-shaped execution harness, read `references/create-and-loop.md` and satisfy every matching completion criterion before marking the goal `Ready`.
+- For `Sequence Child Goals` (formal artifact: `Long-Running Goal Sequence`; `umbrella` is only an alias), read `references/sequence-child-goals.md` before creation, authorization, promotion, resume, or close. The sequence parent and every child require a non-skip `Done` preflight from `grill-with-docs`.
 - For a production cutover that compares a new implementation with an authoritative old path, read `references/production-cutover.md` before freezing modes or claiming speedup.
 - Before you execute, resume, continue, advance, evolve, or close a goal, read `references/execute-and-close.md`; follow the goal file and finish its matching execution or close criterion.
 
@@ -95,11 +96,12 @@ Use these scripts when they match the project surface:
 
 ```bash
 python <skill-folder>/scripts/check_goal_ready.py <goal-file>
+python <skill-folder>/scripts/check_goal_sequence.py <sequence-file> [--allow-draft]
 python <skill-folder>/scripts/check_md_links.py <planning-root>
 python <skill-folder>/scripts/check_todo_index.py [--mode active|closed|absent] [--archived-goal <archive-path>] <goal-file> <index-file> [<index-file> ...]
 ```
 
-`check_goal_ready.py` validates placeholders, lifecycle/status-table consistency, preflight fields, Loop harness fields, close evidence, and obvious YOLO/hard-stop contradictions. It validates the written contract, not whether evidence or permission claims are true. `check_md_links.py` checks relative Markdown links. `check_todo_index.py` defaults to exact-link `active` validation; use `closed` with `--archived-goal` after archiving, or `absent` after deletion without an archive.
+`check_goal_ready.py` validates one goal's written contract. `check_goal_sequence.py` composes that check with mandatory non-skip preflights and cross-child ordering, state, milestone, handoff, and close consistency; `--allow-draft` relaxes lifecycle only. `check_md_links.py` checks relative Markdown links. `check_todo_index.py` defaults to exact-link `active` validation; use `closed` with `--archived-goal` after archiving, or `absent` after deletion without an archive.
 
 ## Quality Bar
 
@@ -114,3 +116,4 @@ A useful long-running goal must answer:
 7. Which actions are frozen as YOLO non-stops, and which runtime hard stops actually require the user?
 8. How does the work close and leave active docs clean?
 9. If Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, runtime hard stops, and durable learning?
+10. If a sequence, are every child boundary and required grill preflight frozen, one child current, handoffs consistent, and authorization no broader than the children?
