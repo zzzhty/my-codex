@@ -7,7 +7,7 @@ Usage: scripts/upgrade_my_codex.sh [options]
 
 Options:
   --bootstrap-python PATH       Python used to run the helper scripts.
-  --codex PATH                  Codex CLI executable. Defaults to CODEX_BIN or codex on PATH.
+  --codex PATH                  Codex CLI executable. Defaults to automatic platform discovery.
   --codex-home PATH             Codex home directory. Defaults to CODEX_HOME or ~/.codex.
   --tooling-python PATH         Python installed into Codex hooks.
   --marketplace-name NAME       Marketplace name. Defaults to my-codex.
@@ -272,12 +272,6 @@ else
     bootstrap_python=$(resolve_command "Bootstrap Python" "$bootstrap_python")
 fi
 
-if [ -z "$codex_path" ]; then
-    codex_path=$(resolve_command "Codex CLI" codex)
-else
-    codex_path=$(resolve_command "Codex CLI" "$codex_path")
-fi
-
 if [ -z "$tooling_python" ]; then
     tooling_python="$codex_home/venvs/my-codex/bin/python"
 fi
@@ -295,7 +289,7 @@ echo "MY_CODEX_PYTHON=$MY_CODEX_PYTHON"
 echo "MY_CODEX_TOOLING_PYTHON=$MY_CODEX_TOOLING_PYTHON"
 echo "PLUGIN_VALIDATOR=$PLUGIN_VALIDATOR"
 echo "BootstrapPython=$bootstrap_python"
-echo "CodexPath=$codex_path"
+echo "CodexPath=${codex_path:-auto}"
 echo "MarketplaceName=$marketplace_name"
 if [ "$prune_plugins" -eq 1 ]; then
     echo "PrunePlugins=enabled"
@@ -314,7 +308,6 @@ if [ "$prune_plugins" -eq 1 ] && [ "$dry_run" -eq 0 ]; then
 fi
 
 set -- "$repo_root/scripts/refresh_my_codex.py" \
-    --codex "$codex_path" \
     --codex-home "$CODEX_HOME" \
     --venv "$venv_path" \
     --python "$MY_CODEX_PYTHON" \
@@ -322,6 +315,9 @@ set -- "$repo_root/scripts/refresh_my_codex.py" \
     --marketplace-source "$repo_root" \
     --git-ref "$git_ref"
 
+if [ -n "$codex_path" ]; then
+    set -- "$@" --codex "$codex_path"
+fi
 if [ -n "$git_marketplace_source" ]; then
     set -- "$@" --git-marketplace-source "$git_marketplace_source"
 fi
@@ -339,11 +335,13 @@ if [ "$dry_run" -eq 1 ] && [ "$skip_check" -eq 0 ]; then
     echo "Dry run: skipping closure check because no local state was changed."
 elif [ "$skip_check" -eq 0 ]; then
     set -- "$repo_root/scripts/check_my_codex.py" \
-        --codex "$codex_path" \
         --codex-home "$CODEX_HOME" \
         --venv "$venv_path" \
         --python "$MY_CODEX_PYTHON" \
         --marketplace-name "$marketplace_name"
+    if [ -n "$codex_path" ]; then
+        set -- "$@" --codex "$codex_path"
+    fi
     echo "+ $bootstrap_python $*"
     "$bootstrap_python" "$@"
 fi

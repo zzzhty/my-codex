@@ -20,6 +20,7 @@ MARKETPLACE_FILE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 INSTALL_MANIFEST_FILE = REPO_ROOT / ".agents" / "plugins" / "install-manifest.json"
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
+MACOS_APPLICATION_DIRS = (Path("/Applications"), Path.home() / "Applications")
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -44,24 +45,42 @@ def latest_files(root: Path, pattern: str) -> list[Path]:
     return sorted(root.rglob(pattern), key=lambda path: path.stat().st_mtime, reverse=True)
 
 
+def macos_app_codex_files() -> list[Path]:
+    candidates = [
+        candidate
+        for root in MACOS_APPLICATION_DIRS
+        if root.is_dir()
+        for candidate in root.glob("*.app/Contents/Resources/codex")
+        if candidate.is_file()
+    ]
+    return sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)
+
+
 def codex_executable_candidates(raw: str) -> list[str]:
-    if sys.platform != "win32" or raw.lower() != "codex":
+    if not raw or raw.lower() != "codex":
         return [raw] if raw else []
 
     candidates: list[str] = []
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if local_app_data:
-        bin_root = Path(local_app_data) / "OpenAI" / "Codex" / "bin"
-        candidates.extend(str(path) for path in latest_files(bin_root, "codex.exe"))
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            bin_root = Path(local_app_data) / "OpenAI" / "Codex" / "bin"
+            candidates.extend(str(path) for path in latest_files(bin_root, "codex.exe"))
 
-    user_profile = os.environ.get("USERPROFILE")
-    if user_profile:
-        extension_root = Path(user_profile) / ".vscode" / "extensions"
-        extensions = sorted(extension_root.glob("openai.chatgpt-*"), key=lambda path: path.stat().st_mtime, reverse=True)
-        for extension in extensions:
-            candidate = extension / "bin" / "windows-x86_64" / "codex.exe"
-            if candidate.is_file():
-                candidates.append(str(candidate))
+        user_profile = os.environ.get("USERPROFILE")
+        if user_profile:
+            extension_root = Path(user_profile) / ".vscode" / "extensions"
+            extensions = sorted(
+                extension_root.glob("openai.chatgpt-*"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+            for extension in extensions:
+                candidate = extension / "bin" / "windows-x86_64" / "codex.exe"
+                if candidate.is_file():
+                    candidates.append(str(candidate))
+    elif sys.platform == "darwin":
+        candidates.extend(str(path) for path in macos_app_codex_files())
 
     candidates.append(raw)
     return list(dict.fromkeys(candidates))

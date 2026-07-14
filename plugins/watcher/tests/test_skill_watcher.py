@@ -160,6 +160,62 @@ class SkillWatcherTests(unittest.TestCase):
                     with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
                         self.assertEqual(resolve_executable("codex"), str(local_cli))
 
+    def test_macos_codex_resolution_prefers_app_bundle_before_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            applications = root / "Applications"
+            app_cli = applications / "ChatGPT.app" / "Contents" / "Resources" / "codex"
+            app_cli.parent.mkdir(parents=True)
+            app_cli.write_text("", encoding="utf-8")
+            path_cli = root / "bin" / "codex"
+
+            with mock.patch.object(refresh_my_codex.sys, "platform", "darwin"):
+                with mock.patch.object(
+                    refresh_my_codex,
+                    "MACOS_APPLICATION_DIRS",
+                    (applications,),
+                    create=True,
+                ):
+                    with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
+                        self.assertEqual(resolve_executable("codex"), str(app_cli))
+
+    @unittest.skipIf(os.name == "nt", "POSIX shell regression")
+    def test_unix_upgrade_wrapper_defers_default_codex_resolution_to_python_helper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake_python = root / "python3"
+            recorded_args = root / "python-args.txt"
+            fake_python.write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$FAKE_PYTHON_ARGS\"\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+            env = os.environ.copy()
+            env.pop("CODEX_BIN", None)
+            env["FAKE_PYTHON_ARGS"] = str(recorded_args)
+            env["PATH"] = "/usr/bin:/bin"
+
+            result = subprocess.run(
+                [
+                    str(REPO_ROOT / "scripts" / "upgrade_my_codex.sh"),
+                    "--bootstrap-python",
+                    str(fake_python),
+                    "--codex-home",
+                    str(root / "codex-home"),
+                    "--dry-run",
+                    "--skip-check",
+                ],
+                cwd=REPO_ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("CodexPath=auto", result.stdout)
+            self.assertNotIn("--codex", recorded_args.read_text(encoding="utf-8").splitlines())
+
     def test_watcher_plugin_validation_uses_tooling_python(self) -> None:
         runner = CheckRunner()
         calls = []
