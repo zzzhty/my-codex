@@ -10,19 +10,35 @@ This repository is the development mainline for the plugins and personal Codex c
 
 - `watcher`: observes Codex skill usage, audits documentation drift, and packages `doc-alignment`, `housekeeping`, `skill-maintainer`, and `skill-compressor` workflows.
 - `workflow`: packages reusable workflow skills, including continuation-ready long-running goal plans with frozen YOLO non-stops and runtime hard stops, SOP execution harnesses, prompt/strategy loops, explicit subagent orchestration, and standalone summaries.
-- `mattpocock-skills`: packages the local Codex-adapted copy of `mattpocock/skills`.
+- `mattpocock-skills`: packages the unchanged published skill tree and native Codex metadata from `mattpocock/skills`.
 
 The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees were removed after the Watcher migration. Git history remains the recovery path for those retired plugin sources.
+
+## Multi-Harness Skill Exposure
+
+Every skill packaged by the marketplace plugins is also exposed as a user-level agent skill under `~/.agents/skills/<skill>` through per-skill symlinks into this checkout. Harnesses that natively scan `~/.agents/skills` (ZCode does, ahead of workspace `.agents/skills` roots) pick the skills up with no extra configuration, while Codex keeps serving the same source directories through the marketplace plugin cache. The repository stays the single source of truth; nothing is copied or forked.
+
+The exposure layer is managed by `scripts/sync_agents_skills.py`:
+
+```bash
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/sync_agents_skills.py
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/sync_agents_skills.py --check --prune
+```
+
+`scripts/refresh_my_codex.py` refreshes the layer after plugin installs (`--skip-agents-skills` skips it) and `scripts/check_my_codex.py` fails when a link is missing, dangling, or drifting. Links for removed skills are pruned like other stale plugin state. Entries under `~/.agents/skills` that are not managed symlinks into this checkout are never touched; a name conflict with an unmanaged directory is reported instead of overwritten. `plugins/mattpocock-skills/skills/` is exposed unchanged: symlinks do not modify content, so its upstream mirror hash contract is unaffected.
 
 ## Matt Pocock Upstream Sync
 
 The repo-owned updater for the `mattpocock-skills` package lives outside the Watcher runtime. From the repository root, run:
 
 ```bash
-python scripts/update_mattpocock_skills.py
+python3 scripts/bootstrap_tooling_env.py
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/update_mattpocock_skills.py
 ```
 
-By default it selects the latest upstream semantic-version tag, clones the source under `~/.codex/sources`, replaces the packaged skill tree, reapplies Codex adaptations, regenerates the plugin README and Watcher metadata, updates the plugin cachebuster, and validates the plugin and every packaged skill. Use `--source-dir <upstream-checkout> --tag <vX.Y.Z>` to sync from an existing checkout.
+By default it selects the latest upstream semantic-version tag, clones the source under `~/.codex/sources`, and copies every skill published by the upstream manifest without content rewrites or omissions. It then regenerates only the local plugin wrapper and Watcher metadata, updates the cachebuster, and validates byte parity plus upstream's native Codex invocation contract. Use `--source-dir <upstream-checkout> --tag <vX.Y.Z>` to sync from an existing checkout, or `--validate-only` to check the currently packaged plugin without fetching or changing files.
+
+Never edit `plugins/mattpocock-skills/skills/` directly. Its updater-owned upstream lock makes local drift fail validation and blocks an upstream refresh before that drift can be overwritten; local adaptation belongs only in the plugin wrapper, Watcher metadata, and repository-owned tooling around the unchanged mirror.
 
 After reviewing the source diff, refresh only the updated package when needed:
 
@@ -148,6 +164,8 @@ On Windows, use `Copy-Item` for `AGENTS.md` instead of a symlink. File symlink b
 - Windows: `Scripts\python.exe`
 - Unix: `bin/python`
 
+The bootstrap resolves the selected base Python to its real executable before creating the venv. This prevents PATH aliases or uv-managed Python symlinks from producing a `pyvenv.cfg` that cannot locate the standard library. If an existing tooling venv cannot start, reports the wrong prefix, or was created from a different base interpreter, bootstrap rebuilds it and restores the previous directory if creation or dependency validation fails. `--dry-run` performs the same read-only health preflight and prints whether a rebuild would occur.
+
 If a Watcher script fails because `PyYAML` is missing, refresh the shared tooling venv from the repository root:
 
 Unix:
@@ -178,9 +196,9 @@ Windows PowerShell:
 .\scripts\upgrade_my_codex.ps1
 ```
 
-The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. On Windows, the wrapper prefers `CODEX_BIN`, then the user-local OpenAI Codex CLI under `%LOCALAPPDATA%\OpenAI\Codex\bin`, then VS Code's ChatGPT extension CLI, and only then `codex` from `PATH`. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
+The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. Codex CLI resolution uses one cross-platform precedence: an explicit `--codex`/`-CodexPath`, then `CODEX_BIN`, then `codex` from `PATH`, then the visible standalone install under `CODEX_INSTALL_DIR` (defaulting to `~/.local/bin` on Unix and `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` on Windows), then `$CODEX_HOME/packages/standalone/current`, and finally platform-managed fallbacks. On Windows those final fallbacks are the Desktop-managed CLI under `%LOCALAPPDATA%\OpenAI\Codex\bin` followed by VS Code or VS Code Insiders' bundled CLI; on Unix they are VS Code Server, VS Code Server Insiders, local VS Code, and local VS Code Insiders. Explicit paths and `CODEX_BIN` are strict: an invalid configured value fails instead of selecting another installation. Once `PATH` resolves `codex`, capability validation applies to that executable and does not silently switch to a fallback. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
 
-`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, refreshes `$CODEX_HOME/hooks.json`, and runs Watcher skill doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync.
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, syncs the `~/.agents/skills` exposure layer, refreshes `$CODEX_HOME/hooks.json`, and runs Watcher skill doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync and `--skip-agents-skills` to skip the exposure layer sync.
 
 Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
 
@@ -313,7 +331,7 @@ python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
 python3 -m json.tool .agents/plugins/install-manifest.json >/dev/null
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/watcher"
 "$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/workflow"
-"$MY_CODEX_PYTHON" "$PLUGIN_VALIDATOR" "$MY_CODEX_ROOT/plugins/mattpocock-skills"
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/scripts/update_mattpocock_skills.py" --validate-only
 "$MY_CODEX_PYTHON" -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
@@ -324,7 +342,7 @@ Windows PowerShell:
 & $env:MY_CODEX_PYTHON -m json.tool .agents\plugins\install-manifest.json | Out-Null
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\watcher"
 & $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\workflow"
-& $env:MY_CODEX_PYTHON $env:PLUGIN_VALIDATOR "$env:MY_CODEX_ROOT\plugins\mattpocock-skills"
+& $env:MY_CODEX_PYTHON "$env:MY_CODEX_ROOT\scripts\update_mattpocock_skills.py" --validate-only
 & $env:MY_CODEX_PYTHON -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
@@ -341,6 +359,7 @@ requirements.txt
 scripts/bootstrap_tooling_env.py
 scripts/check_my_codex.py
 scripts/refresh_my_codex.py
+scripts/sync_agents_skills.py
 scripts/sync_codex_agents.py
 scripts/update_mattpocock_skills.py
 scripts/upgrade_my_codex.ps1
