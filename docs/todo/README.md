@@ -3,6 +3,7 @@
 ## Active Design Notes
 
 - [Subagent Orchestration Follow-Up](subagent-orchestration-follow-up.md): future plan for validated read-only review contracts, custom-agent TOML criteria, and targeted Superpowers-inspired workflow improvements.
+- [Second-Pass Skill Slimming Review](skill-slimming-v2-review.md): active rule-ownership map, per-skill slimming priorities, behavioral benchmark matrix, and reusable implementation entry point for reducing instruction-induced passivity.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
 Closed historical records should stay out of active navigation unless a current
