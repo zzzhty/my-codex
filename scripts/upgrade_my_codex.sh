@@ -7,7 +7,7 @@ Usage: scripts/upgrade_my_codex.sh [options]
 
 Options:
   --bootstrap-python PATH       Python used to run the helper scripts.
-  --codex PATH                  Codex CLI executable. Defaults to automatic platform discovery.
+  --codex PATH                  Explicit Codex CLI executable. Otherwise uses CODEX_BIN, PATH, then managed installs.
   --codex-home PATH             Codex home directory. Defaults to CODEX_HOME or ~/.codex.
   --tooling-python PATH         Python installed into Codex hooks.
   --marketplace-name NAME       Marketplace name. Defaults to my-codex.
@@ -47,6 +47,107 @@ resolve_command() {
     fi
     echo "$label not found: $value" >&2
     exit 1
+}
+
+codex_extension_platform_dir() {
+    case "$(uname -s 2>/dev/null || true)" in
+        Linux)
+            system=linux
+            ;;
+        Darwin)
+            system=darwin
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    case "$(uname -m 2>/dev/null || true)" in
+        x86_64|amd64)
+            architecture=x86_64
+            ;;
+        aarch64|arm64)
+            architecture=aarch64
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    printf '%s-%s\n' "$system" "$architecture"
+}
+
+find_vscode_codex() {
+    platform_dir=$(codex_extension_platform_dir || true)
+    if [ -z "$platform_dir" ]; then
+        return 1
+    fi
+
+    latest=
+    for extension_root in \
+        "$HOME/.vscode-server/extensions" \
+        "$HOME/.vscode-server-insiders/extensions" \
+        "$HOME/.vscode/extensions" \
+        "$HOME/.vscode-insiders/extensions"
+    do
+        if [ ! -d "$extension_root" ]; then
+            continue
+        fi
+        for extension in "$extension_root"/openai.chatgpt-*; do
+            if [ ! -d "$extension" ]; then
+                continue
+            fi
+            candidate="$extension/bin/$platform_dir/codex"
+            if [ -f "$candidate" ] && { [ -z "$latest" ] || [ "$candidate" -nt "$latest" ]; }; then
+                latest=$candidate
+            fi
+        done
+    done
+
+    if [ -n "$latest" ]; then
+        printf '%s\n' "$latest"
+        return 0
+    fi
+    return 1
+}
+
+find_default_codex() {
+    resolved=$(command -v codex 2>/dev/null || true)
+    if [ -n "$resolved" ]; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+
+    install_dir=${CODEX_INSTALL_DIR:-"$HOME/.local/bin"}
+    visible_codex="$install_dir/codex"
+    standalone_current="$codex_home/packages/standalone/current"
+    for candidate in \
+        "$visible_codex" \
+        "$standalone_current/bin/codex" \
+        "$standalone_current/codex"
+    do
+        if [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    vscode_codex=$(find_vscode_codex || true)
+    if [ -n "$vscode_codex" ]; then
+        printf '%s\n' "$vscode_codex"
+        return 0
+    fi
+
+    echo "Codex CLI not found. Checked:" >&2
+    echo "codex on PATH" >&2
+    echo "$visible_codex" >&2
+    echo "$standalone_current/bin/codex" >&2
+    echo "$standalone_current/codex" >&2
+    echo "$HOME/.vscode-server/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
+    echo "$HOME/.vscode-server-insiders/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
+    echo "$HOME/.vscode/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
+    echo "$HOME/.vscode-insiders/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
+    return 1
 }
 
 canonical_path() {
@@ -167,7 +268,8 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 
 bootstrap_python=${MY_CODEX_BOOTSTRAP_PYTHON:-}
-codex_path=${CODEX_BIN:-}
+codex_path=
+codex_path_explicit=0
 codex_home=${CODEX_HOME:-"$HOME/.codex"}
 tooling_python=${MY_CODEX_PYTHON:-}
 marketplace_name=my-codex
@@ -191,10 +293,13 @@ while [ "$#" -gt 0 ]; do
         --codex)
             require_value "$1" "${2-}"
             codex_path=$2
+            codex_path_explicit=1
             shift 2
             ;;
         --codex=*)
             codex_path=${1#*=}
+            require_value "--codex" "$codex_path"
+            codex_path_explicit=1
             shift
             ;;
         --codex-home)
@@ -272,6 +377,14 @@ else
     bootstrap_python=$(resolve_command "Bootstrap Python" "$bootstrap_python")
 fi
 
+if [ "$codex_path_explicit" -eq 1 ]; then
+    codex_path=$(resolve_command "Codex CLI" "$codex_path")
+elif [ -n "${CODEX_BIN:-}" ]; then
+    codex_path=$(resolve_command "Codex CLI from CODEX_BIN" "$CODEX_BIN")
+else
+    codex_path=$(find_default_codex)
+fi
+
 if [ -z "$tooling_python" ]; then
     tooling_python="$codex_home/venvs/my-codex/bin/python"
 fi
@@ -289,7 +402,7 @@ echo "MY_CODEX_PYTHON=$MY_CODEX_PYTHON"
 echo "MY_CODEX_TOOLING_PYTHON=$MY_CODEX_TOOLING_PYTHON"
 echo "PLUGIN_VALIDATOR=$PLUGIN_VALIDATOR"
 echo "BootstrapPython=$bootstrap_python"
-echo "CodexPath=${codex_path:-auto}"
+echo "CodexPath=$codex_path"
 echo "MarketplaceName=$marketplace_name"
 if [ "$prune_plugins" -eq 1 ]; then
     echo "PrunePlugins=enabled"
@@ -308,6 +421,7 @@ if [ "$prune_plugins" -eq 1 ] && [ "$dry_run" -eq 0 ]; then
 fi
 
 set -- "$repo_root/scripts/refresh_my_codex.py" \
+    --codex "$codex_path" \
     --codex-home "$CODEX_HOME" \
     --venv "$venv_path" \
     --python "$MY_CODEX_PYTHON" \
@@ -315,9 +429,6 @@ set -- "$repo_root/scripts/refresh_my_codex.py" \
     --marketplace-source "$repo_root" \
     --git-ref "$git_ref"
 
-if [ -n "$codex_path" ]; then
-    set -- "$@" --codex "$codex_path"
-fi
 if [ -n "$git_marketplace_source" ]; then
     set -- "$@" --git-marketplace-source "$git_marketplace_source"
 fi
@@ -335,13 +446,11 @@ if [ "$dry_run" -eq 1 ] && [ "$skip_check" -eq 0 ]; then
     echo "Dry run: skipping closure check because no local state was changed."
 elif [ "$skip_check" -eq 0 ]; then
     set -- "$repo_root/scripts/check_my_codex.py" \
+        --codex "$codex_path" \
         --codex-home "$CODEX_HOME" \
         --venv "$venv_path" \
         --python "$MY_CODEX_PYTHON" \
         --marketplace-name "$marketplace_name"
-    if [ -n "$codex_path" ]; then
-        set -- "$@" --codex "$codex_path"
-    fi
     echo "+ $bootstrap_python $*"
     "$bootstrap_python" "$@"
 fi

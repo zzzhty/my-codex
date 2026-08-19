@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -14,13 +13,15 @@ from pathlib import Path
 from refresh_my_codex import (
     CODEX_HOME,
     DEFAULT_VENV,
+    INSTALL_MANIFEST_FILE,
+    MARKETPLACE_FILE,
     REPO_ROOT,
     build_env,
     cached_plugin_names,
     command_text,
     configured_plugin_names,
     expand_path,
-    resolve_executable,
+    resolve_codex_executable,
     selected_plugins,
     stale_plugin_names,
     tooling_python_from_args,
@@ -39,6 +40,30 @@ def configure_output_streams() -> None:
         reconfigure = getattr(stream, "reconfigure", None)
         if callable(reconfigure):
             reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+def plugin_check_scopes(
+    raw_plugins: list[str] | None,
+    marketplace_name: str,
+    *,
+    manifest_file: Path = INSTALL_MANIFEST_FILE,
+    marketplace_file: Path = MARKETPLACE_FILE,
+) -> tuple[list[str], list[str]]:
+    plugins_to_check = selected_plugins(
+        raw_plugins,
+        marketplace_name,
+        action="check",
+        manifest_file=manifest_file,
+        marketplace_file=marketplace_file,
+    )
+    desired_plugins = selected_plugins(
+        None,
+        marketplace_name,
+        action="check",
+        manifest_file=manifest_file,
+        marketplace_file=marketplace_file,
+    )
+    return plugins_to_check, desired_plugins
 
 
 def decode_subprocess_output(raw: bytes | str | None) -> str:
@@ -415,13 +440,29 @@ class CheckRunner:
         env: dict[str, str],
         validator: Path,
     ) -> None:
-        if not validator.is_file():
+        plugin_names = [selector.split("@", 1)[0] for selector in plugins]
+        bundled_plugin_names = [
+            plugin_name
+            for plugin_name in plugin_names
+            if plugin_name != "mattpocock-skills"
+        ]
+        if bundled_plugin_names and not validator.is_file():
             self.fail(f"plugin validator missing: {validator}")
             return
-        for selector in plugins:
-            plugin_name = selector.split("@", 1)[0]
-            plugin_dir = REPO_ROOT / "plugins" / plugin_name
-            result = self.run_command([str(tooling_python), str(validator), str(plugin_dir)], env=env)
+        for plugin_name in plugin_names:
+            if plugin_name == "mattpocock-skills":
+                command = [
+                    str(tooling_python),
+                    str(REPO_ROOT / "scripts" / "update_mattpocock_skills.py"),
+                    "--validate-only",
+                ]
+            else:
+                command = [
+                    str(tooling_python),
+                    str(validator),
+                    str(REPO_ROOT / "plugins" / plugin_name),
+                ]
+            result = self.run_command(command, env=env)
             if result.returncode == 0:
                 self.ok(f"plugin validation passed: {plugin_name}")
             else:
@@ -452,6 +493,21 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"subagent support file is not synced: {output}")
 
+    def check_agents_skills_layer(self, *, env: dict[str, str]) -> None:
+        sync_script = REPO_ROOT / "scripts" / "sync_agents_skills.py"
+        if not sync_script.is_file():
+            self.fail(f"agents skills sync script missing: {sync_script}")
+            return
+        result = self.run_command(
+            [sys.executable, str(sync_script), "--check", "--prune"],
+            env=env,
+        )
+        if result.returncode == 0:
+            self.ok("agents skills exposure layer is synced")
+        else:
+            output = (result.stderr or result.stdout).strip()
+            self.fail(f"agents skills exposure layer is not synced: {output}")
+
     def check_watcher_runtime_cutover(self, *, codex_home: Path) -> None:
         legacy_roots = [codex_home / "skill-watcher", codex_home / "doc-watcher"]
         existing = [path for path in legacy_roots if path.exists()]
@@ -476,7 +532,10 @@ def main() -> None:
     configure_output_streams()
 
     parser = argparse.ArgumentParser(description="Final checks for my-codex plugin and hook state.")
-    parser.add_argument("--codex", default=os.environ.get("CODEX_BIN", "codex"), help="Codex CLI executable.")
+    parser.add_argument(
+        "--codex",
+        help="Explicit Codex CLI executable. Defaults to CODEX_BIN, PATH, then managed install fallbacks.",
+    )
     parser.add_argument("--codex-home", default=str(CODEX_HOME), help="Codex home directory.")
     parser.add_argument("--venv", default=str(DEFAULT_VENV), help="Shared my-codex tooling venv path.")
     parser.add_argument("--python", help="Explicit tooling Python expected in hooks and diagnostics.")
@@ -485,6 +544,7 @@ def main() -> None:
     parser.add_argument("--skip-plugins", action="store_true", help="Skip `codex plugin list` and plugin cache checks.")
     parser.add_argument("--skip-hooks", action="store_true", help="Skip Watcher skill hook config checks.")
     parser.add_argument("--skip-agents", action="store_true", help="Skip subagent support-file sync checks.")
+    parser.add_argument("--skip-agents-skills", action="store_true", help="Skip the ~/.agents/skills exposure layer check.")
     parser.add_argument("--skip-plugin-validation", action="store_true", help="Skip plugin validator checks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Skip Watcher skill doctor.")
     parser.add_argument("--strict-warnings", action="store_true", help="Treat warnings as failures.")
@@ -494,18 +554,24 @@ def main() -> None:
     venv_path = expand_path(args.venv)
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
-    codex = resolve_executable(args.codex)
-    plugins = selected_plugins(args.plugin, args.marketplace_name, action="check")
+    codex = resolve_codex_executable(args.codex, codex_home=codex_home)
+    plugins_to_check, desired_plugins = plugin_check_scopes(
+        args.plugin, args.marketplace_name
+    )
     validator = Path(env["PLUGIN_VALIDATOR"])
 
     runner = CheckRunner()
-    plugin_sources = runner.check_marketplace_file(plugins)
+    plugin_sources = runner.check_marketplace_file(plugins_to_check)
     runner.check_tooling_python(tooling_python, env=env)
     if not args.skip_plugins and plugin_sources is not None:
-        runner.check_codex_plugin_list(codex, plugins, env=env, plugin_sources=plugin_sources)
-        runner.check_plugin_cache(plugins, codex_home=codex_home, plugin_sources=plugin_sources)
+        runner.check_codex_plugin_list(
+            codex, plugins_to_check, env=env, plugin_sources=plugin_sources
+        )
+        runner.check_plugin_cache(
+            plugins_to_check, codex_home=codex_home, plugin_sources=plugin_sources
+        )
         runner.check_no_stale_my_codex_plugins(
-            plugins,
+            desired_plugins,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
         )
@@ -514,8 +580,12 @@ def main() -> None:
     runner.check_watcher_runtime_cutover(codex_home=codex_home)
     if not args.skip_agents:
         runner.check_agent_sync(codex_home=codex_home, env=env)
+    if not args.skip_agents_skills:
+        runner.check_agents_skills_layer(env=env)
     if not args.skip_plugin_validation:
-        runner.check_plugin_validation(tooling_python, plugins, env=env, validator=validator)
+        runner.check_plugin_validation(
+            tooling_python, plugins_to_check, env=env, validator=validator
+        )
     if not args.skip_doctor:
         runner.check_doctor(tooling_python, env=env)
     runner.finish(strict_warnings=args.strict_warnings)
