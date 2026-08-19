@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import html
+import ntpath
+import posixpath
 import re
 import sys
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 SHARED = Path(__file__).resolve().parents[3] / "scripts"
@@ -17,6 +21,7 @@ from markdown_contract import (  # noqa: E402
     placeholder_errors,
     render_errors,
     strip_fenced_blocks,
+    strip_placeholder_example_blocks,
 )
 
 
@@ -61,35 +66,667 @@ def milestone_states(markdown_text: str) -> list[MilestoneState]:
     return []
 
 
-def h2_section(markdown_text: str, heading_pattern: str) -> str | None:
-    match = re.search(
+def h2_sections(markdown_text: str, heading_pattern: str) -> list[str]:
+    matches = re.finditer(
         rf"(?ims)^##\s+(?:{heading_pattern})\s*$\n(?P<body>.*?)(?=^##\s+|\Z)",
         markdown_text,
     )
-    return match.group("body") if match else None
+    return [match.group("body") for match in matches]
+
+
+def h2_section(markdown_text: str, heading_pattern: str) -> str | None:
+    sections = h2_sections(markdown_text, heading_pattern)
+    return sections[0] if sections else None
+
+
+def without_h2_sections(markdown_text: str, heading_pattern: str) -> str:
+    return re.sub(
+        rf"(?ims)^##\s+(?:{heading_pattern})\s*$\n.*?(?=^##\s+|\Z)",
+        "",
+        markdown_text,
+    )
+
+
+def _named_contract_field(
+    line: str,
+    labels: dict[str, str],
+) -> tuple[str, str] | None:
+    for label, pattern in labels.items():
+        match = re.match(
+            rf"(?i)^[ ]{{0,3}}(?:\d+\.\s*)?(?:{pattern})"
+            rf"(?:\s*/[^:：\n]+)?\s*[:：]\s*(.*)$",
+            line,
+        )
+        if match:
+            return label, match.group(1)
+    return None
 
 
 def named_contract_fields(
     section_text: str,
     labels: dict[str, str],
+    *,
+    allow_indented_continuations: bool = True,
 ) -> dict[str, str]:
     collected: dict[str, list[str]] = {}
     current: str | None = None
     for line in section_text.splitlines():
-        matched = False
-        for label, pattern in labels.items():
-            match = re.match(
-                rf"(?i)^\s*(?:\d+\.\s*)?{pattern}(?:\s*/[^:：\n]+)?\s*[:：]\s*(.*)$",
-                line,
-            )
-            if match:
-                current = label
-                collected[current] = [match.group(1)]
-                matched = True
-                break
-        if not matched and current is not None:
+        matched = _named_contract_field(line, labels)
+        if matched:
+            current, value = matched
+            collected[current] = [value]
+        elif not allow_indented_continuations and line.startswith(("    ", "\t")):
+            current = None
+        elif current is not None:
             collected[current].append(line)
     return {label: "\n".join(lines).strip() for label, lines in collected.items()}
+
+
+def named_contract_field_counts(
+    section_text: str,
+    labels: dict[str, str],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for line in section_text.splitlines():
+        matched = _named_contract_field(line, labels)
+        if matched:
+            label, _ = matched
+            counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
+TIME_ASSESSMENT_HEADING = r"Preflight\s+Time\s+Assessment|执行前耗时评估"
+TIME_ASSESSMENT_LABELS = {
+    "Assessment target": r"Assessment\s+target|评估目标",
+    "Assessment mode": r"Assessment\s+mode|评估模式",
+    "Rough elapsed-time estimate": r"Rough\s+elapsed-time\s+estimate|粗略耗时估算",
+    "Basis or blocker": r"Basis\s+or\s+blocker|依据或阻碍",
+    "Critical-path time-cost distribution": (
+        r"Critical-path\s+time-cost\s+distribution|关键路径耗时分布"
+    ),
+}
+
+
+def _scalar_contract_value(value: str) -> str:
+    return value.strip().strip("`").strip()
+
+
+def _first_contract_line(value: str) -> str:
+    return value.splitlines()[0].strip() if value.splitlines() else ""
+
+
+def _has_valid_iso_date(value: str) -> bool:
+    for candidate in re.findall(r"(?<!\d)20\d{2}-\d{2}-\d{2}(?!\d)", value):
+        try:
+            date.fromisoformat(candidate)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
+def _rough_elapsed_range(value: str) -> tuple[float, float] | None:
+    match = re.fullmatch(
+        r"(?ix)\s*(?:about|approximately|roughly|approx\.?|约|大约|≈|~)?\s*"
+        r"(?P<low>\d+(?:\.\d+)?)\s*(?:-|–|—|~|～|to|至|到)\s*"
+        r"(?P<high>\d+(?:\.\d+)?)\s*"
+        r"(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|"
+        r"business\s+days?|working\s+days?|"
+        r"(?:个)?(?:工作日|工作天|秒|分钟|小时|天|周|月|年))\s*",
+        _scalar_contract_value(value),
+    )
+    if not match:
+        return None
+    return float(match.group("low")), float(match.group("high"))
+
+
+def _replace_inline_markdown_links(value: str) -> str:
+    opening = re.compile(r"!?\[([^\]\n]+)\]\(")
+    cursor = 0
+    while match := opening.search(value, cursor):
+        depth = 1
+        index = match.end()
+        while index < len(value) and depth:
+            if value[index] == "\\":
+                index += 2
+                continue
+            if value[index] == "(":
+                depth += 1
+            elif value[index] == ")":
+                depth -= 1
+            index += 1
+        if depth:
+            cursor = match.end()
+            continue
+        label = match.group(1)
+        value = value[: match.start()] + label + value[index:]
+        cursor = match.start() + len(label)
+    return value
+
+
+def _rendered_contract_fragment(value: str) -> str:
+    value = html.unescape(value)
+    value = re.sub(r"\[([^\]]+)\]\s*\[[^\]]*\]", r"\1", value)
+    value = _replace_inline_markdown_links(value)
+    value = re.sub(r"!?(?:\[([^\]]+)\])\([^)]*\)", r"\1", value)
+    value = re.sub(r"(?s)<[^>]*>", "", value)
+    value = re.sub(r"[`*_~\[\]]", "", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _has_content_character(value: str) -> bool:
+    return bool(re.search(r"[A-Za-z0-9\u3400-\u4dbf\u4e00-\u9fff]", value))
+
+
+def _distribution_rows(value: str) -> tuple[list[str], list[str]]:
+    valid: list[str] = []
+    invalid: list[str] = []
+    row_pattern = re.compile(
+        r"(?i)^\s*[-*]\s*(?P<driver>\S.*?)\s+(?:—|–)\s+"
+        r"(?P<band>Dominant|Material|Minor|Unknown|主导|显著|次要|未知)\s+"
+        r"(?:—|–)\s+(?P<reason>\S.*?)\s*$"
+    )
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = row_pattern.fullmatch(line)
+        if not match:
+            invalid.append(line)
+            continue
+        driver = _rendered_contract_fragment(match.group("driver")).casefold()
+        reason = _rendered_contract_fragment(match.group("reason"))
+        if (
+            not _has_content_character(driver)
+            or not _has_content_character(reason)
+            or re.fullmatch(
+                r"(?i)(?:tbd|unknown|n/?a|none|pending|待定|未知|无)",
+                reason,
+            )
+        ):
+            invalid.append(line)
+            continue
+        valid.append(driver)
+    return valid, invalid
+
+
+def _resolved_time_assessment_signal_count(value: str) -> int:
+    fields = named_contract_fields(
+        value,
+        TIME_ASSESSMENT_LABELS,
+        allow_indented_continuations=False,
+    )
+    count = sum(
+        label in fields
+        for label in (
+            "Rough elapsed-time estimate",
+            "Critical-path time-cost distribution",
+        )
+    )
+    target = _scalar_contract_value(
+        _first_contract_line(fields.get("Assessment target", ""))
+    ).casefold()
+    mode = _scalar_contract_value(
+        _first_contract_line(fields.get("Assessment mode", ""))
+    ).casefold()
+    basis = _first_contract_line(fields.get("Basis or blocker", ""))
+    return count + (target in {"ready-to-closed", "current-milestone-to-closed"}) + (
+        mode in {"rough range", "distribution only"}
+    ) + _has_valid_iso_date(basis)
+
+
+def _matching_html_container_end(
+    markdown_text: str,
+    start: int,
+    tag: str,
+) -> int | None:
+    token = re.compile(
+        rf"(?is)<\s*(?P<closing>/)?\s*{re.escape(tag)}\b(?P<attrs>[^>]*)>"
+    )
+    depth = 1
+    for match in token.finditer(markdown_text, start):
+        if match.group("closing"):
+            depth -= 1
+            if depth == 0:
+                return match.end()
+        elif not re.search(r"/\s*$", match.group("attrs")):
+            depth += 1
+    return None
+
+
+def _html_wrapped_time_assessment(markdown_text: str) -> bool:
+    container_tags = {
+        "article",
+        "aside",
+        "blockquote",
+        "details",
+        "dialog",
+        "div",
+        "fieldset",
+        "figure",
+        "footer",
+        "form",
+        "header",
+        "li",
+        "main",
+        "nav",
+        "ol",
+        "p",
+        "pre",
+        "script",
+        "section",
+        "span",
+        "style",
+        "table",
+        "tbody",
+        "td",
+        "template",
+        "tfoot",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    }
+    void_tags = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+    opening = re.compile(
+        r"(?is)<\s*(?P<tag>[A-Za-z][\w:-]*)\b(?P<attrs>[^>]*)>"
+    )
+    for match in opening.finditer(markdown_text):
+        tag = match.group("tag")
+        attrs = match.group("attrs")
+        explicitly_hidden = bool(
+            re.search(r"(?i)(?:^|\s)hidden(?:\s|=|$)", attrs)
+            or re.search(r"(?i)aria-hidden\s*=\s*['\"]?true\b", attrs)
+            or re.search(
+                r"(?i)style\s*=\s*['\"][^'\"]*"
+                r"(?:display\s*:\s*none|visibility\s*:\s*hidden)",
+                attrs,
+            )
+        )
+        if tag.casefold() in void_tags or re.search(r"/\s*$", attrs):
+            continue
+        closing_end = _matching_html_container_end(markdown_text, match.end(), tag)
+        if closing_end is None and not (
+            explicitly_hidden or tag.casefold() in container_tags
+        ):
+            continue
+        end = closing_end if closing_end is not None else len(markdown_text)
+        block = markdown_text[match.start() : end]
+        if re.search(rf"(?im)^##\s+(?:{TIME_ASSESSMENT_HEADING})\s*$", block) or (
+            _resolved_time_assessment_signal_count(block) >= 3
+        ):
+            return True
+    return False
+
+
+def preflight_time_assessment_mode(markdown_text: str) -> str | None:
+    sections = h2_sections(markdown_text, TIME_ASSESSMENT_HEADING)
+    if len(sections) != 1:
+        return None
+    fields = named_contract_fields(
+        sections[0],
+        TIME_ASSESSMENT_LABELS,
+        allow_indented_continuations=False,
+    )
+    mode = _scalar_contract_value(fields.get("Assessment mode", "")).casefold()
+    return mode if mode in {"rough range", "distribution only"} else None
+
+
+def _time_assessment_signal_labels(markdown_text: str) -> set[str]:
+    fields = named_contract_fields(
+        markdown_text,
+        TIME_ASSESSMENT_LABELS,
+        allow_indented_continuations=False,
+    )
+    signals = {
+        label
+        for label in (
+            "Rough elapsed-time estimate",
+            "Critical-path time-cost distribution",
+        )
+        if label in fields
+    }
+    target = _scalar_contract_value(
+        _first_contract_line(fields.get("Assessment target", ""))
+    ).casefold()
+    if target in {"ready-to-closed", "current-milestone-to-closed"}:
+        signals.add("Assessment target")
+    mode = _scalar_contract_value(
+        _first_contract_line(fields.get("Assessment mode", ""))
+    ).casefold()
+    if mode in {"rough range", "distribution only"}:
+        signals.add("Assessment mode")
+    basis = _first_contract_line(fields.get("Basis or blocker", ""))
+    if _has_valid_iso_date(basis):
+        signals.add("Basis or blocker")
+    return signals
+
+
+def preflight_time_assessment_errors(
+    markdown_text: str,
+    *,
+    raw_markdown_text: str | None = None,
+) -> list[str]:
+    hidden_errors: list[str] = []
+    if raw_markdown_text is not None:
+        contract_raw = strip_placeholder_example_blocks(raw_markdown_text)
+        raw_sections = h2_sections(contract_raw, TIME_ASSESSMENT_HEADING)
+        visible_sections = h2_sections(markdown_text, TIME_ASSESSMENT_HEADING)
+        resolved_hidden_section = any(
+            _resolved_time_assessment_signal_count(section) >= 3
+            for section in raw_sections
+        ) and len(raw_sections) > len(visible_sections)
+        html_scan_text = re.sub(
+            r"(?s)<!--.*?(?:-->|\Z)",
+            "",
+            strip_fenced_blocks(contract_raw),
+        )
+        if resolved_hidden_section or _html_wrapped_time_assessment(html_scan_text):
+            hidden_errors.append(
+                "Preflight Time Assessment must be visible Markdown, not hidden in "
+                "a fence, comment, or HTML element"
+            )
+
+    sections = h2_sections(markdown_text, TIME_ASSESSMENT_HEADING)
+    if not sections:
+        if _time_assessment_signal_labels(markdown_text):
+            return hidden_errors + [
+                "Preflight Time Assessment fields must be inside exactly one "
+                "Preflight Time Assessment section"
+            ]
+        return hidden_errors
+
+    errors: list[str] = hidden_errors
+    if len(sections) != 1:
+        errors.append("Preflight Time Assessment must appear exactly once")
+    field_counts = named_contract_field_counts(sections[0], TIME_ASSESSMENT_LABELS)
+    for label, count in field_counts.items():
+        if count > 1:
+            errors.append(f"duplicate Preflight Time Assessment field: {label}")
+    outside_signals = _time_assessment_signal_labels(
+        without_h2_sections(markdown_text, TIME_ASSESSMENT_HEADING)
+    )
+    for label in sorted(outside_signals):
+        errors.append(
+            f"Preflight Time Assessment field appears outside its section: {label}"
+        )
+    fields = named_contract_fields(
+        sections[0],
+        TIME_ASSESSMENT_LABELS,
+        allow_indented_continuations=False,
+    )
+    for label in TIME_ASSESSMENT_LABELS:
+        if not _scalar_contract_value(fields.get(label, "")):
+            errors.append(f"missing Preflight Time Assessment field: {label}")
+
+    target = _scalar_contract_value(fields.get("Assessment target", "")).casefold()
+    if target and target not in {"ready-to-closed", "current-milestone-to-closed"}:
+        errors.append(
+            "Assessment target must be Ready-to-Closed or current-milestone-to-Closed"
+        )
+
+    mode = _scalar_contract_value(fields.get("Assessment mode", "")).casefold()
+    if mode and mode not in {"rough range", "distribution only"}:
+        errors.append("Assessment mode must be Rough range or Distribution only")
+
+    basis = _scalar_contract_value(fields.get("Basis or blocker", ""))
+    if basis:
+        if not _has_valid_iso_date(basis):
+            errors.append("Basis or blocker must include a valid YYYY-MM-DD as-of date")
+        basis_detail = _rendered_contract_fragment(re.sub(
+            r"(?<!\d)20\d{2}-\d{2}-\d{2}(?!\d)", "", basis
+        )).strip(
+            " \t\r\n:;,.—-"
+        )
+        if not _has_content_character(basis_detail) or re.fullmatch(
+            r"(?i)(?:tbd|unknown|n/?a|none|pending|待定|未知|无)", basis_detail
+        ):
+            errors.append("Basis or blocker must record concrete evidence or a blocker")
+
+    estimate = _scalar_contract_value(
+        fields.get("Rough elapsed-time estimate", "")
+    )
+    distribution = fields.get("Critical-path time-cost distribution", "").strip()
+    if mode == "rough range":
+        parsed_range = _rough_elapsed_range(estimate)
+        if parsed_range is None:
+            errors.append(
+                "Rough range mode requires a low-high elapsed-time range with one unit"
+            )
+        elif parsed_range[0] >= parsed_range[1]:
+            errors.append("Rough elapsed-time range must increase from low to high")
+        normalized_distribution = _scalar_contract_value(distribution).rstrip(".").casefold()
+        if normalized_distribution != "not required: rough range recorded":
+            errors.append(
+                "Rough range mode requires distribution: Not required: rough range recorded."
+            )
+    elif mode == "distribution only":
+        if estimate.casefold() != "not quickly estimable":
+            errors.append(
+                "Distribution only mode requires estimate: Not quickly estimable"
+            )
+        if re.search(r"(?:—|–)\s*\d+(?:\.\d+)?%\s*(?:—|–)", distribution):
+            errors.append(
+                "Distribution only mode requires relative bands, not unmeasured percentages"
+            )
+        rows, invalid_rows = _distribution_rows(distribution)
+        if invalid_rows:
+            errors.append(
+                "Critical-path distribution rows must use: "
+                "- driver — Dominant/Material/Minor/Unknown — reason"
+            )
+        if len(set(rows)) < 2:
+            errors.append(
+                "Distribution only mode requires at least two concrete critical-path drivers"
+            )
+
+    return errors
+
+
+def normalize_contractions(value: str) -> str:
+    value = re.sub(r"(?i)\b(?:cannot|won['’]t)\b", " not", value)
+    return re.sub(
+        r"(?i)\b(?:was|were|is|are|has|have|had|could|would|should|did|does|do|ca)n['’]t\b",
+        " not",
+        value,
+    )
+
+
+def clauses(value: str) -> list[str]:
+    return [
+        part.strip()
+        for part in re.split(
+            r"(?i)[,.;\n]+|\band\b|\bbut\b|\bhowever\b",
+            normalize_contractions(value),
+        )
+        if part.strip()
+    ]
+
+
+def clause_is_negated(value: str) -> bool:
+    return bool(
+        re.search(
+            r"(?i)\b(?:no|not|never|without|cannot|forbid(?:den)?|"
+            r"prohibit(?:ed)?|disallow(?:ed)?)\b",
+            value,
+        )
+    )
+
+
+def boundary_has_affirmative_watcher_action(value: str) -> bool:
+    for clause in clauses(value):
+        if not re.search(r"(?i)\bwatcher:housekeeping\b", clause):
+            continue
+        if re.search(
+            r"(?i)\b(?:no|not|never|without)\b[^.;]{0,40}"
+            r"(?:\bwatcher:housekeeping\b|\b(?:use|invoke|run|call|apply)\w*\b)|"
+            r"\bwatcher:housekeeping\b[^.;]{0,40}"
+            r"\b(?:no|not|never|prohibit(?:ed)?|forbid(?:den)?|disabled)\b",
+            clause,
+        ):
+            continue
+        if re.search(
+            r"(?i)\b(?:use[sd]?|using|invoke[sd]?|run|runs|ran|call(?:s|ed)?|apply|applies)\b",
+            clause,
+        ):
+            return True
+    return False
+
+
+def watcher_evidence_has_negative_status(value: str) -> bool:
+    for clause in clauses(value):
+        if not re.search(r"(?i)\bwatcher:housekeeping\b", clause):
+            continue
+        if re.search(
+            r"(?i)(?:\bno\b[^.;]{0,12}\bwatcher:housekeeping\b[^.;]{0,25}"
+            r"\b(?:action|invocation|execution|run|use[sd]?)\b|"
+            r"\b(?:not|never)\b[^.;]{0,35}\b(?:use|invoke|run|execute)\w*\b"
+            r"[^.;]{0,25}\bwatcher:housekeeping\b|"
+            r"\bwithout\b[^.;]{0,25}\bwatcher:housekeeping\b)",
+            clause,
+        ):
+            return True
+        if re.search(
+            r"(?i)\bwatcher:housekeeping\b[^A-Za-z0-9]{0,5}"
+            r"(?:(?:was|is|remained)\s+)?"
+            r"(?:unavailable|missing|failed|skipped|absent|bypassed|omitted|replaced)\b|"
+            r"\bwatcher:housekeeping\b[^.;]{0,45}"
+            r"\b(?:did\s+not|was\s+not|is\s+not|not|never)\b[^.;]{0,25}"
+            r"\b(?:run|invoked|executed|used|occurred)\b|"
+            r"\bwatcher:housekeeping\b[^.;]{0,35}"
+            r"\b(?:only\s+planned|status(?:\s+was|\s+is|\s*[:=])?\s+unknown)\b",
+            clause,
+        ):
+            return True
+    return False
+
+
+def boundary_permits_unbounded_deletion(value: str) -> bool:
+    for clause in clauses(value):
+        if clause_is_negated(clause):
+            continue
+        if re.search(r"(?i)\b(?:raw\s+recursive|recursive\s+delet)", clause):
+            return True
+        permission = r"(?:allow(?:ed|s)?|permit(?:ted|s)?|may|can|will)"
+        deletion = r"(?:delete[sd]?|deletion|remove[sd]?|clean(?:ed|up)?|purge[sd]?)"
+        if re.search(
+            rf"(?i)(?:\b{permission}\b[^.;]{{0,60}}\b{deletion}\b|"
+            rf"\b{deletion}\b[^.;]{{0,60}}\b{permission}\b)",
+            clause,
+        ):
+            return True
+    return False
+
+
+def concrete_owner_root_entries(value: str) -> tuple[list[str], list[str]]:
+    paths: list[str] = []
+    invalid_entries: list[str] = []
+    owner_label = (
+        r"(?:goal|sequence|task)[- ]owned|owner[- ]specific|"
+        r"目标专属|序列专属|任务专属"
+    )
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = re.fullmatch(
+            rf"(?i)(?:[-*]\s*)?(?:{owner_label})\s*[:：=]\s*(?P<path>.+?)\s*",
+            line,
+        )
+        if not match:
+            invalid_entries.append(line)
+            continue
+        path = match.group("path").strip()
+        if len(path) >= 2 and (path[0], path[-1]) in {
+            ("`", "`"),
+            ('"', '"'),
+            ("'", "'"),
+        }:
+            path = path[1:-1].strip()
+        paths.append(path)
+    return paths, invalid_entries
+
+
+def normalized_absolute_owner_root(value: str) -> tuple[str | None, list[str]]:
+    """Return a lexical absolute path and any contract violations.
+
+    This deliberately validates the recorded string rather than resolving it on the
+    checker host: a Windows goal must remain checkable on POSIX and vice versa.
+    """
+
+    errors: list[str] = []
+    if re.search(
+        r"(?i)%[A-Z_][A-Z0-9_]*%|\$\{?[A-Z_][A-Z0-9_]*\}?|"
+        r"\b(?:gettempdir|os\.tmpdir|TBD|pending)\b|待解析|待记录",
+        value,
+    ):
+        errors.append("unresolved")
+
+    windows_path = bool(re.match(r"(?i)^[A-Z]:[\\/]", value) or value.startswith("\\\\"))
+    path_module = ntpath if windows_path else posixpath
+    segments = re.split(r"[\\/]" if windows_path else r"/", value)
+    if any(segment in {".", ".."} for segment in segments):
+        errors.append("dot-segment")
+
+    if not path_module.isabs(value):
+        errors.append("not-absolute")
+        return None, errors
+
+    normalized = path_module.normpath(value)
+    if windows_path:
+        drive, tail = ntpath.splitdrive(normalized)
+        if drive and tail in {"", "\\", "/"}:
+            errors.append("root")
+        normalized = normalized.replace("\\", "/")
+    elif normalized == "/":
+        errors.append("root")
+
+    return normalized, errors
+
+
+def boundary_expands_child_policy(value: str) -> bool:
+    """Recognize affirmative parent attempts to widen into child-owned policy."""
+
+    for clause in clauses(value):
+        if clause_is_negated(clause):
+            continue
+        if re.search(
+            r"(?i)\b(?:override|inherit|widen|clean|include|cover|process|handle|"
+            r"delete|remove)\w*\b[^.;]{0,80}\bchild(?:[- ]owned)?\b|"
+            r"\bchild(?:[- ]owned)?\b[^.;]{0,80}"
+            r"\b(?:overridden|inherited|widened|cleaned|included|covered|processed|"
+            r"handled|deleted|removed)\b",
+            clause,
+        ):
+            return True
+    return False
+
+
+def housekeeping_evidence_block(section_text: str) -> str | None:
+    match = re.search(
+        r"(?ims)^\s*(?:\d+\.\s*)?(?:Temporary cache\s*/\s*"
+        r"housekeeping evidence|任务临时缓存(?:\s*/\s*housekeeping)?\s*证据)"
+        r"\s*[:：]\s*(?P<evidence>\S.*?)"
+        r"(?=^\s*(?:\d+\.\s*)?(?:Checkpoint evidence|检查点证据)"
+        r"\s*[:：]|\Z)",
+        section_text,
+    )
+    return match.group("evidence").strip() if match else None
 
 
 def milestone_sections(markdown_text: str) -> dict[str, list[str]]:
@@ -131,7 +768,11 @@ def main() -> int:
         return 1
 
     text = path.read_text(encoding="utf-8")
-    visible_text = strip_fenced_blocks(text)
+    visible_text = re.sub(
+        r"(?s)<!--.*?(?:-->|\Z)",
+        "",
+        strip_fenced_blocks(text),
+    )
     errors: list[str] = []
     overall_statuses = re.findall(
         r"(?im)^(?:overall status|整体状态|goal status|目标状态)\s*[:：]\s*`?([^`\n]+)`?\s*$",
@@ -524,6 +1165,268 @@ def main() -> int:
         if not source_match:
             errors.append("missing planning preflight source field")
 
+    errors.extend(
+        preflight_time_assessment_errors(
+            visible_text,
+            raw_markdown_text=text,
+        )
+    )
+
+    temporary_cache_section = h2_section(
+        visible_text,
+        r"Task Temporary Cache\s*/\s*Housekeeping|任务临时缓存(?:\s*/\s*Housekeeping)?",
+    )
+    temporary_cache_policy: str | None = None
+    recorded_roots = ""
+    recorded_roots_state: str | None = None
+    recorded_root_paths: list[str] = []
+    if temporary_cache_section is not None:
+        temporary_cache_labels = {
+            "Close housekeeping policy": r"Close\s+housekeeping\s+policy|关闭清理策略",
+            "Housekeeping decision source": r"Housekeeping\s+decision\s+source|清理决策来源",
+            "Task temporary cache root strategy": (
+                r"Task\s+temporary\s+cache\s+root\s+strategy|任务临时缓存根目录策略"
+            ),
+            "Recorded task temporary cache roots": (
+                r"Recorded\s+task\s+temporary\s+cache\s+roots|已记录的任务临时缓存根目录"
+            ),
+            "Housekeeping boundary": r"Housekeeping\s+boundary|清理边界",
+        }
+        temporary_cache_fields = named_contract_fields(
+            temporary_cache_section,
+            temporary_cache_labels,
+        )
+        for label in temporary_cache_labels:
+            if not temporary_cache_fields.get(label):
+                errors.append(f"missing Task Temporary Cache / Housekeeping field: {label}")
+
+        policy_value = temporary_cache_fields.get("Close housekeeping policy", "")
+        temporary_cache_policy = policy_value.strip().strip("`").strip().casefold()
+        allowed_policies = {"enabled", "disabled", "not applicable"}
+        if temporary_cache_policy not in allowed_policies:
+            errors.append(
+                "Close housekeeping policy must be Enabled, Disabled, or Not applicable"
+            )
+
+        unresolved_pattern = re.compile(
+            r"(?i)\b(?:pending|TBD|to be decided|awaiting (?:user )?(?:choice|decision))\b|"
+            r"待确认|未决定|待选择"
+        )
+        for label, value in temporary_cache_fields.items():
+            if unresolved_pattern.search(value):
+                errors.append(f"unresolved Task Temporary Cache / Housekeeping field: {label}")
+
+        decision_source = temporary_cache_fields.get("Housekeeping decision source", "")
+        normalized_decision_source = normalize_contractions(decision_source)
+        negated_or_inferred_decision = re.search(
+            r"(?i)\b(?:no|not|without)\s+(?:an?\s+)?explicit(?:ly)?\s+user\s+confirmation\b|"
+            r"\b(?:no|not|never|without)\b[^.;\n]{0,100}"
+            r"\bexplicit(?:ly)?\s+user\s+confirmation\b|"
+            r"\b(?:never|not)\s+(?:received|obtained|recorded|got)\s+"
+            r"(?:an?\s+)?explicit(?:ly)?\s+user\s+confirmation\b|"
+            r"\b(?:not|never)\s+explicitly\s+confirmed\s+by\s+(?:the\s+)?user\b|"
+            r"\bexplicit(?:ly)?\s+user\s+confirmation\b[^.\n;]{0,100}"
+            r"\b(?:no|not|never|absent|missing|unavailable)\b|"
+            r"\b(?:inferred|defaulted|derived|assumed|declined|refused|withdrawn|"
+            r"revoked)\b|"
+            r"未(?:获得|取得|经过)用户(?:显式|明确)?(?:确认|选择)|未经用户(?:确认|选择)",
+            normalized_decision_source,
+        )
+        positive_decision = re.search(
+            r"(?i)\bexplicit(?:ly)?\s+user\s+confirmation\b"
+            r"(?:\s+(?:was|is|has\s+been|had\s+been))?\s+"
+            r"(?:obtained|recorded|received|given|provided)\b|"
+            r"\bconfirmed\s+explicitly\s+by\s+(?:the\s+)?user\b|"
+            r"\buser\s+explicitly\s+(?:confirmed|selected|chose)\b|"
+            r"用户(?:显式|明确)(?:确认|选择)",
+            decision_source,
+        )
+        if decision_source and (negated_or_inferred_decision or not positive_decision):
+            errors.append(
+                "Housekeeping decision source must record non-negated explicit user confirmation"
+            )
+
+        root_strategy = temporary_cache_fields.get(
+            "Task temporary cache root strategy", ""
+        )
+        hardcoded_shared_root = re.search(
+            r"(?i)(?<![A-Za-z0-9:])(?:/[^\s,;`]+|[A-Za-z]:[\\/]|\\\\|"
+            r"%[A-Z_][A-Z0-9_]*%|\$\{?[A-Z_][A-Z0-9_]*\}?)|"
+            r"共享(?:系统)?临时根目录(?:本身)?",
+            root_strategy,
+        )
+        resolver_strategy = bool(
+            re.search(r"(?i)\b(?:host|platform|runtime)\b|宿主|平台|运行时", root_strategy)
+            and re.search(
+                r"(?i)\b(?:goal|sequence|task)[- ]owned\b|\bowner[- ]specific\b|"
+                r"目标专属|序列专属|任务专属",
+                root_strategy,
+            )
+            and re.search(
+                r"(?i)\b(?:beneath|under|within|inside)\b|\bchild\s+of\b|"
+                r"\bsub(?:directory|ordinate)\s+(?:of|to)\b|位于.+(?:之下|内部)|子目录|下层命名空间",
+                root_strategy,
+            )
+            and not hardcoded_shared_root
+        )
+        no_root_strategy = bool(
+            re.search(
+                r"(?i)\b(?:not applicable|no)\b[^.\n]{0,80}"
+                r"\b(?:temporary\s+cache\s+)?roots?\b[^.\n]{0,30}"
+                r"\b(?:created|used|needed)\b|不适用|不(?:会|需).*(?:创建|使用).*(?:临时缓存)?根目录",
+                root_strategy,
+            )
+        )
+        if root_strategy and not (
+            resolver_strategy
+            or (temporary_cache_policy == "not applicable" and no_root_strategy)
+        ):
+            errors.append(
+                "Task temporary cache root strategy must use a host platform/runtime "
+                "resolver and an owner-specific namespace beneath the resolved root"
+            )
+
+        boundary = temporary_cache_fields.get("Housekeeping boundary", "")
+        boundary_has_watcher = bool(re.search(r"(?i)\bwatcher:housekeeping\b", boundary))
+        affirmative_boundary_watcher = boundary_has_affirmative_watcher_action(boundary)
+        if temporary_cache_policy == "enabled":
+            if not boundary_has_watcher or not affirmative_boundary_watcher:
+                errors.append(
+                    "Enabled housekeeping requires watcher:housekeeping in the boundary"
+                )
+            if not (
+                re.search(r"(?i)\binventor(?:y|ied|ize|ized)\b|盘点", boundary)
+                and re.search(
+                    r"(?i)\b(?:goal|sequence|task)[- ]owned\b|\bowner[- ]specific\b|"
+                    r"目标专属|序列专属|任务专属",
+                    boundary,
+                )
+                and re.search(
+                    r"(?i)\b(?:disposable|discardable)\b|(?:确认|已确认).*(?:可丢弃|可清理)",
+                    boundary,
+                )
+            ):
+                errors.append(
+                    "Enabled housekeeping boundary must limit watcher:housekeeping to "
+                    "inventoried owner-specific disposable candidates"
+                )
+        elif temporary_cache_policy == "disabled":
+            if affirmative_boundary_watcher or not re.search(
+                r"(?i)\b(?:preserv(?:e|ed|ing)|retain(?:ed|ing)?)\b|保留",
+                boundary,
+            ):
+                errors.append(
+                    "Disabled housekeeping boundary must retain recorded roots without cleanup"
+                )
+        elif temporary_cache_policy == "not applicable":
+            if affirmative_boundary_watcher or not re.search(
+                r"(?i)\bno\b[^.\n]{0,60}\b(?:temporary\s+cache\s+)?roots?\b"
+                r"[^.\n]{0,30}\b(?:created|used|needed)\b|不适用|"
+                r"不(?:会|需).*(?:创建|使用).*(?:临时缓存)?根目录",
+                boundary,
+            ):
+                errors.append(
+                    "Not applicable housekeeping boundary must record that no roots are created"
+                )
+
+        if boundary_permits_unbounded_deletion(boundary):
+            errors.append(
+                "Housekeeping boundary must not permit raw, unbounded, or policy-conflicting "
+                "deletion"
+            )
+
+        is_sequence_parent = bool(
+            re.search(
+                r"(?im)^Promotion policy\s*[:：]\s*`?automatic-after-close`?\s*$",
+                visible_text,
+            )
+            and h2_section(visible_text, r"Child Execution Register") is not None
+        )
+        if is_sequence_parent and boundary_expands_child_policy(boundary):
+            errors.append(
+                "sequence parent housekeeping boundary must not inherit, widen, or override "
+                "child policy"
+            )
+
+        recorded_roots = temporary_cache_fields.get(
+            "Recorded task temporary cache roots", ""
+        ).strip()
+        scalar_wrapper = r"`?{}(?:[.]?)`?"
+        not_applicable_state = r"(?:not applicable|不适用)"
+        none_created_state = (
+            r"(?:(?:none|no roots?)\s+(?:were\s+)?created|"
+            r"no task temporary cache roots?|(?:未创建|没有创建).*(?:临时缓存)?根目录)"
+        )
+        deferred_state = (
+            r"(?:resolve\s+and\s+record\s+before\s+first\s+use|"
+            r"(?:首次使用前|在首次使用前).*(?:解析|记录))"
+        )
+        if re.fullmatch(scalar_wrapper.format(not_applicable_state), recorded_roots, re.I):
+            recorded_roots_state = "not-applicable"
+        elif re.fullmatch(scalar_wrapper.format(none_created_state), recorded_roots, re.I):
+            recorded_roots_state = "none-created"
+        elif re.fullmatch(scalar_wrapper.format(deferred_state), recorded_roots, re.I):
+            recorded_roots_state = "deferred"
+        elif recorded_roots:
+            if re.match(
+                rf"(?i)^`?(?:{not_applicable_state}|{none_created_state}|{deferred_state})\b",
+                recorded_roots,
+            ):
+                recorded_roots_state = "invalid-state"
+                errors.append(
+                    "recorded roots state values must not include additional text or paths"
+                )
+            else:
+                recorded_roots_state = "concrete"
+
+        if temporary_cache_policy == "not applicable" and recorded_roots_state != "not-applicable":
+            errors.append(
+                "Not applicable housekeeping requires recorded roots to be Not applicable"
+            )
+        elif temporary_cache_policy in {"enabled", "disabled"}:
+            if recorded_roots_state == "not-applicable":
+                errors.append(
+                    "Enabled or Disabled housekeeping cannot use Not applicable recorded roots"
+                )
+            elif recorded_roots_state == "concrete":
+                path_entries, invalid_entries = concrete_owner_root_entries(recorded_roots)
+                unsafe_roots: list[str] = []
+                unresolved_roots: list[str] = []
+                invalid_paths: list[str] = []
+                for raw_root in path_entries:
+                    normalized_root, root_errors = normalized_absolute_owner_root(raw_root)
+                    if "unresolved" in root_errors:
+                        unresolved_roots.append(raw_root)
+                    if normalized_root is None or "not-absolute" in root_errors:
+                        invalid_paths.append(raw_root)
+                        continue
+                    if "dot-segment" in root_errors:
+                        unresolved_roots.append(raw_root)
+                    recorded_root_paths.append(normalized_root)
+                    slash_root = re.sub(r"/+", "/", normalized_root.replace("\\", "/"))
+                    trimmed_root = slash_root.rstrip("/") or "/"
+                    basename = trimmed_root.rsplit("/", 1)[-1].casefold()
+                    if "root" in root_errors or trimmed_root.casefold() in {
+                        "/",
+                        "/tmp",
+                        "/var/tmp",
+                        "/private/tmp",
+                        "c:/windows/temp",
+                    } or basename in {"tmp", "temp", "cache", "caches"}:
+                        unsafe_roots.append(raw_root)
+                if unresolved_roots:
+                    errors.append("recorded task temporary cache roots must be fully resolved")
+                if invalid_entries or invalid_paths or not path_entries:
+                    errors.append(
+                        "concrete task temporary cache roots require an owner marker and "
+                        "an absolute owner-specific path"
+                    )
+                if unsafe_roots:
+                    errors.append(
+                        "recorded task temporary cache roots must not name a shared or "
+                        "generic temporary/cache root: " + ", ".join(unsafe_roots)
+                    )
+
     if not overall_statuses:
         if not args.allow_draft:
             errors.append("missing overall goal status field")
@@ -601,8 +1504,21 @@ def main() -> int:
                     "Done/Passed/Done; incomplete: "
                     + ", ".join(incomplete)
                 )
+            if (
+                temporary_cache_section is not None
+                and temporary_cache_policy in {"enabled", "disabled"}
+                and recorded_roots_state == "deferred"
+            ):
+                errors.append(
+                    "Closed Enabled or Disabled housekeeping requires concrete recorded "
+                    "roots or an explicit None created outcome"
+                )
             close_evidence = h2_section(
                 visible_text,
+                r"Close execution evidence|Close 执行证据|关闭执行证据",
+            )
+            raw_close_evidence = h2_section(
+                text,
                 r"Close execution evidence|Close 执行证据|关闭执行证据",
             )
             if close_evidence is None:
@@ -612,6 +1528,12 @@ def main() -> int:
                     close_gate,
                 ):
                     close_evidence = close_gate
+                    raw_close_gate = h2_section(text, r"Close Gate|关闭门")
+                    if raw_close_gate and re.search(
+                        r"(?i)\bClose execution evidence\b|Close 执行证据|关闭执行证据",
+                        raw_close_gate,
+                    ):
+                        raw_close_evidence = raw_close_gate
             if close_evidence is None:
                 errors.append("Closed goal requires Close execution evidence")
             else:
@@ -619,6 +1541,208 @@ def main() -> int:
                     errors.append("Close execution evidence must record validation")
                 if not re.search(r"(?i)\bcheckpoint\b|检查点", close_evidence):
                     errors.append("Close execution evidence must record checkpoint evidence")
+                if temporary_cache_section is not None:
+                    housekeeping_evidence = housekeeping_evidence_block(close_evidence)
+                    if housekeeping_evidence is None:
+                        errors.append(
+                            "Closed goal with a housekeeping contract requires temporary "
+                            "cache / housekeeping evidence"
+                        )
+                    else:
+                        raw_housekeeping_evidence = (
+                            housekeeping_evidence_block(raw_close_evidence or "")
+                            or housekeeping_evidence
+                        )
+                        raw_close_safety_evidence = (
+                            raw_close_evidence or raw_housekeeping_evidence
+                        )
+                        expected_policy = re.escape(temporary_cache_policy or "").replace(
+                            r"\ ", r"\s+"
+                        )
+                        if expected_policy and not re.search(
+                            rf"(?im)^\s*(?:[-*]\s*)?Recorded\s+policy\s*[:：=]\s*"
+                            rf"`?{expected_policy}`?\s*$",
+                            housekeeping_evidence,
+                        ):
+                            errors.append(
+                                "temporary cache / housekeeping evidence must record the "
+                                "recorded policy"
+                            )
+
+                        no_roots_evidence = re.search(
+                            r"(?i)\b(?:none|no)\s+(?:task\s+temporary\s+cache\s+)?"
+                            r"roots?\s+(?:were\s+)?created\b|"
+                            r"\bno task temporary cache roots?\b|"
+                            r"(?:未创建|没有创建).*(?:临时缓存)?根目录",
+                            housekeeping_evidence,
+                        )
+                        recursive_delete_or_fallback = re.search(
+                            r"(?im)\brm\b[^\n;]{0,120}"
+                            r"(?:--recursive\b|-[A-Za-z]*r[A-Za-z]*\b|-Recurse\b)|"
+                            r"\bRemove-Item\b[^\n]{0,200}-(?:Recurse|r)\b|"
+                            r"\brmdir\b[^\n]{0,100}(?:/s|-Recurse)\b|"
+                            r"\bshutil\.rmtree\s*\(|"
+                            r"\bos\.RemoveAll\s*\(|"
+                            r"\bfs\.(?:rm|rmdir)\s*\([^\n]{0,300}"
+                            r"\brecursive\s*:\s*true\b|"
+                            r"\bDirectory\]?(?:::|\.)Delete\s*\([^\n]{0,160},\s*(?:true|\$true)\s*\)|"
+                            r"\b(?:raw\s+recursive|recursive\s+delete)\b|"
+                            r"\b(?:used|invoked|ran)\s+(?:an?\s+)?fallback\b|"
+                            r"\b(?:alternate|alternative|replacement)\s+cleanup\b|"
+                            r"^\s*(?:[-*]\s*)?Fallback\s*[:：=]\s*"
+                            r"(?!none\b|not\s+used\b|no\s+fallback\b)\S.*$",
+                            raw_close_safety_evidence,
+                        )
+                        if recursive_delete_or_fallback:
+                            errors.append(
+                                "temporary cache / housekeeping cannot close while "
+                                "watcher:housekeeping is unavailable or a raw recursive "
+                                "fallback is recorded"
+                            )
+                        if recorded_roots_state == "none-created":
+                            if not no_roots_evidence:
+                                errors.append(
+                                    "None created recorded roots require explicit no-roots "
+                                    "Close evidence"
+                                )
+                        elif temporary_cache_policy == "not applicable":
+                            if not no_roots_evidence:
+                                errors.append(
+                                    "Not applicable housekeeping requires explicit no-roots "
+                                    "Close evidence"
+                                )
+                        elif (
+                            temporary_cache_policy in {"enabled", "disabled"}
+                            and recorded_roots_state == "concrete"
+                        ):
+                            for recorded_root in recorded_root_paths:
+                                expected_root = recorded_root.replace("\\", "/")
+                                evidence_for_path = housekeeping_evidence.replace("\\", "/")
+                                path_flags = (
+                                    re.IGNORECASE
+                                    if re.match(r"(?i)^[A-Z]:/|^//", expected_root)
+                                    else 0
+                                )
+                                exact_path_pattern = (
+                                    rf"(?<![A-Za-z0-9_.~/-]){re.escape(expected_root)}"
+                                    r"(?=$|[\s`'\",;)\]])"
+                                )
+                                if not re.search(
+                                    exact_path_pattern,
+                                    evidence_for_path,
+                                    flags=path_flags,
+                                ):
+                                    errors.append(
+                                        "temporary cache / housekeeping Close evidence must "
+                                        "repeat every exact recorded root"
+                                    )
+                                    break
+
+                            action_match = re.search(
+                                r"(?im)^\s*(?:[-*]\s*)?Action\s*[:：=]\s*(?P<action>\S.*)$",
+                                housekeeping_evidence,
+                            )
+                            action = action_match.group("action") if action_match else ""
+                            if temporary_cache_policy == "enabled":
+                                normalized_action = normalize_contractions(action)
+                                normalized_housekeeping_evidence = normalize_contractions(
+                                    raw_housekeeping_evidence
+                                )
+                                unavailable_or_not_run = watcher_evidence_has_negative_status(
+                                    normalized_housekeeping_evidence
+                                )
+                                watcher_action_failed = bool(
+                                    re.search(
+                                        r"(?i)\bwatcher:housekeeping\b",
+                                        normalized_action,
+                                    )
+                                    and re.search(
+                                        r"(?i)(?:\b(?:ran|executed|invoked)\b"
+                                        r"[^\n]{0,60}\bfailed\b|\bit\s+failed\b|"
+                                        r"\breturned\s+(?:a\s+)?failure\b)",
+                                        normalized_action,
+                                    )
+                                )
+                                affirmative_watcher_action = re.search(
+                                    r"(?i)(?:\bwatcher:housekeeping\b[^.;\n]{0,35}"
+                                    r"\b(?:invoked|ran|run|executed|inventoried|cleaned|"
+                                    r"removed|performed|completed)\b|"
+                                    r"\b(?:invoked|ran|executed)\b[^.;\n]{0,35}"
+                                    r"\bwatcher:housekeeping\b)",
+                                    normalized_action,
+                                )
+                                if (
+                                    unavailable_or_not_run
+                                    or watcher_action_failed
+                                    or recursive_delete_or_fallback
+                                ):
+                                    errors.append(
+                                        "Enabled housekeeping cannot close while "
+                                        "watcher:housekeeping is unavailable or a raw "
+                                        "recursive fallback is recorded"
+                                    )
+                                elif not affirmative_watcher_action:
+                                    errors.append(
+                                        "Enabled housekeeping Close evidence must record an "
+                                        "affirmative watcher:housekeeping action"
+                                    )
+                            if temporary_cache_policy == "disabled":
+                                affirmative_retention = re.search(
+                                    r"(?i)\b(?:preserv(?:e|ed|ing)|retain(?:ed|ing)?)\b|保留",
+                                    action,
+                                )
+                                negated_retention = re.search(
+                                    r"(?i)\b(?:not|never|without)\b[^.\n;]{0,50}"
+                                    r"\b(?:preserv(?:e|ed|ing)|retain(?:ed|ing)?)\b|未保留",
+                                    action,
+                                )
+                                if negated_retention:
+                                    errors.append(
+                                        "Disabled housekeeping Close evidence must record an "
+                                        "affirmative preserved or retained action"
+                                    )
+                                elif not affirmative_retention:
+                                    errors.append(
+                                        "Disabled housekeeping Close evidence must record the "
+                                        "preserved or retained action"
+                                    )
+                                normalized_disabled_action = normalize_contractions(action)
+                                affirmative_cleanup = re.search(
+                                    r"(?i)\b(?:deleted|removed|cleaned|purged)\b",
+                                    normalized_disabled_action,
+                                )
+                                if affirmative_cleanup:
+                                    cleanup_prefix = normalized_disabled_action[
+                                        max(0, affirmative_cleanup.start() - 50) :
+                                        affirmative_cleanup.start()
+                                    ]
+                                    if not re.search(
+                                        r"(?i)\b(?:no|not|never|without)\b[^.;\n]{0,45}$",
+                                        cleanup_prefix,
+                                    ):
+                                        errors.append(
+                                            "Disabled housekeeping Close evidence must not "
+                                            "record a cleanup or deletion action"
+                                        )
+
+                            size_value = (
+                                r"\d+(?:\.\d+)?\s*(?:bytes?|[KMGTPE]?i?B)"
+                            )
+                            required_metrics = {
+                                "removed": r"removed(?:\s+size)?|移除(?:大小|体积)?",
+                                "preserved": r"preserved(?:\s+size)?|保留(?:大小|体积)?",
+                                "failed": r"failed(?:\s+size)?|失败(?:大小|体积)?",
+                                "residual": r"residual(?:\s+size)?|残留(?:大小|体积)?",
+                            }
+                            for metric, label_pattern in required_metrics.items():
+                                if not re.search(
+                                    rf"(?i)(?:{label_pattern})\s*[:：=]\s*{size_value}\b",
+                                    housekeeping_evidence,
+                                ):
+                                    errors.append(
+                                        "temporary cache / housekeeping Close evidence "
+                                        f"must record {metric} size"
+                                    )
 
     if errors:
         return render_errors(path, errors)

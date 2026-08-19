@@ -1,11 +1,11 @@
 ---
 name: skill-maintainer
-description: Analyze Watcher skill usage logs for Codex skills and propose bounded, evidence-backed updates to SKILL.md files without automatically overwriting the source skill.
+description: Analyze Watcher skill usage logs and propose bounded, evidence-backed updates to SKILL.md files without automatically overwriting the source skill.
 ---
 
 # Skill Maintainer
 
-Use this skill to maintain or improve a Codex skill from Watcher skill-domain logs, reports, or proposals. Its job is evidence analysis and proposal generation, not automatic source mutation.
+Use this skill to maintain or improve an agent skill from Watcher skill-domain logs, reports, or proposals. Its job is evidence analysis and proposal generation, not automatic source mutation.
 
 ## Workflow
 

@@ -52,7 +52,7 @@ from refresh_my_codex import (  # noqa: E402
     configured_plugin_names,
     default_plugin_names,
     marketplace_source_arg,
-    resolve_executable,
+    resolve_codex_executable,
     selected_plugins,
     stale_plugin_names,
 )
@@ -140,81 +140,166 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 126)
         self.assertIn("command not executable: codex", result.stderr)
 
-    def test_windows_codex_resolution_prefers_user_local_cli_before_path(self) -> None:
+    def test_windows_codex_resolution_uses_path_then_managed_fallbacks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            local_cli = root / "LocalAppData" / "OpenAI" / "Codex" / "bin" / "abc123" / "codex.exe"
-            local_cli.parent.mkdir(parents=True)
-            local_cli.write_text("", encoding="utf-8")
+            user_home = root / "UserProfile"
+            local_app_data = root / "LocalAppData"
+            codex_home = user_home / ".codex"
+            visible_cli = local_app_data / "Programs" / "OpenAI" / "Codex" / "bin" / "codex.exe"
+            standalone_cli = codex_home / "packages" / "standalone" / "current" / "bin" / "codex.exe"
+            legacy_standalone_cli = codex_home / "packages" / "standalone" / "current" / "codex.exe"
+            desktop_cli = local_app_data / "OpenAI" / "Codex" / "bin" / "abc123" / "codex.exe"
+            extension_cli = (
+                user_home
+                / ".vscode"
+                / "extensions"
+                / "openai.chatgpt-1.2.3"
+                / "bin"
+                / "windows-x86_64"
+                / "codex.exe"
+            )
+            for candidate in (visible_cli, standalone_cli, legacy_standalone_cli, desktop_cli, extension_cli):
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                candidate.write_text("", encoding="utf-8")
             path_cli = root / "WindowsApps" / "OpenAI.Codex" / "codex.exe"
 
             with mock.patch.object(refresh_my_codex.sys, "platform", "win32"):
-                with mock.patch.dict(
-                    os.environ,
-                    {
-                        "LOCALAPPDATA": str(root / "LocalAppData"),
-                        "USERPROFILE": str(root / "UserProfile"),
-                    },
-                    clear=False,
-                ):
-                    with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
-                        self.assertEqual(resolve_executable("codex"), str(local_cli))
+                with mock.patch("refresh_my_codex.platform.machine", return_value="AMD64"):
+                    with mock.patch.dict(
+                        os.environ,
+                        {
+                            "HOME": str(user_home),
+                            "LOCALAPPDATA": str(local_app_data),
+                            "USERPROFILE": str(user_home),
+                        },
+                        clear=True,
+                    ):
+                        with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(path_cli),
+                            )
 
-    def test_macos_codex_resolution_prefers_app_bundle_before_path(self) -> None:
+                        with mock.patch("refresh_my_codex.shutil.which", return_value=None):
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(visible_cli),
+                            )
+                            visible_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(standalone_cli),
+                            )
+                            standalone_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(legacy_standalone_cli),
+                            )
+                            legacy_standalone_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(desktop_cli),
+                            )
+                            desktop_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(extension_cli),
+                            )
+
+    def test_unix_codex_resolution_uses_path_then_standalone_then_vscode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            applications = root / "Applications"
-            app_cli = applications / "ChatGPT.app" / "Contents" / "Resources" / "codex"
-            app_cli.parent.mkdir(parents=True)
-            app_cli.write_text("", encoding="utf-8")
-            path_cli = root / "bin" / "codex"
+            user_home = root / "home"
+            codex_home = user_home / ".codex"
+            custom_visible_cli = root / "custom-install" / "codex"
+            visible_cli = user_home / ".local" / "bin" / "codex"
+            standalone_cli = codex_home / "packages" / "standalone" / "current" / "bin" / "codex"
+            legacy_standalone_cli = codex_home / "packages" / "standalone" / "current" / "codex"
+            extension_cli = (
+                user_home
+                / ".vscode-server"
+                / "extensions"
+                / "openai.chatgpt-1.2.3"
+                / "bin"
+                / "linux-x86_64"
+                / "codex"
+            )
+            for candidate in (custom_visible_cli, visible_cli, standalone_cli, legacy_standalone_cli, extension_cli):
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                candidate.write_text("", encoding="utf-8")
+            path_cli = root / "path" / "codex"
 
-            with mock.patch.object(refresh_my_codex.sys, "platform", "darwin"):
-                with mock.patch.object(
-                    refresh_my_codex,
-                    "MACOS_APPLICATION_DIRS",
-                    (applications,),
-                    create=True,
-                ):
-                    with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
-                        self.assertEqual(resolve_executable("codex"), str(app_cli))
+            with mock.patch.object(refresh_my_codex.sys, "platform", "linux"):
+                with mock.patch("refresh_my_codex.platform.machine", return_value="x86_64"):
+                    with mock.patch.dict(
+                        os.environ,
+                        {
+                            "CODEX_INSTALL_DIR": str(custom_visible_cli.parent),
+                            "HOME": str(user_home),
+                        },
+                        clear=True,
+                    ):
+                        with mock.patch("refresh_my_codex.shutil.which", return_value=str(path_cli)):
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(path_cli),
+                            )
 
-    @unittest.skipIf(os.name == "nt", "POSIX shell regression")
-    def test_unix_upgrade_wrapper_defers_default_codex_resolution_to_python_helper(self) -> None:
+                        with mock.patch("refresh_my_codex.shutil.which", return_value=None):
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(custom_visible_cli),
+                            )
+                            custom_visible_cli.unlink()
+                            os.environ.pop("CODEX_INSTALL_DIR")
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(visible_cli),
+                            )
+                            visible_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(standalone_cli),
+                            )
+                            standalone_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(legacy_standalone_cli),
+                            )
+                            legacy_standalone_cli.unlink()
+                            self.assertEqual(
+                                resolve_codex_executable(None, codex_home=codex_home),
+                                str(extension_cli),
+                            )
+
+    def test_codex_resolution_treats_explicit_sources_as_strict(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            fake_python = root / "python3"
-            recorded_args = root / "python-args.txt"
-            fake_python.write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$FAKE_PYTHON_ARGS\"\n",
-                encoding="utf-8",
-            )
-            fake_python.chmod(0o755)
-            env = os.environ.copy()
-            env.pop("CODEX_BIN", None)
-            env["FAKE_PYTHON_ARGS"] = str(recorded_args)
-            env["PATH"] = "/usr/bin:/bin"
+            codex_home = root / ".codex"
+            configured_cli = root / "configured" / "codex"
+            configured_cli.parent.mkdir(parents=True)
+            configured_cli.write_text("", encoding="utf-8")
+            explicit_cli = root / "explicit" / "codex"
+            explicit_cli.parent.mkdir(parents=True)
+            explicit_cli.write_text("", encoding="utf-8")
 
-            result = subprocess.run(
-                [
-                    str(REPO_ROOT / "scripts" / "upgrade_my_codex.sh"),
-                    "--bootstrap-python",
-                    str(fake_python),
-                    "--codex-home",
-                    str(root / "codex-home"),
-                    "--dry-run",
-                    "--skip-check",
-                ],
-                cwd=REPO_ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            with mock.patch.dict(os.environ, {"CODEX_BIN": str(configured_cli)}, clear=True):
+                self.assertEqual(
+                    resolve_codex_executable(str(explicit_cli), codex_home=codex_home),
+                    str(explicit_cli),
+                )
 
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("CodexPath=auto", result.stdout)
-            self.assertNotIn("--codex", recorded_args.read_text(encoding="utf-8").splitlines())
+                with self.assertRaisesRegex(SystemExit, "missing-explicit"):
+                    resolve_codex_executable(str(root / "missing-explicit" / "codex"), codex_home=codex_home)
+
+            with mock.patch.dict(
+                os.environ,
+                {"CODEX_BIN": str(root / "missing-configured" / "codex")},
+                clear=True,
+            ):
+                with self.assertRaisesRegex(SystemExit, "missing-configured"):
+                    resolve_codex_executable(None, codex_home=codex_home)
 
     def test_watcher_plugin_validation_uses_tooling_python(self) -> None:
         runner = CheckRunner()
@@ -378,13 +463,128 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertNotIn("sk-testsecret123", json.dumps(redacted))
         self.assertNotIn("abcdefghijklmnop", json.dumps(redacted))
 
+    def test_mattpocock_v123_metadata_preserves_native_and_historical_attribution(self) -> None:
+        metadata = discover_skill_metadata(REPO_ROOT)
+        packaged = set(metadata["skills"])
+        for skill_name in (
+            "code-review",
+            "implement",
+            "research",
+            "resolving-merge-conflicts",
+            "setup-matt-pocock-skills",
+            "to-questionnaire",
+            "to-spec",
+            "to-tickets",
+            "wait-what",
+            "wayfinder",
+            "wizard",
+            "writing-for-agents",
+        ):
+            full_name = f"mattpocock-skills:{skill_name}"
+            self.assertIn(full_name, packaged)
+            aliases = metadata["skills"][full_name]["aliases"]
+            self.assertIn(
+                {"value": full_name, "kind": "skill_name", "match": "phrase"},
+                aliases,
+            )
+            self.assertIn(
+                {"value": skill_name, "kind": "slug", "match": "token"},
+                aliases,
+            )
+
+        explicit_workflows = {
+            "ask-matt",
+            "grill-me",
+            "grill-with-docs",
+            "handoff",
+            "implement",
+            "improve-codebase-architecture",
+            "setup-matt-pocock-skills",
+            "teach",
+            "to-questionnaire",
+            "to-spec",
+            "to-tickets",
+            "triage",
+            "wait-what",
+            "wayfinder",
+        }
+        for full_name, values in metadata["skills"].items():
+            if not full_name.startswith("mattpocock-skills:"):
+                continue
+            skill_name = full_name.split(":", 1)[1]
+            expected_group = (
+                "explicit-workflows"
+                if skill_name in explicit_workflows
+                else "implicit-primitives"
+            )
+            self.assertEqual(values["logical_group"], expected_group)
+
+        self.assertNotIn("mattpocock-skills:to-prd", packaged)
+        self.assertNotIn("mattpocock-skills:to-issues", packaged)
+        self.assertNotIn("mattpocock-skills:writing-great-skills", packaged)
+        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
+        self.assertEqual(
+            set(metadata["skills"]["mattpocock-skills:implement"]["supporting_skills"]),
+            {
+                "mattpocock-skills:code-review",
+                "mattpocock-skills:tdd",
+            },
+        )
+        self.assertEqual(
+            set(metadata["skills"]["mattpocock-skills:wayfinder"]["supporting_skills"]),
+            {
+                "mattpocock-skills:domain-modeling",
+                "mattpocock-skills:grilling",
+                "mattpocock-skills:prototype",
+                "mattpocock-skills:research",
+            },
+        )
+
+        renamed = (
+            ("mattpocock-skills:to-prd", "to-prd", "mattpocock-skills:to-spec"),
+            ("mattpocock-skills:to-issues", "to-issues", "mattpocock-skills:to-tickets"),
+            (
+                "mattpocock-skills:write-a-skill",
+                "write-a-skill",
+                "mattpocock-skills:writing-for-agents",
+            ),
+            (
+                "mattpocock-skills:writing-great-skills",
+                "writing-great-skills",
+                "mattpocock-skills:writing-for-agents",
+            ),
+        )
+        for legacy_full_name, legacy_slug, current_name in renamed:
+            with self.subTest(legacy_full_name=legacy_full_name, source="provided"):
+                provided = normalize_hook_payload(
+                    {
+                        "hook_event_name": "UserPromptSubmit",
+                        "skill_name": legacy_full_name,
+                    }
+                )
+                self.assertEqual(provided["skill_attribution"]["primary"]["name"], current_name)
+                self.assertEqual(provided["skill_attribution"]["primary"]["source"], "provided")
+
+            for prompt_alias in (legacy_full_name, legacy_slug):
+                with self.subTest(prompt_alias=prompt_alias, source="prompt_mention"):
+                    prompt = normalize_hook_payload(
+                        {
+                            "hook_event_name": "UserPromptSubmit",
+                            "prompt": f"Use ${prompt_alias} for this work",
+                        }
+                    )
+                    primary = prompt["skill_attribution"]["primary"]
+                    self.assertEqual(primary["name"], current_name)
+                    self.assertEqual(primary["source"], "prompt_mention")
+                    self.assertEqual(primary["alias_kind"], "legacy")
+
     def test_codex_hook_lifecycle_filters_summarizes_and_guards_skill_list(self) -> None:
         packaged = sorted(
             f"{plugin_name}:{skill_file.parent.name}"
             for plugin_name in default_plugin_names("install", marketplace_name="my-codex")
             for skill_file in (REPO_ROOT / "plugins" / plugin_name / "skills").glob("*/SKILL.md")
         )
-        self.assertNotIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
+        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
         self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
         metadata = discover_skill_metadata(REPO_ROOT)
         self.assertEqual(set(metadata["skills"]), set(packaged))
@@ -702,6 +902,50 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertIn("duplicate legacy skill metadata entries", str(raised.exception))
 
+    def test_metadata_discovery_rejects_invalid_logical_group(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin = root / "plugins" / "demo"
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text(
+                json.dumps(
+                    {
+                        "plugins": [
+                            {
+                                "name": "demo",
+                                "source": {"source": "local", "path": "./plugins/demo"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
+            plugin_manifest.parent.mkdir(parents=True)
+            plugin_manifest.write_text(
+                json.dumps({"name": "demo", "version": "1.0.0"}),
+                encoding="utf-8",
+            )
+            skill = plugin / "skills" / "entry" / "SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("---\nname: entry\ndescription: Test.\n---\n", encoding="utf-8")
+            (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "skills": {"demo:entry": {"logical_group": "Not Valid"}},
+                        "legacy_names": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("invalid logical_group", str(raised.exception))
+
     def test_session_start_surfaces_metadata_discovery_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"
@@ -974,6 +1218,19 @@ class SkillWatcherTests(unittest.TestCase):
                 },
             ]
             log_file.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+            (state_dir / "skill-metadata-cache.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "skills": {
+                            "demo": {"logical_group": "explicit-workflows"},
+                            "support": {"logical_group": "implicit-primitives"},
+                        },
+                        "legacy_names": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             result = run_report_pipeline(
                 ReportQuery(
@@ -993,6 +1250,10 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(result.outcome_counts["success"], 1)
         self.assertIn("supporting-only", result.report)
         self.assertIn("`support`", result.report)
+        self.assertIn("## Usage By Logical Group", result.report)
+        self.assertIn("| explicit-workflows | 2 | 2 | 0 | `demo` |", result.report)
+        self.assertIn("| implicit-primitives | 1 | 0 | 1 | `support` |", result.report)
+        self.assertIn("| `demo` | entrypoint | explicit-workflows |", result.report)
         self.assertIsNotNone(result.output)
         self.assertTrue(output_exists)
         self.assertEqual(result.state_path, state_dir / "report-state.json")

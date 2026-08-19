@@ -1,6 +1,6 @@
 ---
 name: prompt-strategy-loop
-description: Use when improving prompts, agent instructions, skill guidance, workflow strategy, reviewer rubrics, or orchestration prompts through evidence-backed iteration; use for prompt A/B comparisons, failed-agent-output analysis, recurring workflow tuning, strategy regression review, and decisions that need independent subagent evaluation before writing changes back to a skill, runbook, automation, or source prompt.
+description: Use when improving prompts, agent instructions, skill guidance, workflow strategy, reviewer rubrics, or orchestration prompts from evidence; use for prompt A/B comparisons, failed-agent-output analysis, recurring workflow tuning, strategy regression review, and bounded writeback decisions with evaluation proportional to the affected behavior.
 ---
 
 # Prompt Strategy Loop
@@ -9,53 +9,34 @@ Use this skill to improve prompts or agent strategy from evidence rather than pr
 
 ## Core Rule
 
-The proposer must not be the sole judge of whether a prompt or strategy improved. Use at least one independent evaluator; use multiple independent reviewers for high-impact changes to skills, automations, connector permissions, safety boundaries, recurring workflows, or orchestration prompts.
+Freeze the evaluation oracle before writing candidates and use review proportional to the affected behavior.
 
-If independent evaluation is unavailable, stop at an unverified proposal and say so. Do not claim the new prompt is better.
+Require an independent evaluator when a change affects invocation or routing, permissions, safety or privacy, destructive or external actions, automation or recurring execution, persisted or external contracts, or removes an existing stop or validation gate. Add a separate risk or counterexample pass only for permission, safety or privacy, destructive-action, or external-write changes. Otherwise the proposer may compare the no-change baseline and candidate directly against the frozen oracle and an affected-surface counterexample.
+
+If required independent evaluation is unavailable, stop at an unverified proposal. Do not claim the new prompt is better.
 
 ## Report-Only Branch
 
-When the user asks for a prompt, skill, or workflow audit, recommendation, or implementation plan without requesting source mutation, run the loop as a report-only evaluation: collect evidence, freeze the oracle, compare bounded candidates against a no-change baseline, run independent review according to the Core Rule, return the recommendation or write a durable report only when requested, and stop before writing source prompts, generated caches, or installed copies.
+When the user asks for an audit, recommendation, or implementation plan without requesting mutation, collect evidence, freeze the oracle, compare bounded candidates with the no-change baseline, apply the Core Rule, return the recommendation, and stop before writing source prompts, generated caches, or installed copies. Write a durable report only when requested.
 
 ## Workflow
 
 1. Define target, failure mode or desired improvement, non-goals, and mutation boundaries.
 2. Collect raw evidence: real failures, successful examples, logs, feedback, diffs, reports, benchmark tasks, or source artifacts. Do not tune against hidden assumptions or a single anecdote unless the user scoped it that way.
-3. Freeze the evaluation oracle before writing candidates: observable improvement criteria plus regressions to avoid, such as correctness, false positives/negatives, evidence quality, unnecessary escalation, permission prompts, formatting stability, and task completion.
-4. Generate bounded candidates: usually 2-4 legible changes plus a no-change baseline when the current behavior may be acceptable.
-5. Run independent evaluation:
-   - use subagents when available and appropriate
-   - give each evaluator one bounded task with expected output, stop condition, and evidence
-   - do not reveal a preferred candidate as the expected answer
-   - for high-impact changes, require two independent positive signals, or one positive signal plus a separate risk/counterexample pass with no blocker
-6. Select the smallest candidate that satisfies the oracle. Record agreement, disagreement, missing evidence, regressions, rejected alternatives, and residual risk.
-7. Write back intentionally. Default to report or patch proposal; apply edits only when requested or clearly required. Write durable learnings to the owning skill, prompt source, runbook, TODO, report, validation log, or automation memory. Do not update generated caches or installed copies unless the local workflow requires it.
-
-## Evaluation Roles
-
-Use the minimum useful set:
-
-1. `default as evaluator`: apply the oracle to candidate outputs and score evidence.
-2. `default as risk-reviewer`: identify overfitting, ambiguity, permission creep, safety issues, or hidden regressions.
-3. `default as counterexample-finder`: find realistic cases where the winning candidate fails.
-4. `default as implementation-reviewer`: decide whether the change belongs in a skill, template, runbook, TODO, or automation.
+3. Freeze observable improvement criteria and regressions to avoid.
+4. Compare the no-change baseline with the smallest viable candidate. Add alternatives only when evidence exposes a real design branch.
+5. Apply the Core Rule. When using evaluators, give each one a bounded task, raw evidence, and a stop condition without leaking a preferred answer. Use subagents only when the active environment or plan authorizes delegation.
+6. Select the smallest candidate that satisfies the oracle. Record material disagreement, missing evidence, regressions, rejected alternatives, and residual risk.
+7. Write back only with authorization. Put durable learning in the owning source when it will matter beyond the current turn; do not update generated caches or installed copies unless activation is in scope.
 
 ## Evidence Contract
 
-Final recommendations must include:
-
-1. Target and source files or prompt surface.
-2. Evidence used, with paths/logs/examples/user text.
-3. Evaluation oracle and regression checks.
-4. Candidate summary, including no-change baseline when used.
-5. Independent reviewer coverage, status, and missing coverage.
-6. Selected change and rejected alternatives.
-7. Writeback target, validation command, rollback path, and residual risk.
+Final recommendations state the evidence and frozen oracle, selected and materially rejected alternatives, required reviewer coverage, writeback boundary, affected-surface validation, blockers, and residual risk.
 
 ## Stop Conditions
 
-Stop and report instead of optimizing when there is no evidence or oracle, required subagent evaluation is unavailable, reviewer results conflict and cannot be reconciled, mutation would affect skills/automations/connectors/source prompts/recurring workflows without authorization, candidates improve style while weakening correctness/safety/permissions/failure handling, or the work belongs in `long-running-goal` because it needs staged milestones, checkpoint evidence, and close hygiene.
+Stop and report instead of optimizing when there is no evidence or oracle, required evaluation is unavailable, blocking reviewer results conflict, mutation is unauthorized, a candidate weakens correctness, permissions, safety, privacy, failure handling, or an owning contract, or the work needs staged milestones and close hygiene owned by `long-running-goal`.
 
 ## Workflow Boundaries
 
-Use `long-running-goal` when prompt/strategy iteration becomes a durable multi-milestone objective. For independent evaluation, use subagent tools only when the active environment or plan authorizes delegation. This evaluator delegation does not invoke `orchestrate-subagents`; invoke that skill only when the user names it or explicitly asks for subagent orchestration. If delegation is unavailable, follow the Core Rule and stop at an unverified proposal. Keep this skill focused on evidence, candidates, independent evaluation, selection, and writeback.
+Use `long-running-goal` when prompt or strategy iteration becomes a durable multi-milestone objective. Evaluator delegation does not invoke `orchestrate-subagents`; use that skill only when the user names it or explicitly asks for subagent orchestration. Keep this skill focused on evidence, oracle, candidates, proportional evaluation, selection, and bounded writeback.

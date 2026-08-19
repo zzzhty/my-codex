@@ -13,7 +13,7 @@ The parent and children retain the ordinary `Draft / Ready / In Progress / Close
 
 ## Goal-Tool And Version Boundary
 
-1. Create at most one active Codex system goal for the sequence parent. Child goal files are execution contracts, not nested system goals.
+1. Create at most one active harness system goal for the sequence parent. Child goal files are execution contracts, not nested system goals.
 2. Version 1 is strictly serial. Do not model parallel children, DAG scheduling, per-child execution authorization, or an alternate promotion policy.
 3. Use `../templates/long_running_goal_sequence_template.md`. Do not treat a narrative umbrella without both canonical registers as a sequence.
 4. Give the parent milestones this exact shape: `M0` freezes the sequence baseline and promotes the first child; `M1...Mn` map one-to-one to child order; `M(n+1)` performs integration acceptance; then `Close`.
@@ -29,9 +29,11 @@ Planning preflight status: Done
 Preflight source: grill-with-docs
 ```
 
-Reject a missing field, a marker containing `:skip:`, an explicit-skip status, or any source other than exactly `grill-with-docs`. The parent `Child Preflight Register` must repeat each child's exact marker, `Done` status, and `grill-with-docs` source; it is a cross-check, not a substitute for reading the child.
+Each artifact must also satisfy the time-assessment completion criterion in `../components/planning-preflight.md`. Reject a missing field, a marker containing `:skip:`, an explicit-skip status, or any source other than exactly `grill-with-docs`. The parent `Child Preflight Register` must repeat each child's exact marker, `Done` status, and `grill-with-docs` source; it is a cross-check, not a substitute for reading the child.
 
-Preflight must resolve each child's scope, owner, compatibility surface, dependency position, validation and rollback gates, external writes, destructive/privacy-sensitive actions, release/deploy boundary, and non-goals. `Open decisions` may contain only bounded runtime hard stops. Any unresolved scope, owner, dependency, permission, or behavioral decision keeps the sequence `Draft`.
+Each newly created or explicitly evolved parent or child artifact must preflight its scope, owner, compatibility surface, dependency position, validation and rollback gates, external writes, destructive/privacy-sensitive actions, release/deploy boundary, non-goals, and explicit task-temporary-cache housekeeping policy. The parent records a separate policy only for parent-owned orchestration/integration caches; it never inherits, widens, or overrides a child's policy. An untouched legacy parent or child whose entire new section is absent remains checker-compatible but grants no cleanup authorization; Close preserves any discovered roots and records that artifact's legacy disposition. `Open decisions` may contain only bounded runtime hard stops. Any unresolved scope, owner, dependency, permission, housekeeping, or behavioral decision keeps a newly created or explicitly evolved artifact `Draft`.
+
+Keep timing in the parent and linked child artifacts, never in either canonical register. The parent references child-owned assessments and adds only its M0, Integration, and Close costs. Allow a parent `Rough range` only when every child has one; otherwise require `Distribution only` and do not claim a complete serial range.
 
 Invalidate and rerun `grill-with-docs` for every affected parent or child marker when scope, ownership, compatibility semantics, child order/dependencies, or the external authorization surface changes materially. A path, command, tool version, or observed baseline change that does not alter those semantics is an evidence rebaseline and does not repeat preflight.
 
@@ -79,7 +81,7 @@ The initial all-Draft snapshot has a Draft parent, every parent milestone `Not S
 
 ## Authorization, Handoff, And Hard Stops
 
-The user authorizes execution once at the parent after the sequence and all children pass preflight and consistency checks. That authorization permits automatic handoff only inside each frozen child contract. It does not add or widen release, deploy, destructive, privacy-sensitive, externally visible, connector, API, issue, PR, CI, automation, messaging, or other external-write permission.
+The user authorizes execution once at the parent after the sequence and all children pass preflight and consistency checks. That authorization permits automatic handoff only inside each frozen child contract. It does not add or widen release, deploy, destructive, privacy-sensitive, externally visible, connector, API, issue, PR, CI, automation, messaging, task-temporary-cache housekeeping, or other external-write permission.
 
 With `Promotion policy: automatic-after-close`, promote the next child without asking again only after all of these pass:
 
@@ -108,6 +110,6 @@ python <skill-folder>/scripts/check_goal_sequence.py <sequence-file> --allow-dra
 
 The second form permits the parent to remain lifecycle `Draft`; registered future children may remain `Draft` in either mode. Neither mode permits a missing or skipped preflight. The checker composes `check_goal_ready.py` for the parent and every linked live or archived child goal, then validates markers, register identity, strict order, dependencies, current-child cardinality, child/parent state mapping, handoff evidence, promotion policy, closeout revisions, and integration/Close ordering. Fix legacy narrative plans by migrating them to the canonical template; do not add a fallback parser.
 
-Close the sequence only after every child is `Closed`, integration acceptance is `Done`, parent close evidence is complete, durable current docs are synchronized, and active navigation is clean.
+Close the sequence only after every child is `Closed`, integration acceptance is `Done`, each non-legacy child has honored its own housekeeping policy, each untouched legacy child has recorded its cleanup-unauthorized no-cleanup disposition, the parent has handled only its recorded parent-owned orchestration/integration roots, parent close evidence is complete, durable current docs are synchronized, and active navigation is clean.
 
-Completion criterion: the parent and every child have mandatory non-skip `Done / grill-with-docs` preflights and frozen boundaries; both canonical registers agree; strict serial state, milestone mapping, handoff, closeout, authorization, and hard-stop evidence pass `check_goal_sequence.py`; all children are `Closed` before integration and parent `Close`; and only the parent is represented by an active Codex system goal.
+Completion criterion: the parent and every child have mandatory non-skip `Done / grill-with-docs` preflights, valid time assessments, and frozen boundaries; both canonical registers agree; strict serial state, milestone mapping, handoff, closeout, authorization, and hard-stop evidence pass `check_goal_sequence.py`; all children are `Closed` before integration and parent `Close`; and only the parent is represented by an active harness system goal.

@@ -15,8 +15,39 @@ from markdown_contract import (  # noqa: E402
     missing_relative_links,
     placeholder_errors,
     render_link_errors,
+    strip_placeholder_example_blocks,
 )
+
+
 class MarkdownContractTests(unittest.TestCase):
+    def test_strip_placeholder_examples_preserves_ordinary_fences(self) -> None:
+        text = "\n".join(
+            (
+                "before",
+                "```text placeholder-example",
+                "<div>",
+                "## Preflight Time Assessment",
+                "```",
+                "~~~text",
+                "ordinary fenced contract evidence",
+                "~~~",
+                "after",
+            )
+        )
+
+        self.assertEqual(
+            strip_placeholder_example_blocks(text),
+            "\n".join(
+                (
+                    "before",
+                    "~~~text",
+                    "ordinary fenced contract evidence",
+                    "~~~",
+                    "after",
+                )
+            ),
+        )
+
     def test_placeholder_scan_checks_fences_except_explicit_examples(self) -> None:
         text = "\n".join(
             [

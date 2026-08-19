@@ -7,6 +7,7 @@ from pathlib import Path
 WORKFLOW_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = WORKFLOW_ROOT.parents[1]
 ORCHESTRATE_ROOT = WORKFLOW_ROOT / "skills" / "orchestrate-subagents"
+SUMMARY_ROOT = WORKFLOW_ROOT / "skills" / "summary-in-html"
 
 
 def skill_description(skill_file: Path) -> str:
@@ -17,6 +18,17 @@ def skill_description(skill_file: Path) -> str:
 
 
 class InvocationContractTests(unittest.TestCase):
+    def test_summary_trigger_covers_reference_and_source_walkthrough_modes(self) -> None:
+        description = skill_description(SUMMARY_ROOT / "SKILL.md")
+        metadata = (SUMMARY_ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("developer reference", description)
+        self.assertIn("source-code walkthrough", description)
+        self.assertIn("step-by-step code handoffs", description)
+        self.assertIn("real entry points", description)
+        self.assertIn("summaries and source-code walkthroughs", metadata)
+        self.assertIn("summary or entry-first source-code walkthrough", metadata)
+
     def test_orchestrate_trigger_is_scoped_to_user_requested_subagents(self) -> None:
         description = skill_description(ORCHESTRATE_ROOT / "SKILL.md")
         metadata = (ORCHESTRATE_ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")
@@ -39,7 +51,6 @@ class InvocationContractTests(unittest.TestCase):
 
         self.assertIn("active environment or plan authorizes delegation", prompt_strategy)
         self.assertIn("does not invoke `orchestrate-subagents`", prompt_strategy)
-        self.assertIn("stop at an unverified proposal", prompt_strategy)
         self.assertNotIn("current environment exposes subagent tools", prompt_strategy)
 
     def test_broad_review_delegation_does_not_cross_invoke_orchestrate(self) -> None:

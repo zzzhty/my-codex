@@ -3,11 +3,17 @@
 - Observe before acting; for uncertain, scheduled, recurring, or long-running work, keep durable, inspectable evidence in a named thread, repo file, automation memory, report, TODO, or skill when the state matters beyond the current turn. Do not leave important project state only in chat history.
 - Apply Occam's razor: do not add entities without necessity. Prefer fixing the root cause in the owning surface over adding patches, wrappers, shims, fallback paths, alternate backends, compatibility layers, or parallel abstractions that route around the real problem.
 - Keep planning schemes separate: use system planning for ordinary complex tasks. Suggest `long-running-goal` only as an option. Create or convert its contract—and run its required planning preflight—only after the user explicitly requests the goal or confirms the conversion; execute it only after an explicit execution request.
-- Verification defines done. Meaningful changes need a concrete validation path such as tests, check scripts, lint, screenshots, reports, command output, or another explicit oracle.
+- Verification defines done. Use the smallest check that can falsify the changed behavior; do not validate unaffected surfaces or create extra evidence artifacts solely as proof of diligence.
 - Automate waiting, checking, summarizing, and reporting; preserve human judgment for mutation, escalation, privacy-sensitive actions, messages to others, source skill mutations, automation changes, and irreversible actions.
 - Only a `Ready` `long-running-goal` continuation contract pre-approves planned, non-destructive local work inside its frozen scope as YOLO non-stops; a `Draft` does not. Execute such work without pausing and stop only at a declared runtime hard stop.
 - Turn repeated successful workflows into skills, scripts, plugin docs, or checklists so future runs need less re-teaching without hiding review boundaries.
 - For global subagent workflow guidance, use the installed note at `$CODEX_HOME/agents/operating-principles.md`; if `$CODEX_HOME` is unset, use `~/.codex/agents/operating-principles.md`.
+
+## Internal identifier evolution
+
+- Use one stable semantic name, not a generation label, only for a current implementation or instruction identifier that is repository-owned, repo-local, non-public, not used outside repository source as an identity in persisted data/state or a persisted contract, and atomically replaceable across all consumers in one change. Replace superseded names across all consumers without compatibility aliases, dual reads/writes, fallbacks, duplicate paths, parallel current entities/authorities, or history-only versioning; keep revision history in Git and applicable checkpoint/validation ledgers.
+- Preserve package/release, standard/protocol/API or another external contract, migration/rollout/feature-flag, milestone/phase, user/business, immutable, persisted, archival, and historical identities. Changing a public, persisted, externally consumed, or cross-repository identity requires an inventory of consumers, existing data, and compatibility impact plus explicit scoped migration, validation, and rollback authorization; this policy grants no rename authority.
+- Classify each match before scoped edits and validate every affected consumer. Preserve archives and historical evidence; repository-wide regex or bulk renames and silent rebaselines are hard stops. When a canonical algorithm or fingerprint field, payload, or semantic changes, record the replacement, regenerate the expected value from the changed source, and validate the single current value against its oracle.
 
 ## Failure-handling policy
 
@@ -20,6 +26,7 @@
 - Keep tests focused on behavioral red lines, integration contracts, and regression-prone flows.
 - Prefer consolidating narrow single-point assertions into behavior-level tests when setup and failure mode are shared.
 - Avoid fragmented tests for trivial helpers unless they protect real compatibility, safety, or failure-handling boundaries.
+- Do not add SHA-256/checksum receipts, snapshots/golden files, or duplicate defensive tests as generic completion evidence. Add such mechanisms only when explicitly requested, when they protect an observed failure mode, or when an owning content-identity or integrity contract requires them. This rule is prospective; it does not by itself authorize removing or silently rebaselining any existing hash, checksum, snapshot, golden file, test, or owning contract.
 - Preserve explicit coverage for privacy, destructive actions, schema compatibility, cross-platform command generation, and user-visible workflow guarantees.
 
 ## Delegation policy

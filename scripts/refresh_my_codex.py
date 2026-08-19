@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -45,7 +46,9 @@ def latest_files(root: Path, pattern: str) -> list[Path]:
     return sorted(root.rglob(pattern), key=lambda path: path.stat().st_mtime, reverse=True)
 
 
-def macos_app_codex_files() -> list[Path]:
+def macos_app_codex_candidates() -> list[str]:
+    if sys.platform != "darwin":
+        return []
     candidates = [
         candidate
         for root in MACOS_APPLICATION_DIRS
@@ -53,42 +56,106 @@ def macos_app_codex_files() -> list[Path]:
         for candidate in root.glob("*.app/Contents/Resources/codex")
         if candidate.is_file()
     ]
-    return sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)
+    return [str(path) for path in sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)]
 
 
-def codex_executable_candidates(raw: str) -> list[str]:
-    if not raw or raw.lower() != "codex":
-        return [raw] if raw else []
+def codex_extension_platform_dir() -> str | None:
+    machine = platform.machine().lower()
+    if machine in {"amd64", "x86_64"}:
+        architecture = "x86_64"
+    elif machine in {"aarch64", "arm64"}:
+        architecture = "aarch64"
+    else:
+        return None
+
+    if sys.platform == "win32":
+        system = "windows"
+    elif sys.platform == "darwin":
+        system = "darwin"
+    elif sys.platform.startswith("linux"):
+        system = "linux"
+    else:
+        return None
+    return f"{system}-{architecture}"
+
+
+def codex_extension_candidates(user_home: Path) -> list[str]:
+    platform_dir = codex_extension_platform_dir()
+    if platform_dir is None:
+        return []
+
+    if sys.platform == "win32":
+        extension_roots = [
+            user_home / ".vscode" / "extensions",
+            user_home / ".vscode-insiders" / "extensions",
+        ]
+        executable_name = "codex.exe"
+    else:
+        extension_roots = [
+            user_home / ".vscode-server" / "extensions",
+            user_home / ".vscode-server-insiders" / "extensions",
+            user_home / ".vscode" / "extensions",
+            user_home / ".vscode-insiders" / "extensions",
+        ]
+        executable_name = "codex"
+
+    candidates: list[Path] = []
+    for extension_root in extension_roots:
+        if not extension_root.is_dir():
+            continue
+        for extension in extension_root.glob("openai.chatgpt-*"):
+            candidate = extension / "bin" / platform_dir / executable_name
+            if candidate.is_file():
+                candidates.append(candidate)
+    return [str(path) for path in sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)]
+
+
+def codex_fallback_candidates(codex_home: Path) -> list[str]:
+    is_windows = sys.platform == "win32"
+    executable_name = "codex.exe" if is_windows else "codex"
+
+    if is_windows:
+        user_home = expand_path(os.environ.get("USERPROFILE") or Path.home())
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        default_install_dir = (
+            expand_path(local_app_data) / "Programs" / "OpenAI" / "Codex" / "bin"
+            if local_app_data
+            else None
+        )
+    else:
+        user_home = expand_path(os.environ.get("HOME") or Path.home())
+        local_app_data = None
+        default_install_dir = user_home / ".local" / "bin"
+
+    install_dir_raw = os.environ.get("CODEX_INSTALL_DIR")
+    install_dir = expand_path(install_dir_raw) if install_dir_raw else default_install_dir
 
     candidates: list[str] = []
-    if sys.platform == "win32":
-        local_app_data = os.environ.get("LOCALAPPDATA")
-        if local_app_data:
-            bin_root = Path(local_app_data) / "OpenAI" / "Codex" / "bin"
-            candidates.extend(str(path) for path in latest_files(bin_root, "codex.exe"))
+    if install_dir is not None:
+        candidates.append(str(install_dir / executable_name))
 
-        user_profile = os.environ.get("USERPROFILE")
-        if user_profile:
-            extension_root = Path(user_profile) / ".vscode" / "extensions"
-            extensions = sorted(
-                extension_root.glob("openai.chatgpt-*"),
-                key=lambda path: path.stat().st_mtime,
-                reverse=True,
-            )
-            for extension in extensions:
-                candidate = extension / "bin" / "windows-x86_64" / "codex.exe"
-                if candidate.is_file():
-                    candidates.append(str(candidate))
-    elif sys.platform == "darwin":
-        candidates.extend(str(path) for path in macos_app_codex_files())
+    standalone_current = codex_home / "packages" / "standalone" / "current"
+    candidates.extend(
+        [
+            str(standalone_current / "bin" / executable_name),
+            str(standalone_current / executable_name),
+        ]
+    )
 
-    candidates.append(raw)
+    if local_app_data:
+        desktop_bin_root = expand_path(local_app_data) / "OpenAI" / "Codex" / "bin"
+        candidates.extend(str(path) for path in latest_files(desktop_bin_root, executable_name))
+
+    candidates.extend(macos_app_codex_candidates())
+    candidates.extend(codex_extension_candidates(user_home))
     return list(dict.fromkeys(candidates))
 
 
-def resolve_executable(raw: str) -> str:
+def resolve_first_executable(candidates: list[str]) -> str:
     checked: list[str] = []
-    for candidate in codex_executable_candidates(raw):
+    for candidate in candidates:
+        if not candidate:
+            continue
         expanded = os.path.expandvars(os.path.expanduser(candidate))
         checked.append(candidate)
         if any(separator in expanded for separator in (os.sep, os.altsep) if separator):
@@ -100,6 +167,33 @@ def resolve_executable(raw: str) -> str:
         if resolved is not None:
             return resolved
     raise SystemExit("executable not found. Checked:\n" + "\n".join(checked))
+
+
+def resolve_executable(raw: str) -> str:
+    return resolve_first_executable([raw])
+
+
+def resolve_codex_executable(raw: str | None, *, codex_home: Path) -> str:
+    if raw is not None:
+        return resolve_executable(raw)
+
+    configured = os.environ.get("CODEX_BIN")
+    if configured:
+        return resolve_executable(configured)
+
+    path_codex = shutil.which("codex")
+    if path_codex is not None:
+        return path_codex
+
+    fallbacks = codex_fallback_candidates(codex_home)
+    try:
+        return resolve_first_executable(fallbacks)
+    except SystemExit:
+        raise SystemExit(
+            "executable not found. Checked:\n"
+            "codex on PATH\n"
+            + "\n".join(fallbacks)
+        ) from None
 
 
 def marketplace_source_arg(raw: str) -> str:
@@ -179,6 +273,26 @@ def run_agent_sync(*, codex_home: Path, env: dict[str, str], dry_run: bool) -> N
     if not sync_script.is_file():
         raise SystemExit(f"agent sync script does not exist: {sync_script}")
     command = [sys.executable, str(sync_script), "--codex-home", str(codex_home), "--prune"]
+    if dry_run:
+        command.append("--dry-run")
+    run(command, env=env, dry_run=False)
+
+
+def run_agents_skills_sync(*, env: dict[str, str], dry_run: bool) -> None:
+    sync_script = REPO_ROOT / "scripts" / "sync_agents_skills.py"
+    if not sync_script.is_file():
+        raise SystemExit(f"agents skills sync script does not exist: {sync_script}")
+    command = [sys.executable, str(sync_script), "--prune"]
+    if dry_run:
+        command.append("--dry-run")
+    run(command, env=env, dry_run=False)
+
+
+def run_tooling_bootstrap(*, venv_path: Path, env: dict[str, str], dry_run: bool) -> None:
+    bootstrap_script = REPO_ROOT / "scripts" / "bootstrap_tooling_env.py"
+    if not bootstrap_script.is_file():
+        raise SystemExit(f"tooling bootstrap script does not exist: {bootstrap_script}")
+    command = [sys.executable, str(bootstrap_script), "--venv", str(venv_path)]
     if dry_run:
         command.append("--dry-run")
     run(command, env=env, dry_run=False)
@@ -709,7 +823,10 @@ def main() -> None:
         description="Refresh my-codex plugin installs and user-level Watcher skill hooks."
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
-    parser.add_argument("--codex", default=os.environ.get("CODEX_BIN", "codex"), help="Codex CLI executable.")
+    parser.add_argument(
+        "--codex",
+        help="Explicit Codex CLI executable. Defaults to CODEX_BIN, PATH, then managed install fallbacks.",
+    )
     parser.add_argument("--codex-home", default=str(CODEX_HOME), help="Codex home directory.")
     parser.add_argument("--venv", default=str(DEFAULT_VENV), help="Shared my-codex tooling venv path.")
     parser.add_argument("--python", help="Explicit tooling Python for hooks and diagnostics.")
@@ -738,6 +855,7 @@ def main() -> None:
         help="Remove installed or cached marketplace plugins that are not selected for install by the manifest.",
     )
     parser.add_argument("--skip-agents", action="store_true", help="Do not sync the subagent support file into $CODEX_HOME/agents.")
+    parser.add_argument("--skip-agents-skills", action="store_true", help="Do not sync the ~/.agents/skills exposure layer.")
     parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Watcher skill hooks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Do not run Watcher skill doctor after refresh.")
     args = parser.parse_args()
@@ -749,15 +867,11 @@ def main() -> None:
     venv_path = expand_path(args.venv)
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
-    codex = resolve_executable(args.codex)
+    codex = resolve_codex_executable(args.codex, codex_home=codex_home)
     require_codex_plugin_commands(codex, env=env, require_remove=args.prune_plugins)
 
     if not args.skip_bootstrap:
-        run(
-            [sys.executable, str(REPO_ROOT / "scripts" / "bootstrap_tooling_env.py"), "--venv", str(venv_path)],
-            env=env,
-            dry_run=args.dry_run,
-        )
+        run_tooling_bootstrap(venv_path=venv_path, env=env, dry_run=args.dry_run)
 
     if not args.skip_marketplace:
         ensure_marketplace_source(
@@ -788,6 +902,9 @@ def main() -> None:
 
     if not args.skip_agents:
         run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)
+
+    if not args.skip_agents_skills:
+        run_agents_skills_sync(env=env, dry_run=args.dry_run)
 
     watcher_cli = REPO_ROOT / "plugins" / "watcher" / "scripts" / "watcher"
     if not args.skip_hooks:

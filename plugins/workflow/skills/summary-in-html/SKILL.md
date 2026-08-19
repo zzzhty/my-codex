@@ -1,11 +1,14 @@
 ---
 name: summary-in-html
-description: Use when generating a standalone HTML reference summary for a project, repository, directory, module, feature area, documentation chapter, or user-specified scope, with structured sections for developer reference and optional generated visual assets when the user explicitly asks for images.
+description: Generate a standalone HTML developer reference or source-code walkthrough for a project, repository, directory, module, feature area, documentation chapter, or user-specified scope. Use for scoped summaries and for step-by-step code handoffs that start from real entry points; generate visual assets only when the user explicitly asks for images.
 ---
 
 # Summary In HTML
 
-Use this skill to turn a bounded scope into a standalone HTML developer reference. Scope may be a project, directory, module, feature area, documentation chapter, or user-provided source material.
+Turn a bounded scope into one standalone HTML developer reference. Choose one document type:
+
+- `summary` (default): explain ownership, structure, behavior, and developer operations.
+- `source_walkthrough`: help a developer take over unfamiliar code by following real entry points and function handoffs step by step.
 
 Do not use it for documentation drift audits; use Watcher `doc-alignment` when the task is to find stale or contradictory docs.
 
@@ -24,15 +27,15 @@ If the user provides an output path, use it and place assets in a sibling `asset
 
 ## Workflow
 
-1. Determine scope: whole repo, directory/package, module/feature, documentation chapter, or user-provided material. Read `references/scope_contract.md` when boundaries are ambiguous.
+1. Determine scope and document type. Read `references/scope_contract.md` when boundaries are ambiguous. For a source walkthrough, read `references/source_walkthrough_contract.md`.
 2. Collect read-only evidence:
 
 ```bash
 python <skill-folder>/scripts/collect_summary_inputs.py --root <repo-root> --scope <scope-path> --out <artifact>.inputs.json
 ```
 
-3. Inspect relevant source entry points, README/AGENTS files, package config, tests, scripts, and nearby docs.
-4. Draft a chapter plan. Read `references/chapter_contract.md` unless the summary is trivial.
+3. Inspect relevant source entry points, README/AGENTS files, package config, tests, scripts, and nearby docs. Trace actual callers and returns for a source walkthrough; do not infer a route from filenames.
+4. Draft a chapter plan. For a regular summary, read `references/chapter_contract.md` unless the summary is trivial. For a source walkthrough, put the complete route map before the numbered steps.
 5. Write structured summary JSON next to the target HTML and render:
 
 ```bash
@@ -71,18 +74,19 @@ Include only useful fields:
 }
 ```
 
-The renderer validates nested list members before writing HTML: paragraphs, bullets, and blind spots are strings; files use `{path, note?}`; code blocks use `{text, language?}`; evidence uses `{path, label?}`; and assets use `{path, alt, caption}`. File and evidence paths must be non-empty, and every asset field must be non-empty.
+For a source walkthrough, add `"document_type": "source_walkthrough"`, `source_revision`, current-source evidence, and a non-empty `completion_check` only to sections that are actual steps. Each step also declares its entry symbol plus receives/does/handoff/return lists. Keep overview, context, and follow-up sections unnumbered. The renderer links walkthrough `files` to `source_root`, numbers only validated completion-check sections, and adds progressively enhanced local progress tracking.
+
+The renderer validates nested list members before writing HTML: paragraphs, bullets, blind spots, and completion checks are strings; files use `{path, note?}`; code blocks use `{text, language?}`; evidence uses `{path, label?, role?}`; and assets use `{path, alt, caption}`. File and evidence paths must be non-empty, and every asset field must be non-empty.
 
 ## Visual Assets
 
-Generate or place images only when the user explicitly asks for visuals. Read `references/visual_asset_contract.md` before creating or placing image assets.
-
-Prefer deterministic Mermaid, SVG, or styled HTML for exact architecture, sequence, module, dependency, or state diagrams. Use `imagegen` only for requested raster images, illustrative visuals, infographics, conceptual graphics, or user-specified generated images. Move selected project-bound images into the HTML asset directory and reference that local path; never leave referenced project assets only under `$CODEX_HOME/generated_images/`.
+Only when the user explicitly requests visuals, read `references/visual_asset_contract.md` and follow its diagram, imagegen, placement, accessibility, and evidence rules.
 
 ## HTML Rules
 
 - Keep HTML standalone: inline CSS, no remote fonts, no external scripts.
 - Make it skimmable: navigation, short sections, file references, blind spots.
 - Preserve developer usefulness over polish; do not invent unsupported architecture.
+- Treat walkthrough checkboxes as reader navigation, never as validation evidence or a project checkpoint.
 - Keep generated summaries separate from source docs unless replacement is requested.
 - Do not overwrite existing summaries unless requested; otherwise create a versioned or more specific filename.

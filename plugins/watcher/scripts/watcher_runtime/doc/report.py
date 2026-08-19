@@ -11,8 +11,24 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .audit_repo import AuditFailure, audit_repository, expand_path, render_report, resolve_state_dir, safe_slug
-from .audit_runtime import load_config, load_state, mark_current, repo_status, state_path
+from .audit_repo import (
+    AuditFailure,
+    audit_repository,
+    expand_path,
+    render_report,
+    resolve_state_dir,
+    safe_slug,
+)
+from .audit_runtime import (
+    authority_paths,
+    docs_paths,
+    load_config,
+    load_state,
+    mark_current,
+    repo_status,
+    skill_root_candidates,
+    state_path,
+)
 
 DEFAULT_CONFIG = Path("config/repos.json")
 
@@ -48,15 +64,20 @@ def finding_records(result: dict[str, Any]) -> list[dict[str, str]]:
         records.append(
             {
                 "fingerprint": finding_fingerprint(finding),
+                "classification": str(finding.get("classification") or "actionable"),
                 "severity": str(finding.get("severity") or "Unknown"),
                 "title": str(finding.get("title") or "Untitled finding"),
                 "evidence": str(finding.get("evidence") or ""),
             }
         )
-    return sorted(records, key=lambda item: (item["severity"], item["title"], item["evidence"]))
+    return sorted(
+        records, key=lambda item: (item["severity"], item["title"], item["evidence"])
+    )
 
 
-def previous_finding_records(state: dict[str, Any], repo_name: str) -> list[dict[str, str]]:
+def previous_finding_records(
+    state: dict[str, Any], repo_name: str
+) -> list[dict[str, str]]:
     repos = state.get("repos")
     if not isinstance(repos, dict):
         return []
@@ -75,6 +96,7 @@ def previous_finding_records(state: dict[str, Any], repo_name: str) -> list[dict
             records.append(
                 {
                     "fingerprint": fingerprint,
+                    "classification": str(item.get("classification") or "actionable"),
                     "severity": str(item.get("severity") or "Unknown"),
                     "title": str(item.get("title") or "Untitled finding"),
                     "evidence": str(item.get("evidence") or ""),
@@ -93,9 +115,15 @@ def finding_delta(
     previous_keys = set(previous_by_fingerprint)
     current_keys = set(current_by_fingerprint)
     return {
-        "new": [current_by_fingerprint[key] for key in sorted(current_keys - previous_keys)],
-        "resolved": [previous_by_fingerprint[key] for key in sorted(previous_keys - current_keys)],
-        "still_open": [current_by_fingerprint[key] for key in sorted(current_keys & previous_keys)],
+        "new": [
+            current_by_fingerprint[key] for key in sorted(current_keys - previous_keys)
+        ],
+        "resolved": [
+            previous_by_fingerprint[key] for key in sorted(previous_keys - current_keys)
+        ],
+        "still_open": [
+            current_by_fingerprint[key] for key in sorted(current_keys & previous_keys)
+        ],
     }
 
 
@@ -104,7 +132,9 @@ def render_finding_items(items: list[dict[str, str]], *, limit: int = 8) -> list
         return ["- none"]
     lines = []
     for item in items[:limit]:
-        lines.append(f"- [{item['severity']}] {item['title']}: {item['evidence']}")
+        lines.append(
+            f"- [{item['classification']}/{item['severity']}] {item['title']}: {item['evidence']}"
+        )
     if len(items) > limit:
         lines.append(f"- ... {len(items) - limit} more")
     return lines
@@ -122,6 +152,15 @@ def render_digest(
     total_new = sum(len(item["delta"]["new"]) for item in audited)
     total_resolved = sum(len(item["delta"]["resolved"]) for item in audited)
     total_still_open = sum(len(item["delta"]["still_open"]) for item in audited)
+    new_by_classification = {
+        classification: sum(
+            1
+            for item in audited
+            for finding in item["delta"]["new"]
+            if finding["classification"] == classification
+        )
+        for classification in ("actionable", "owner-validator", "report-only")
+    }
     lines = [
         "# Watcher Doc Audit Digest",
         "",
@@ -131,6 +170,9 @@ def render_digest(
         f"- Skipped repos: {len(skipped)}",
         f"- Failed repos: {len(failures)}",
         f"- New findings: {total_new}",
+        f"- New actionable findings: {new_by_classification['actionable']}",
+        f"- New owner-validator findings: {new_by_classification['owner-validator']}",
+        f"- New report-only findings: {new_by_classification['report-only']}",
         f"- Resolved findings: {total_resolved}",
         f"- Still-open findings: {total_still_open}",
         "",
@@ -179,11 +221,16 @@ def audit_repo_from_config(repo_config: dict[str, Any]) -> dict[str, Any]:
     return audit_repository(
         repo=path,
         name=name,
-        docs=list(repo_config.get("docs") or []),
-        source_of_truth=list(repo_config.get("source_of_truth") or []),
+        profile=str(repo_config.get("profile") or "default"),
+        docs=docs_paths(repo_config),
+        authority_paths=authority_paths(repo_config),
         watch_terms=list(repo_config.get("watch_terms") or []),
+        link_validation=repo_config.get("link_validation"),
+        finding_policy=str(repo_config.get("finding_policy") or "actionable"),
+        check_change_alignment=bool(repo_config.get("check_change_alignment", True)),
         recent_limit=int(repo_config.get("recent_limit") or 5),
         since_ref=repo_config.get("since_ref"),
+        skill_root_candidates=skill_root_candidates(repo_config),
     )
 
 
@@ -228,18 +275,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="watcher doc report",
         description="Write a report-only Watcher doc audit report under state reports/.",
     )
-    parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Repo config JSON path.")
-    parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/watcher/doc.")
+    parser.add_argument(
+        "--config", default=str(DEFAULT_CONFIG), help="Repo config JSON path."
+    )
+    parser.add_argument(
+        "--state-dir",
+        help="Runtime state directory. Defaults to $CODEX_HOME/watcher/doc.",
+    )
     parser.add_argument(
         "--mode",
         choices=("all", "commit-dependent"),
         default="all",
         help="all audits all configured repos; commit-dependent audits only repos whose threshold is due.",
     )
-    parser.add_argument("--mark-audited", action="store_true", help="After successful audits, mark audited repos at current HEAD.")
+    parser.add_argument(
+        "--mark-audited",
+        action="store_true",
+        help="After successful audits, mark audited repos at current HEAD.",
+    )
     parser.add_argument("--output", help="Explicit report output path.")
-    parser.add_argument("--digest", action="store_true", help="Print a compact new/resolved/still-open finding digest.")
-    parser.add_argument("--print-report", action="store_true", help="Also print the full report to stdout.")
+    parser.add_argument(
+        "--digest",
+        action="store_true",
+        help="Print a compact new/resolved/still-open finding digest.",
+    )
+    parser.add_argument(
+        "--print-report",
+        action="store_true",
+        help="Also print the full report to stdout.",
+    )
     return parser.parse_args(argv)
 
 
@@ -263,7 +327,9 @@ def run_generate_report(
     failures: list[str] = []
 
     for repo_config in config["repos"]:
-        name = str(repo_config.get("name") or Path(str(repo_config.get("path", "repo"))).name)
+        name = str(
+            repo_config.get("name") or Path(str(repo_config.get("path", "repo"))).name
+        )
         try:
             status = repo_status(repo_config, state)
             if mode == "commit-dependent" and not status["due"]:
@@ -311,7 +377,9 @@ def run_generate_report(
     updated_state_path: Path | None = None
 
     if mark_audited and audited_statuses and not failures:
-        mark_current(state_dir, state, audited_statuses, findings_by_name=findings_by_name)
+        mark_current(
+            state_dir, state, audited_statuses, findings_by_name=findings_by_name
+        )
         updated_state_path = state_path(state_dir)
         stdout_lines.append(f"updated state: {updated_state_path}")
     elif mark_audited and failures:

@@ -1,14 +1,15 @@
 # Matt Pocock Skills
 
-Skill-only Codex plugin for the local Codex-adapted copy of Matt Pocock's skills.
+Skill-only local Codex package of Matt Pocock's published skills.
 
 Upstream: https://github.com/mattpocock/skills
 
-Adapted from: `v1.0.1` (`2454c95dc305c158b21a0cdafeb728879dd0359a`)
+Packaged from: `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)
 
 ## Skills
 
 - `ask-matt`
+- `code-review`
 - `codebase-design`
 - `diagnosing-bugs`
 - `domain-modeling`
@@ -16,39 +17,48 @@ Adapted from: `v1.0.1` (`2454c95dc305c158b21a0cdafeb728879dd0359a`)
 - `grill-with-docs`
 - `grilling`
 - `handoff`
+- `implement`
 - `improve-codebase-architecture`
 - `prototype`
+- `research`
+- `resolving-merge-conflicts`
+- `setup-matt-pocock-skills`
 - `tdd`
 - `teach`
-- `to-issues`
-- `to-prd`
+- `to-questionnaire`
+- `to-spec`
+- `to-tickets`
 - `triage`
-- `writing-great-skills`
+- `wait-what`
+- `wayfinder`
+- `wizard`
+- `writing-for-agents`
 
-## Omitted Upstream Skills
+## Upstream Authority
 
-The updater intentionally keeps these upstream skills out of the Codex plugin package:
+Every directory under `skills/` is copied unchanged from the paths published in
+the selected upstream `.claude-plugin/plugin.json`. This includes upstream's
+native `agents/openai.yaml` Codex metadata and its dual-harness SKILL.md
+frontmatter. The local updater does not generate Codex metadata, rewrite skill
+invocations, omit published skills, or patch upstream behavior.
 
-- `setup-matt-pocock-skills`: Claude setup flow that writes Agent skills blocks into CLAUDE.md/AGENTS.md; Codex uses plugin marketplace metadata instead.
+The local-only surfaces are the `.codex-plugin` wrapper, Watcher attribution
+metadata, the updater-owned upstream content lock, version/cachebuster, this
+README, and the scoped `AGENTS.md`. Never edit `skills/` or manually rebaseline
+the lock; validation fails on drift before an upstream update can replace it.
 
 ## Updating From Upstream
 
 From the `my-codex` repository root, run:
 
 ```bash
-python scripts/update_mattpocock_skills.py
+python3 scripts/bootstrap_tooling_env.py
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/update_mattpocock_skills.py
 ```
 
-The updater replaces the packaged skill tree from the selected upstream tag, reapplies Codex adaptations, regenerates the plugin README and Watcher metadata, updates the cachebuster, and validates the plugin and every packaged skill.
+The updater selects an upstream release, copies its published skills unchanged,
+regenerates local wrapper metadata, updates the cachebuster, and validates the
+upstream-native Codex invocation contract.
 
-## Compatibility Notes
-
-This plugin flattens the upstream Claude plugin skill paths into Codex's `skills/<name>/` layout while preserving each published skill directory's contents.
-
-Upstream 1.0.x made these breaking changes:
-
-- `diagnose` was renamed to `diagnosing-bugs`.
-- `write-a-skill` was replaced by `writing-great-skills`.
-- `caveman` and `zoom-out` were removed upstream and are no longer packaged here.
-
-This plugin is the source of truth for these third-party skills in this Codex setup. Do not maintain separate copies under `$CODEX_HOME/skills`.
+This plugin is the source of truth for these third-party skills in this Codex
+setup. Do not maintain separate copies under `$CODEX_HOME/skills`.

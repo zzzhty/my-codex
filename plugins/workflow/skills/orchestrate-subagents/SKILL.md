@@ -1,6 +1,6 @@
 ---
 name: orchestrate-subagents
-description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks Codex to use subagents, parallel agents, or multi-agent delegation; tool availability, environment authorization, and task parallelizability alone are not triggers.
+description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks the harness to use subagents, parallel agents, or multi-agent delegation; tool availability, environment authorization, and task parallelizability alone are not triggers.
 ---
 
 # Orchestrate Subagents
@@ -16,7 +16,7 @@ This skill defines the detailed workflow after a user-requested trigger. Tool av
 5. Use `worker` only for implementation with disjoint write ownership and clear authorization to edit; otherwise prefer read-only `explorer` or `default`.
 6. Continue only non-overlapping parent work while subagents run.
 7. Wait for selected subagents, or record exactly which one did not return and why.
-8. Treat timeout, missing tools, incomplete findings, conflicting results, unsafe file overlap, and missing validation evidence as first-class failures.
+8. Treat policy-blocked spawning, timeout, missing tools, inaccessible required context, incomplete findings, conflicting results, unsafe file overlap, and missing validation evidence as first-class failures.
 9. Consolidate evidence before acting; subagent output does not replace parent review.
 
 ## Roles And Recipes
@@ -31,12 +31,10 @@ Read `references/subagent-recipes.md` for PR/branch review, debugging, implement
 
 ## Parent Workflow
 
-1. Restate task, success criteria, and non-goals briefly.
-2. Identify parallel slices and shared files/artifacts that remain parent-owned.
-3. Choose the minimum useful subagents. Do not delegate tiny tasks or tightly coupled sequential debugging.
-4. Spawn each subagent with the prompt template below.
-5. Qualify incomplete coverage: missing paths, commands, evidence, blockers, or stop-condition status means partial coverage.
-6. Consolidate coverage, blocking issues, non-blocking risks, validation gaps, evidence, unresolved blockers, and next action.
+1. Restate the task, success criteria, non-goals, shared artifacts, and parent-owned integration.
+2. Slice the work and spawn the minimum useful agents with the prompt template; do not delegate tiny tasks or tightly coupled sequential debugging, and continue only non-overlapping parent work.
+3. Wait for selected results and mark coverage partial when paths, commands, evidence, blockers, or stop-condition status are missing.
+4. Consolidate role/status/path/command evidence into blockers, risks, validation gaps, unknowns, and the next action.
 
 ## Subagent Prompt Template
 
@@ -77,16 +75,4 @@ For workers, also state that they are not alone in the codebase and must accommo
 
 ## Consolidation And Failure
 
-Parent summary fields:
-
-1. Subagent coverage: role, assignment, status, paths, commands.
-2. Blocking issues.
-3. Non-blocking risks.
-4. Missing tests or validation gaps.
-5. Evidence: command output, files, diffs, screenshots, reports, logs.
-6. Unresolved blockers and partial coverage.
-7. Recommended next action.
-
-If implementation happened, include changed files, behavior impact, validation results, rollback path, and remaining risk.
-
-Stop or report partial coverage when tools are unavailable, policy blocks spawning, a subagent fails or cannot access required context, claims lack evidence, results conflict and cannot be reconciled, write scopes overlap, or required validation evidence is missing. The parent may run minimal diagnostics, but the original subagent failure must remain visible.
+For implementation, also report changed files, behavior impact, validation, rollback, and residual risk. Stop or report partial coverage on any Core Contract failure; parent diagnostics may narrow it but must not hide the original failure.

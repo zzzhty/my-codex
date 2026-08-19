@@ -64,6 +64,36 @@ def strip_fenced_blocks(text: str) -> str:
     return "\n".join(lines)
 
 
+def strip_placeholder_example_blocks(text: str) -> str:
+    """Remove only fences explicitly marked as documentation-only examples."""
+    lines: list[str] = []
+    active_fence: tuple[str, int] | None = None
+    is_example = False
+    for line in text.splitlines():
+        if active_fence:
+            if _is_closing_fence(line, *active_fence):
+                if not is_example:
+                    lines.append(line)
+                active_fence = None
+                is_example = False
+            elif not is_example:
+                lines.append(line)
+            continue
+
+        opening = _opening_fence(line)
+        if opening:
+            marker, length, info = opening
+            active_fence = (marker, length)
+            is_example = PLACEHOLDER_EXAMPLE_TOKEN in {
+                token.casefold() for token in info.split()
+            }
+            if not is_example:
+                lines.append(line)
+            continue
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _placeholder_scan(markdown_text: str) -> tuple[str, list[str]]:
     lines: list[str] = []
     active_fence: tuple[str, int] | None = None

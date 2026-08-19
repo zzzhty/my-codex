@@ -21,6 +21,8 @@ $CODEX_HOME/watcher/
 
 On `SessionStart`, Watcher rebuilds `skill-metadata-cache.json` from the local marketplace catalog and plugin-owned manifests. Catalog/plugin identity mismatches, malformed manifests, unsupported metadata schemas, and invalid skill relationships stop the refresh with a visible error; Watcher does not fall back to scanning `plugins/*`.
 
+Plugin-owned `.codex-plugin/skill-watcher.json` entries may declare an optional lowercase kebab-case `logical_group`. Skill reports use the runtime metadata cache to render both a group-level usage table and each observed skill's group. Because grouping is applied at report time, existing logs can be reclassified without rewriting historical events.
+
 Packaged skills:
 
 - `doc-alignment`: audit or align documentation, scripts, skills, runbooks, operational entry points, and planning folders against current source of truth.
@@ -42,5 +44,60 @@ python3 scripts/watcher doc report --config config/repos.example.json --print-re
 python3 scripts/watcher skill report --since 7d
 python3 scripts/watcher migrate-state --dry-run
 ```
+
+Doc audit configs may define multiple named profiles for one repository. Keep current authority,
+generated/upstream site, and history scopes separate:
+
+- use `profile: "current-authority"` with explicit `docs`, `authority_paths`, active
+  `watch_terms`, and `link_validation.mode: "markdown-relative"`;
+- use `profile: "upstream-site"` with the repository's owner checker through
+  `link_validation.mode: "owner-command"` instead of applying generic Markdown rules to a
+  framework-specific route or asset dialect;
+- use `profile: "history"` with `finding_policy: "report-only"` and no active watch terms.
+
+Treat `owner-command` as trusted, unsandboxed execution. Watcher invokes its argv without a
+shell, keeps its configured working directory inside the repository, enforces a timeout, and
+bounds captured output, but cannot prove that the command is read-only. Review the
+repository-owned validation workflow before configuring it.
+
+`authority_paths` is an existence check for configured authority entry points. It does not prove
+semantic equality or precedence between documents. The legacy `source_of_truth` config key remains
+read-compatible but is deprecated. `check_change_alignment: false` disables the code-without-doc
+heuristic for profiles where that comparison is not meaningful.
+
+### Repository skill-root discovery
+
+When `docs` is omitted, Watcher scans the normal entry files and documentation directories plus the
+first existing repository skill root in this default priority order:
+
+1. `.agents/skills`
+2. `.codex/skills`
+3. `.github/skills`
+4. `.claude/skills`
+5. `.grok/skills`
+
+Watcher checks each complete skill directory, so an empty `.agents/` parent does not shadow an
+existing fallback such as `.codex/skills`. Profiles may override the order with a non-empty
+`skill_root_candidates` string list. The one-off audit CLI provides the repeatable
+`--skill-root-candidate` option for the same purpose.
+
+Use `@repo-skills` as a semantic path in configured `docs` and as a prefix in
+`authority_paths`. For example:
+
+```json
+{
+  "docs": ["AGENTS.md", "@repo-skills"],
+  "authority_paths": ["AGENTS.md", "@repo-skills/README.md"]
+}
+```
+
+The token resolves per repository from the ordered candidates. Ordinary configured paths stay
+fail-closed: a literal stale `.codex/skills` path is reported missing and is not silently redirected.
+If multiple candidate roots exist, Watcher reports the selected root and the shadowed roots and emits
+a Medium finding when the resolved skill scope participates in that profile. A resolved-root change
+also changes the effective config hash so commit-dependent audits become due immediately.
+
+This resolver does not locate the Watcher config file itself. A moved
+`.codex/watcher-doc-audit.json` still requires the caller's `--config` path to be updated.
 
 Run `python3 scripts/watcher migrate-state --apply` to move `$CODEX_HOME/skill-watcher/` to `$CODEX_HOME/watcher/skill/` and `$CODEX_HOME/doc-watcher/` to `$CODEX_HOME/watcher/doc/`. The migration refuses to merge if the target already exists.

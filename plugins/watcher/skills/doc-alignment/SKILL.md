@@ -14,23 +14,17 @@ Keep the alignment contract here; do not defer Watcher doc-domain semantics to a
 1. Identify current truth before editing: root instructions, active overview docs, current plans, runtime guides, script indexes, package commands, CI, configs, or Watcher doc reports.
 2. Keep current guidance separate from history. Archives may preserve old terms; active docs and entry points must point at the current workflow.
 3. Normalize user-facing names around current semantics. Preserve real code identifiers only as compatibility fields, migrations, or historical terms.
-4. Update every path people or tools follow, including hidden/config folders such as `.devcontainer`, `.github`, `.codex`, package scripts, READMEs, runbooks, and skill folders.
+4. Update every path people or tools follow, including hidden/config folders such as `.devcontainer` and `.github`, the repository's resolved skill root (for example `.agents/skills`, legacy `.codex/skills`, or another configured harness root), package scripts, READMEs, and runbooks.
 5. Treat broken links, stale paths, failed validation, inconsistent names, and failed audit commands as first-class failures. Fix root causes before claiming alignment.
 6. Scheduled Watcher doc audits must keep target repositories read-only and write only under `$CODEX_HOME/watcher/doc/` or an explicit output path.
 
 ## Mode Selection
 
-Before using prior context, re-read the newest user request and target area. If the newest request changed scope, it wins. Active long-running goals or old implementation threads are background unless the user explicitly asks to continue them.
+Re-read the newest request before using prior context; it controls scope, and older goals or implementation threads remain background unless explicitly continued.
 
-Use read-only mode for review, audit, analysis, comparison, assessment, report-only scans, scheduled scans, "only inspect", "do not edit", or similar language:
+For review, audit, analysis, comparison, assessment, report-only/scheduled scans, or explicit no-edit language, run only non-mutating commands and report evidence, proposed edits, gaps, and questions. Do not move, rename, delete, archive, or rewrite targets without implementation approval.
 
-- Do not move, rename, delete, archive, or rewrite target files.
-- Inspect and report findings, affected paths, recommended edits, validation gaps, and open questions.
-- Mark proposed moves or rewrites as proposals.
-- Run only non-mutating commands.
-- Describe obvious fixes but wait for explicit implementation approval.
-
-Use implementation mode when the user asks to align, update, reorganize, prune, rename, fix, or otherwise make changes. Apply the smallest sufficient edits and validate them.
+Use implementation mode when the user asks to align, update, reorganize, prune, rename, fix, or otherwise make changes; apply the smallest sufficient edits and validate them.
 
 ## Watcher Doc Audit Workflow
 
@@ -47,6 +41,14 @@ Use `config/repos.json` when a private config exists. For one repo:
 ```bash
 python3 scripts/watcher doc audit --repo <repo-path> --name <repo-name> --print-report
 ```
+
+Prefer a repository-owned config when the repository separates current authority, framework-owned
+site docs, and history. Use distinct named profiles: generic relative-link and active watch-term
+checks for current authority, an `owner-command` link validator for framework-specific site docs,
+and `report-only` findings for history. Treat `owner-command` as trusted, unsandboxed execution:
+Watcher constrains its working directory and timeout but cannot prove it is read-only. Review the
+repository-owned validation workflow before configuring it. Treat configured `authority_paths` as
+path-presence checks only; semantic alignment still requires the review workflow below.
 
 When `scripts/watcher doc report --mode commit-dependent` skips a repo, report it as skipped. Config changes make a repo due even below the commit threshold. If any repo fails, surface the repo, command/path, and exact failure text.
 
@@ -91,7 +93,7 @@ Each finding needs file paths or command evidence, reasoning, and recommended ne
 
 ## Conditional Alignment Reference
 
-Before continuing, read `references/alignment-reference.md` when the target touches a script or entry-point name, documentation tree placement, planning/TODO navigation, Codex skill source, or validation command selection. Apply every matching section; for implementation work, always apply its Validation section before claiming completion.
+Before continuing, read `references/alignment-reference.md` when the target touches a script or entry-point name, documentation tree placement, planning/TODO navigation, agent skill source, or validation command selection. Apply every matching section; for implementation work, always apply its Validation section before claiming completion.
 
 Completion criterion: the common workflow above is satisfied and every triggered reference section meets its own criterion.
 

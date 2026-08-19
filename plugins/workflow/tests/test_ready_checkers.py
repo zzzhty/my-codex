@@ -21,6 +21,17 @@ Close execution evidence:
 Validation: all required checks passed.
 
 Checkpoint evidence: close revision recorded.
+
+8. Temporary cache / housekeeping evidence:
+
+Recorded policy: Enabled
+Exact roots:
+- goal-owned: /tmp/demo-goal-cache
+Action: `watcher:housekeeping` inventoried the exact root and removed only confirmed disposable candidates.
+Removed size: 1 KiB
+Preserved size: 2 KiB
+Failed size: 0 B
+Residual size: 2 KiB
 """
 
 LOOP_HARNESS = """## Loop Blueprint / Harness
@@ -92,6 +103,24 @@ class ReadyCheckerTests(unittest.TestCase):
             + "\n\n"
             + text[text.index("## Rollback path") :]
         )
+
+    def close_goal(
+        self,
+        text: str,
+        *,
+        recorded_roots: str,
+        evidence: str,
+    ) -> str:
+        return replace_all(
+            text,
+            ("Overall status: Ready", "Overall status: Closed"),
+            ("| M0 | Ready | Pending | Pending |", "| M0 | Done | Passed | Done |"),
+            ("| Close | Not Started | Pending | Pending |", "| Close | Done | Passed | Done |"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                f"Recorded task temporary cache roots: {recorded_roots}",
+            ),
+        ) + evidence
 
     @property
     def ready(self) -> str:
@@ -255,6 +284,1230 @@ class ReadyCheckerTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assert_goal_error(text, message, *args)
 
+    def test_preflight_time_assessment_branch_matrix(self) -> None:
+        ready = self.ready
+
+        def with_time_section(text: str, body: str) -> str:
+            updated, count = re.subn(
+                r"(?ms)^## Preflight Time Assessment\n.*?(?=^## Task Temporary Cache)",
+                body.rstrip() + "\n\n",
+                text,
+            )
+            self.assertEqual(count, 1)
+            return updated
+
+        distribution_only = with_time_section(
+            ready,
+            """## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Distribution only
+
+Rough elapsed-time estimate: Not quickly estimable
+
+Basis or blocker: 2026-07-20 no representative integration or CI elapsed-time evidence exists for a defensible serial range, and external CI wait is unknown.
+
+Critical-path time-cost distribution:
+- implementation — Dominant — The bounded implementation owns most currently visible work.
+- validation — Unknown — CI queue and integration duration lack representative evidence.
+""",
+        )
+        legacy_without_assessment = remove_between(
+            ready,
+            "## Preflight Time Assessment",
+            "## Task Temporary Cache / Housekeeping",
+        )
+        for name, text in {
+            "rough_range": ready,
+            "rough_range_chinese_unit": ready.replace("2-4 hours", "2-4 小时"),
+            "rough_range_chinese_business_days": ready.replace(
+                "2-4 hours", "2至4个工作日"
+            ),
+            "rough_range_chinese_wave_separator": ready.replace(
+                "2-4 hours", "2～4小时"
+            ),
+            "rough_range_months": ready.replace("2-4 hours", "2-4 months"),
+            "iso_timestamp_basis": ready.replace(
+                "2026-07-20 range", "2026-07-20T12:00:00+08:00 range"
+            ),
+            "chinese_adjacent_date": ready.replace(
+                "Basis or blocker: 2026-07-20 range",
+                "Basis or blocker: 截至2026-07-20，根据当前证据，range",
+            ),
+            "resume_target": ready.replace(
+                "Assessment target: Ready-to-Closed",
+                "Assessment target: current-milestone-to-Closed",
+            ),
+            "unrelated_generic_assessment_target": ready.replace(
+                "## Loop Blueprint / Harness",
+                "Assessment target: generic review target.\n\n## Loop Blueprint / Harness",
+            ),
+            "distribution_only": distribution_only,
+            "measured_percentage_reason": distribution_only.replace(
+                "CI queue and integration duration lack representative evidence.",
+                "Three measured dry runs attribute 70% of elapsed time to validation.",
+            ),
+            "legacy_absent": legacy_without_assessment,
+            "legacy_generic_assessment_target": legacy_without_assessment.replace(
+                "## Loop Blueprint / Harness",
+                "Assessment target: generic review target.\n\n## Loop Blueprint / Harness",
+            ),
+            "placeholder_example_before_visible_assessment": ready.replace(
+                "## Preflight Time Assessment",
+                "```text placeholder-example\n<div\n>\n```\n\n"
+                "## Preflight Time Assessment",
+                1,
+            ),
+            "placeholder_example_with_concrete_assessment": (
+                "```text placeholder-example\n"
+                + "## Preflight Time Assessment"
+                + ready.split("## Preflight Time Assessment", 1)[1].split(
+                    "## Task Temporary Cache / Housekeeping", 1
+                )[0]
+                + "```\n\n"
+                + legacy_without_assessment
+            ),
+        }.items():
+            with self.subTest(name=name):
+                completed = self.run_goal(text, name=f"{name}.md")
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        missing_basis = re.sub(
+            r"\nBasis or blocker:.*\n",
+            "\n",
+            ready,
+            count=1,
+        )
+        fenced_basis = re.sub(
+            r"\nBasis or blocker:.*\n",
+            "\n```text\nBasis or blocker: 2026-07-20 hidden evidence.\n```\n",
+            ready,
+            count=1,
+        )
+        commented_basis = re.sub(
+            r"\nBasis or blocker:.*\n",
+            "\n<!-- Basis or blocker: 2026-07-20 hidden evidence. -->\n",
+            ready,
+            count=1,
+        )
+        misplaced_fields = ready.replace("## Preflight Time Assessment\n\n", "", 1)
+        duplicate_mode = ready.replace(
+            "Assessment mode: Rough range",
+            "Assessment mode: Rough range\nAssessment mode: Distribution only",
+            1,
+        )
+        outside_mode = ready.replace(
+            "## Loop Blueprint / Harness",
+            "Assessment mode: Distribution only\n\n"
+            "## Loop Blueprint / Harness",
+            1,
+        )
+        empty_code_spans = replace_all(
+            ready,
+            ("Assessment target: Ready-to-Closed", "Assessment target: ``"),
+            ("Assessment mode: Rough range", "Assessment mode: ``"),
+            ("Rough elapsed-time estimate: 2-4 hours", "Rough elapsed-time estimate: ``"),
+            (
+                "Critical-path time-cost distribution: Not required: rough range recorded.",
+                "Critical-path time-cost distribution: ``",
+            ),
+        )
+        indented_hidden_fields = with_time_section(
+            ready,
+            """## Preflight Time Assessment
+
+    Assessment target: Ready-to-Closed
+
+    Assessment mode: Rough range
+
+    Rough elapsed-time estimate: 2-4 hours
+
+    Basis or blocker: 2026-07-20 hidden in indented Markdown code.
+
+    Critical-path time-cost distribution: Not required: rough range recorded.
+""",
+        )
+        indented_values = with_time_section(
+            ready,
+            """## Preflight Time Assessment
+
+Assessment target:
+
+    Ready-to-Closed
+
+Assessment mode:
+
+    Rough range
+
+Rough elapsed-time estimate:
+
+    2-4 hours
+
+Basis or blocker:
+
+    2026-07-20 hidden in indented Markdown code.
+
+Critical-path time-cost distribution:
+
+    Not required: rough range recorded.
+""",
+        )
+        html_hidden_fields = with_time_section(
+            ready,
+            """## Preflight Time Assessment
+
+<div
+hidden>
+Assessment target: Ready-to-Closed
+
+Assessment mode: Rough range
+
+Rough elapsed-time estimate: 2-4 hours
+
+Basis or blocker: 2026-07-20 hidden HTML content assumes serial execution and no external waits.
+</div
+>
+
+Critical-path time-cost distribution: Not required: rough range recorded.
+""",
+        )
+        timing_body = ready.split("## Preflight Time Assessment", 1)[1].split(
+            "## Task Temporary Cache / Housekeeping", 1
+        )[0]
+        timing_section = "## Preflight Time Assessment" + timing_body
+        fenced_entire_section = ready.replace(
+            timing_section,
+            "```text\n" + timing_section + "```\n\n",
+            1,
+        )
+        commented_entire_section = ready.replace(
+            timing_section,
+            "<!--\n" + timing_section + "-->\n\n",
+            1,
+        )
+        details_wrapped_section = ready.replace(
+            timing_section,
+            "<details\n>\n" + timing_section + "</details\n>\n\n",
+            1,
+        )
+        fieldset_hidden_section = ready.replace(
+            timing_section,
+            "<fieldset\n hidden>\n" + timing_section + "</fieldset\n>\n\n",
+            1,
+        )
+        nested_hidden_section = ready.replace(
+            timing_section,
+            "<div\n hidden>\n<div\n></div\n>\n"
+            + timing_section
+            + "</div\n>\n\n",
+            1,
+        )
+        one_driver = distribution_only.replace(
+            "- validation — Unknown — CI queue and integration duration lack representative evidence.\n",
+            "",
+        )
+        markdown_duplicate_driver = distribution_only.replace(
+            "- implementation — Dominant — The bounded implementation owns most currently visible work.",
+            "- **validation** — Dominant — The bounded implementation owns most currently visible work.",
+        )
+        reference_link_duplicate_driver = distribution_only.replace(
+            "- implementation — Dominant — The bounded implementation owns most currently visible work.",
+            "- [validation][validation-doc] — Dominant — The bounded implementation owns most currently visible work.",
+        ).replace(
+            "## Task Temporary Cache / Housekeeping",
+            "[validation-doc]: https://example.invalid/validation\n\n"
+            "## Task Temporary Cache / Housekeeping",
+            1,
+        )
+        nested_link_duplicate_driver = distribution_only.replace(
+            "- implementation — Dominant — The bounded implementation owns most currently visible work.",
+            "- [validation](https://example.invalid/a_(b)) — Dominant — The bounded implementation owns most currently visible work.",
+        )
+        markdown_placeholder_reasons = replace_all(
+            distribution_only,
+            (
+                "The bounded implementation owns most currently visible work.",
+                "**TBD**",
+            ),
+            (
+                "CI queue and integration duration lack representative evidence.",
+                "`pending`",
+            ),
+        )
+        nested_link_placeholder_reasons = replace_all(
+            distribution_only,
+            (
+                "The bounded implementation owns most currently visible work.",
+                "[TBD](https://example.invalid/a_(b))",
+            ),
+            (
+                "CI queue and integration duration lack representative evidence.",
+                "[pending](https://example.invalid/c_(d))",
+            ),
+        )
+        punctuation_drivers = replace_all(
+            distribution_only,
+            (
+                "- implementation — Dominant — The bounded implementation owns most currently visible work.",
+                "- . — Dominant — .",
+            ),
+            (
+                "- validation — Unknown — CI queue and integration duration lack representative evidence.",
+                "- ! — Unknown — ?",
+            ),
+        )
+        duplicate_section = ready.replace(
+            "## Task Temporary Cache / Housekeeping",
+            "## Preflight Time Assessment"
+            + timing_body
+            + "## Task Temporary Cache / Housekeeping",
+            1,
+        )
+        invalid_cases = [
+            (
+                "missing_basis",
+                missing_basis,
+                "missing Preflight Time Assessment field: Basis or blocker",
+            ),
+            (
+                "invalid_target",
+                ready.replace("Assessment target: Ready-to-Closed", "Assessment target: someday"),
+                "Assessment target must be Ready-to-Closed or current-milestone-to-Closed",
+            ),
+            (
+                "invalid_mode",
+                ready.replace("Assessment mode: Rough range", "Assessment mode: Exact ETA"),
+                "Assessment mode must be Rough range or Distribution only",
+            ),
+            (
+                "single_point",
+                ready.replace("2-4 hours", "3 hours"),
+                "Rough range mode requires a low-high elapsed-time range with one unit",
+            ),
+            (
+                "reversed_range",
+                ready.replace("2-4 hours", "4-2 hours"),
+                "Rough elapsed-time range must increase from low to high",
+            ),
+            (
+                "invalid_date",
+                ready.replace("2026-07-20", "2026-19-40"),
+                "Basis or blocker must include a valid YYYY-MM-DD as-of date",
+            ),
+            (
+                "generic_basis",
+                re.sub(
+                    r"Basis or blocker:.*",
+                    "Basis or blocker: 2026-07-20 TBD",
+                    ready,
+                    count=1,
+                ),
+                "Basis or blocker must record concrete evidence or a blocker",
+            ),
+            (
+                "markdown_placeholder_basis",
+                re.sub(
+                    r"Basis or blocker:.*",
+                    "Basis or blocker: 2026-07-20 **TBD**",
+                    ready,
+                    count=1,
+                ),
+                "Basis or blocker must record concrete evidence or a blocker",
+            ),
+            (
+                "distribution_with_range",
+                distribution_only.replace("Not quickly estimable", "3-5 hours"),
+                "Distribution only mode requires estimate: Not quickly estimable",
+            ),
+            (
+                "one_driver",
+                one_driver,
+                "Distribution only mode requires at least two concrete critical-path drivers",
+            ),
+            (
+                "percentage_distribution",
+                distribution_only.replace("Dominant", "60%"),
+                "Distribution only mode requires relative bands, not unmeasured percentages",
+            ),
+            (
+                "duplicate_section",
+                duplicate_section,
+                "Preflight Time Assessment must appear exactly once",
+            ),
+            (
+                "fenced_basis",
+                fenced_basis,
+                "missing Preflight Time Assessment field: Basis or blocker",
+            ),
+            (
+                "commented_basis",
+                commented_basis,
+                "missing Preflight Time Assessment field: Basis or blocker",
+            ),
+            (
+                "misplaced_fields",
+                misplaced_fields,
+                "Preflight Time Assessment fields must be inside exactly one",
+            ),
+            (
+                "duplicate_mode",
+                duplicate_mode,
+                "duplicate Preflight Time Assessment field: Assessment mode",
+            ),
+            (
+                "outside_mode",
+                outside_mode,
+                "Preflight Time Assessment field appears outside its section: Assessment mode",
+            ),
+            (
+                "empty_code_spans",
+                empty_code_spans,
+                "missing Preflight Time Assessment field: Assessment target",
+            ),
+            (
+                "indented_hidden_fields",
+                indented_hidden_fields,
+                "missing Preflight Time Assessment field: Assessment target",
+            ),
+            (
+                "indented_values",
+                indented_values,
+                "missing Preflight Time Assessment field: Assessment target",
+            ),
+            (
+                "html_hidden_fields",
+                html_hidden_fields,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "fenced_entire_section",
+                fenced_entire_section,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "commented_entire_section",
+                commented_entire_section,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "details_wrapped_section",
+                details_wrapped_section,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "fieldset_hidden_section",
+                fieldset_hidden_section,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "nested_hidden_section",
+                nested_hidden_section,
+                "Preflight Time Assessment must be visible Markdown",
+            ),
+            (
+                "markdown_duplicate_driver",
+                markdown_duplicate_driver,
+                "Distribution only mode requires at least two concrete critical-path drivers",
+            ),
+            (
+                "reference_link_duplicate_driver",
+                reference_link_duplicate_driver,
+                "Distribution only mode requires at least two concrete critical-path drivers",
+            ),
+            (
+                "nested_link_duplicate_driver",
+                nested_link_duplicate_driver,
+                "Distribution only mode requires at least two concrete critical-path drivers",
+            ),
+            (
+                "markdown_placeholder_reasons",
+                markdown_placeholder_reasons,
+                "Critical-path distribution rows must use",
+            ),
+            (
+                "nested_link_placeholder_reasons",
+                nested_link_placeholder_reasons,
+                "Critical-path distribution rows must use",
+            ),
+            (
+                "punctuation_drivers",
+                punctuation_drivers,
+                "Critical-path distribution rows must use",
+            ),
+        ]
+        for name, text, message in invalid_cases:
+            with self.subTest(name=name):
+                self.assert_goal_error(text, message)
+
+    def test_temporary_cache_housekeeping_rejection_matrix(self) -> None:
+        ready = self.ready
+        missing_boundary = re.sub(
+            r"\nHousekeeping boundary:.*?(?=\n\n## Loop Blueprint / Harness)",
+            "",
+            ready,
+            flags=re.DOTALL,
+        )
+        invalid_policy = ready.replace(
+            "Close housekeeping policy: Enabled",
+            "Close housekeeping policy: Pending",
+        )
+        implicit_source = ready.replace(
+            "Explicit user confirmation recorded for this demo.",
+            "Derived from the default Close behavior.",
+        )
+        missing_watcher = ready.replace(
+            "Use `watcher:housekeeping` only for",
+            "Clean only",
+        )
+        hardcoded_root = ready.replace(
+            "Resolve the host platform/runtime standard temporary root, allocate a goal-owned namespace beneath the resolved root, and record the exact owner root before first use.",
+            "Use /tmp/demo-cache.",
+        )
+        invalid_not_applicable = ready.replace(
+            "Close housekeeping policy: Enabled",
+            "Close housekeeping policy: Not applicable",
+        )
+        not_applicable_with_n_a_roots = replace_all(
+            ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: n/a",
+            ),
+        )
+        not_applicable_with_hidden_root = replace_all(
+            ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: Not applicable; "
+                "goal-owned: /tmp/hidden-goal-cache",
+            ),
+        )
+        none_created_with_hidden_root = ready.replace(
+            "Recorded task temporary cache roots: Resolve and record before first use.",
+            "Recorded task temporary cache roots: None created; "
+            "goal-owned: /tmp/hidden-goal-cache",
+        )
+        closed_without_housekeeping_evidence = replace_all(
+            ready,
+            ("Overall status: Ready", "Overall status: Closed"),
+            ("| M0 | Ready | Pending | Pending |", "| M0 | Done | Passed | Done |"),
+            ("| Close | Not Started | Pending | Pending |", "| Close | Done | Passed | Done |"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: goal-owned: /tmp/demo-goal-cache",
+            ),
+        ) + CLOSE_EVIDENCE.split("\n8. Temporary cache / housekeeping evidence:", 1)[0]
+
+        cases = [
+            (
+                "missing_boundary",
+                missing_boundary,
+                "missing Task Temporary Cache / Housekeeping field: Housekeeping boundary",
+            ),
+            (
+                "invalid_policy",
+                invalid_policy,
+                "Close housekeeping policy must be Enabled, Disabled, or Not applicable",
+            ),
+            (
+                "implicit_source",
+                implicit_source,
+                "Housekeeping decision source must record non-negated explicit user confirmation",
+            ),
+            (
+                "missing_watcher",
+                missing_watcher,
+                "Enabled housekeeping requires watcher:housekeeping in the boundary",
+            ),
+            (
+                "hardcoded_root",
+                hardcoded_root,
+                "root strategy must use a host platform/runtime resolver",
+            ),
+            (
+                "invalid_not_applicable",
+                invalid_not_applicable,
+                "Not applicable housekeeping requires recorded roots to be Not applicable",
+            ),
+            (
+                "not_applicable_with_n_a_roots",
+                not_applicable_with_n_a_roots,
+                "Not applicable housekeeping requires recorded roots to be Not applicable",
+            ),
+            (
+                "not_applicable_with_hidden_root",
+                not_applicable_with_hidden_root,
+                "Not applicable housekeeping requires recorded roots to be Not applicable",
+            ),
+            (
+                "none_created_with_hidden_root",
+                none_created_with_hidden_root,
+                "recorded roots state values must not include additional text or paths",
+            ),
+            (
+                "closed_without_housekeeping_evidence",
+                closed_without_housekeeping_evidence,
+                "requires temporary cache / housekeeping evidence",
+            ),
+        ]
+        for name, text, message in cases:
+            with self.subTest(name=name):
+                self.assert_goal_error(text, message)
+
+    def test_concrete_owner_root_matrix_is_cross_platform(self) -> None:
+        cases = {
+            "posix_child": "goal-owned: /tmp/demo-goal-cache",
+            "posix_child_with_spaces": 'goal-owned: "/tmp/demo goal cache"',
+            "windows_child": "goal-owned: C:\\Windows\\Temp\\demo-goal-cache",
+            "multiple_owner_labeled_children": (
+                "goal-owned: /tmp/demo-goal-cache\n"
+                "- goal-owned: /var/tmp/demo-goal-cache-2"
+            ),
+        }
+        for name, recorded_roots in cases.items():
+            with self.subTest(name=name):
+                text = self.ready.replace(
+                    "Recorded task temporary cache roots: Resolve and record before first use.",
+                    f"Recorded task temporary cache roots: {recorded_roots}",
+                )
+                completed = self.run_goal(text, name=f"{name}.md")
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_shared_or_unresolved_temp_roots_are_rejected(self) -> None:
+        strategy = (
+            "Resolve the host platform/runtime standard temporary root, allocate a "
+            "goal-owned namespace beneath the resolved root, and record the exact owner "
+            "root before first use."
+        )
+        cases = {
+            "posix_shared_root": (
+                "Recorded task temporary cache roots: goal-owned: /tmp",
+                "must not name a shared or generic temporary/cache root",
+            ),
+            "windows_shared_root": (
+                "Recorded task temporary cache roots: goal-owned: C:\\Windows\\Temp",
+                "must not name a shared or generic temporary/cache root",
+            ),
+            "posix_shared_root_via_dot_segments": (
+                "Recorded task temporary cache roots: goal-owned: /tmp/demo/..",
+                "must not name a shared or generic temporary/cache root",
+            ),
+            "posix_escape_via_dot_segments": (
+                "Recorded task temporary cache roots: goal-owned: /tmp/demo/../../etc",
+                "must be fully resolved",
+            ),
+            "windows_shared_root_via_dot_segments": (
+                "Recorded task temporary cache roots: goal-owned: "
+                "C:\\Windows\\Temp\\demo-goal-cache\\..",
+                "must not name a shared or generic temporary/cache root",
+            ),
+            "windows_drive_root": (
+                "Recorded task temporary cache roots: goal-owned: C:\\",
+                "must not name a shared or generic temporary/cache root",
+            ),
+            "second_root_without_owner_label": (
+                "Recorded task temporary cache roots: goal-owned: /tmp/demo-goal-cache\n"
+                "- /var/tmp/unlabelled-goal-cache",
+                "require an owner marker and an absolute owner-specific path",
+            ),
+            "windows_unresolved": (
+                "Recorded task temporary cache roots: goal-owned: %TEMP%\\demo-goal-cache",
+                "must be fully resolved",
+            ),
+            "posix_unresolved": (
+                "Recorded task temporary cache roots: goal-owned: $TMPDIR/demo-goal-cache",
+                "must be fully resolved",
+            ),
+            "posix_root_masquerade": (
+                "Task temporary cache root strategy: Use the host /tmp itself as the "
+                "goal-owned namespace beneath the resolved root.",
+                "root strategy must use a host platform/runtime resolver",
+            ),
+            "windows_root_masquerade": (
+                "Task temporary cache root strategy: Use the host C:\\Windows\\Temp itself "
+                "as the goal-owned namespace beneath the resolved root.",
+                "root strategy must use a host platform/runtime resolver",
+            ),
+            "posix_root_masquerade_without_itself": (
+                "Task temporary cache root strategy: Use the host platform temporary root "
+                "/tmp as the goal-owned namespace beneath the resolved root.",
+                "root strategy must use a host platform/runtime resolver",
+            ),
+            "custom_runtime_root_masquerade": (
+                "Task temporary cache root strategy: Resolve the host platform/runtime "
+                "temporary root at /srv/scratch, use /srv/scratch itself while describing "
+                "it as a goal-owned namespace beneath the resolved root.",
+                "root strategy must use a host platform/runtime resolver",
+            ),
+            "generic_namespace": (
+                "Task temporary cache root strategy: Resolve the host platform/runtime "
+                "temporary root, allocate a namespace beneath the resolved root, and record it.",
+                "root strategy must use a host platform/runtime resolver",
+            ),
+        }
+        for name, (replacement, message) in cases.items():
+            with self.subTest(name=name):
+                if replacement.startswith("Recorded task temporary cache roots:"):
+                    text = self.ready.replace(
+                        "Recorded task temporary cache roots: Resolve and record before first use.",
+                        replacement,
+                    )
+                else:
+                    text = self.ready.replace(
+                        f"Task temporary cache root strategy: {strategy}",
+                        replacement,
+                    )
+                self.assert_goal_error(text, message)
+
+    def test_negated_or_inferred_confirmation_never_authorizes_cleanup(self) -> None:
+        cases = {
+            "exact_reported_counterexample": (
+                "No explicit user confirmation was obtained; Enabled was inferred."
+            ),
+            "postposed_negation": "Explicit user confirmation was not obtained.",
+            "without_confirmation": "Enabled was selected without explicit user confirmation.",
+            "defaulted_choice": "The housekeeping choice was defaulted to Enabled.",
+            "contracted_postposed_negation": (
+                "Explicit user confirmation wasn't obtained."
+            ),
+            "not_explicit_confirmation": "Not explicit user confirmation was obtained.",
+            "could_not_obtain": "Explicit user confirmation could not be obtained.",
+            "has_not_obtained": "Explicit user confirmation has not been obtained.",
+            "confirmation_absent": "Explicit user confirmation was absent.",
+            "never_received": "Never received explicit user confirmation.",
+            "did_not_obtain": "We did not obtain explicit user confirmation.",
+            "did_not_receive": "We did not receive explicit user confirmation.",
+            "declined": "Explicit user confirmation was declined.",
+            "refused": "Explicit user confirmation was refused.",
+            "withdrawn": "Explicit user confirmation was withdrawn.",
+            "revoked": "Explicit user confirmation was revoked.",
+            "future_confirmation": (
+                "Explicit user confirmation will be recorded after Close."
+            ),
+        }
+        for name, decision_source in cases.items():
+            with self.subTest(name=name):
+                text = self.ready.replace(
+                    "Explicit user confirmation recorded for this demo.",
+                    decision_source,
+                )
+                self.assert_goal_error(
+                    text,
+                    "Housekeeping decision source must record non-negated explicit user confirmation",
+                )
+
+    def test_closed_enabled_housekeeping_requires_exact_structured_evidence(self) -> None:
+        closed = self.close_goal(
+            self.ready,
+            recorded_roots="goal-owned: /tmp/demo-goal-cache",
+            evidence=CLOSE_EVIDENCE,
+        )
+        completed = self.run_goal(closed, name="numbered-template-evidence.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        cases = {
+            "deferred_roots": (
+                self.close_goal(
+                    self.ready,
+                    recorded_roots="Resolve and record before first use.",
+                    evidence=CLOSE_EVIDENCE,
+                ),
+                "requires concrete recorded roots or an explicit None created outcome",
+            ),
+            "n_a_evidence": (
+                self.close_goal(
+                    self.ready,
+                    recorded_roots="goal-owned: /tmp/demo-goal-cache",
+                    evidence=CLOSE_EVIDENCE.split(
+                        "8. Temporary cache / housekeeping evidence:", 1
+                    )[0]
+                    + "8. Temporary cache / housekeeping evidence: n/a\n",
+                ),
+                "must record the recorded policy",
+            ),
+            "wrong_root": (
+                closed.replace(
+                    "- goal-owned: /tmp/demo-goal-cache\nAction:",
+                    "- goal-owned: /tmp/another-goal-cache\nAction:",
+                ),
+                "must repeat every exact recorded root",
+            ),
+            "recorded_root_is_only_a_prefix": (
+                closed.replace(
+                    "- goal-owned: /tmp/demo-goal-cache\nAction:",
+                    "- goal-owned: /tmp/demo-goal-cache-extra\nAction:",
+                ),
+                "must repeat every exact recorded root",
+            ),
+            "missing_watcher_action": (
+                closed.replace(
+                    "Action: `watcher:housekeeping` inventoried the exact root and removed only confirmed disposable candidates.",
+                    "Action: Confirmed disposable candidates were processed.",
+                ),
+                "must record an affirmative watcher:housekeeping action",
+            ),
+        }
+        for metric in ("Removed", "Preserved", "Failed", "Residual"):
+            cases[f"missing_{metric.casefold()}_size"] = (
+                re.sub(rf"^{metric} size:.*\n", "", closed, flags=re.MULTILINE),
+                f"must record {metric.casefold()} size",
+            )
+
+        for name, (text, message) in cases.items():
+            with self.subTest(name=name):
+                self.assert_goal_error(text, message)
+
+    def test_closed_disabled_and_no_root_outcomes_are_explicit(self) -> None:
+        disabled_ready = replace_all(
+            self.ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Disabled"),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+            ),
+        )
+        disabled_evidence = """
+## Close Gate
+
+Close execution evidence:
+
+Validation: all required checks passed.
+
+Checkpoint evidence: close revision recorded.
+
+8. Temporary cache / housekeeping evidence:
+
+Recorded policy: Disabled
+Exact retained roots:
+- goal-owned: /tmp/demo-goal-cache
+Action: Preserved the exact retained roots without cleanup.
+Removed size: 0 B
+Preserved size: 3 KiB
+Failed size: 0 B
+Residual size: 3 KiB
+"""
+        disabled_closed = self.close_goal(
+            disabled_ready,
+            recorded_roots="goal-owned: /tmp/demo-goal-cache",
+            evidence=disabled_evidence,
+        )
+        completed = self.run_goal(disabled_closed, name="disabled-closed.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        enabled_none_created = self.close_goal(
+            self.ready,
+            recorded_roots="None created",
+            evidence="""
+## Close Gate
+
+Close execution evidence:
+
+Validation: all required checks passed.
+
+Checkpoint evidence: close revision recorded.
+
+8. Temporary cache / housekeeping evidence:
+
+Recorded policy: Enabled
+Roots outcome: None created; no task temporary cache roots were created.
+Action: No housekeeping action was needed because no roots were created.
+""",
+        )
+        completed = self.run_goal(enabled_none_created, name="enabled-none-created.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        not_applicable_ready = replace_all(
+            self.ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: No task temporary cache root will be created; durable evidence remains outside temporary storage.",
+            ),
+        )
+        not_applicable_evidence = """
+## Close Gate
+
+Close execution evidence:
+
+Validation: all required checks passed.
+
+Checkpoint evidence: close revision recorded.
+
+8. Temporary cache / housekeeping evidence:
+
+Recorded policy: Not applicable
+Roots outcome: None created; no task temporary cache roots were created.
+Action: No housekeeping action was needed because no roots were created.
+"""
+        not_applicable_closed = self.close_goal(
+            not_applicable_ready,
+            recorded_roots="Not applicable",
+            evidence=not_applicable_evidence,
+        )
+        completed = self.run_goal(not_applicable_closed, name="not-applicable-closed.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        cases = {
+            "disabled_missing_retained_action": (
+                disabled_closed.replace(
+                    "Action: Preserved the exact retained roots without cleanup.",
+                    "Action: No disposition was recorded.",
+                ),
+                "must record the preserved or retained action",
+            ),
+            "disabled_negated_retained_action": (
+                disabled_closed.replace(
+                    "Action: Preserved the exact retained roots without cleanup.",
+                    "Action: The exact roots were not preserved or retained.",
+                ),
+                "must record an affirmative preserved or retained action",
+            ),
+            "disabled_missing_retained_root": (
+                disabled_closed.replace(
+                    "- goal-owned: /tmp/demo-goal-cache\nAction:",
+                    "Action:",
+                ),
+                "must repeat every exact recorded root",
+            ),
+            "not_applicable_n_a_only": (
+                not_applicable_closed.replace(
+                    "Roots outcome: None created; no task temporary cache roots were created.\n"
+                    "Action: No housekeeping action was needed because no roots were created.",
+                    "Roots outcome: n/a\nAction: n/a",
+                ),
+                "requires explicit no-roots Close evidence",
+            ),
+        }
+        for name, (text, message) in cases.items():
+            with self.subTest(name=name):
+                self.assert_goal_error(text, message)
+
+    def test_enabled_close_cannot_fallback_when_watcher_is_unavailable(self) -> None:
+        closed = self.close_goal(
+            self.ready,
+            recorded_roots="goal-owned: /tmp/demo-goal-cache",
+            evidence=CLOSE_EVIDENCE,
+        )
+        no_watcher_failures = closed.replace(
+            "Failed size: 0 B",
+            "No `watcher:housekeeping` failures occurred.\nFailed size: 0 B",
+        )
+        completed = self.run_goal(
+            no_watcher_failures,
+            name="enabled-no-watcher-failures.md",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        action = (
+            "Action: `watcher:housekeeping` inventoried the exact root and removed only "
+            "confirmed disposable candidates."
+        )
+        cases = {
+            "unavailable": (
+                "Action: `watcher:housekeeping` was unavailable and was not invoked; "
+                "the root was left untouched."
+            ),
+            "posix_recursive_fallback": (
+                "Action: `watcher:housekeeping` was unavailable, so `rm -rf` removed the root."
+            ),
+            "powershell_recursive_fallback": (
+                "Action: `watcher:housekeeping` failed; `Remove-Item -Recurse -Force` "
+                "removed the root."
+            ),
+            "not_run": "Action: `watcher:housekeeping` was not run; the root was retained.",
+            "skipped": (
+                "Action: `watcher:housekeeping` was skipped; another bounded tool "
+                "processed candidates."
+            ),
+            "no_action_occurred": (
+                "Action: No `watcher:housekeeping` action occurred; the root was retained."
+            ),
+            "did_not_run": (
+                "Action: `watcher:housekeeping` did not run; the root was retained."
+            ),
+            "contracted_not_invoked": (
+                "Action: `watcher:housekeeping` wasn't invoked; the root was retained."
+            ),
+            "bypassed_with_unrelated_completion": (
+                "Action: `watcher:housekeeping` was bypassed; alternate cleanup completed."
+            ),
+            "omitted_with_unrelated_completion": (
+                "Action: `watcher:housekeeping` was omitted; alternate cleanup completed."
+            ),
+            "replaced_with_unrelated_completion": (
+                "Action: `watcher:housekeeping` was replaced; alternate cleanup completed."
+            ),
+            "only_planned": (
+                "Action: `watcher:housekeeping` was only planned; status remained unknown."
+            ),
+            "ran_but_failed": (
+                "Action: `watcher:housekeeping` ran but failed."
+            ),
+            "executed_then_failed": (
+                "Action: `watcher:housekeeping` executed; it failed."
+            ),
+            "invoked_returned_failure": (
+                "Action: `watcher:housekeeping` was invoked and returned failure."
+            ),
+        }
+        for name, replacement in cases.items():
+            with self.subTest(name=name):
+                self.assert_goal_error(
+                    closed.replace(action, replacement),
+                    "cannot close while watcher:housekeeping is unavailable or a raw recursive fallback is recorded",
+                )
+
+        fallback_outside_action = closed.replace(
+            "Removed size: 1 KiB",
+            "Fallback: `rm -rf /tmp/demo-goal-cache`\nRemoved size: 1 KiB",
+        )
+        self.assert_goal_error(
+            fallback_outside_action,
+            "cannot close while watcher:housekeeping is unavailable or a raw recursive fallback is recorded",
+        )
+
+        unavailable_outside_action = closed.replace(
+            "Removed size: 1 KiB",
+            "Watcher availability: `watcher:housekeeping` unavailable.\n"
+            "Removed size: 1 KiB",
+        )
+        self.assert_goal_error(
+            unavailable_outside_action,
+            "cannot close while watcher:housekeeping is unavailable or a raw recursive fallback is recorded",
+        )
+
+        powershell_outside_action = closed.replace(
+            "Removed size: 1 KiB",
+            "Cleanup command: `Remove-Item -Recurse -Force /tmp/demo-goal-cache`\n"
+            "Removed size: 1 KiB",
+        )
+        self.assert_goal_error(
+            powershell_outside_action,
+            "raw recursive fallback is recorded",
+        )
+
+        fenced_recursive_delete = closed.replace(
+            "Removed size: 1 KiB",
+            "```bash\nrm -rf /tmp/demo-goal-cache\n```\nRemoved size: 1 KiB",
+        )
+        self.assert_goal_error(
+            fenced_recursive_delete,
+            "raw recursive fallback is recorded",
+        )
+
+        fenced_before_housekeeping = closed.replace(
+            "8. Temporary cache / housekeeping evidence:",
+            "```bash\nrm -rf /tmp/demo-goal-cache\n```\n\n"
+            "8. Temporary cache / housekeeping evidence:",
+        )
+        self.assert_goal_error(
+            fenced_before_housekeeping,
+            "raw recursive fallback is recorded",
+        )
+
+    def test_policy_boundaries_and_disabled_close_cannot_expand_cleanup(self) -> None:
+        disabled_ready = replace_all(
+            self.ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Disabled"),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+            ),
+        )
+        disabled_evidence = """
+## Close Gate
+
+Close execution evidence:
+
+Validation: all required checks passed.
+
+Checkpoint evidence: close revision recorded.
+
+8. Temporary cache / housekeeping evidence:
+
+Recorded policy: Disabled
+Exact retained roots:
+- goal-owned: /tmp/demo-goal-cache
+Action: Preserved the exact retained roots, then `rm -rf` deleted them.
+Removed size: 3 KiB
+Preserved size: 0 B
+Failed size: 0 B
+Residual size: 0 B
+"""
+        disabled_closed = self.close_goal(
+            disabled_ready,
+            recorded_roots="goal-owned: /tmp/demo-goal-cache",
+            evidence=disabled_evidence,
+        )
+        disabled_negates_watcher = disabled_ready.replace(
+            "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+            "Housekeeping boundary: `watcher:housekeeping` must not run; retain and report every recorded root.",
+        )
+        completed = self.run_goal(
+            disabled_negates_watcher,
+            name="disabled-negated-watcher-boundary.md",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+        cases = {
+            "disabled_boundary_still_enables_watcher": disabled_ready.replace(
+                "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Use `watcher:housekeeping` for inventoried goal-owned disposable cache candidates.",
+            ),
+            "not_applicable_boundary_still_enables_watcher": replace_all(
+                self.ready,
+                ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+                (
+                    "Recorded task temporary cache roots: Resolve and record before first use.",
+                    "Recorded task temporary cache roots: Not applicable",
+                ),
+            ),
+            "disabled_raw_recursive_delete": disabled_closed,
+            "disabled_direct_delete": disabled_closed.replace(
+                "then `rm -rf` deleted them",
+                "then a helper deleted them",
+            ),
+            "disabled_boundary_permits_delete": disabled_ready.replace(
+                "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Preserve every root; direct deletion is permitted.",
+            ),
+            "not_applicable_boundary_permits_child_delete": replace_all(
+                self.ready,
+                ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+                (
+                    "Recorded task temporary cache roots: Resolve and record before first use.",
+                    "Recorded task temporary cache roots: Not applicable",
+                ),
+                (
+                    "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                    "Housekeeping boundary: No task temporary cache root is created; child roots may still be deleted.",
+                ),
+            ),
+            "enabled_boundary_permits_raw_recursive_delete": self.ready.replace(
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates; raw recursive deletion is permitted.",
+            ),
+            "enabled_negation_does_not_mask_raw_delete_permission": self.ready.replace(
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, do not remove durable evidence, and raw recursive deletion is permitted.",
+            ),
+        }
+        messages = {
+            "disabled_boundary_still_enables_watcher": (
+                "Disabled housekeeping boundary must retain recorded roots without cleanup"
+            ),
+            "not_applicable_boundary_still_enables_watcher": (
+                "Not applicable housekeeping boundary must record that no roots are created"
+            ),
+            "disabled_raw_recursive_delete": "raw recursive fallback is recorded",
+            "disabled_direct_delete": "must not record a cleanup or deletion action",
+            "disabled_boundary_permits_delete": "must not permit raw, unbounded, or policy-conflicting deletion",
+            "not_applicable_boundary_permits_child_delete": "must not permit raw, unbounded, or policy-conflicting deletion",
+            "enabled_boundary_permits_raw_recursive_delete": "must not permit raw, unbounded, or policy-conflicting deletion",
+            "enabled_negation_does_not_mask_raw_delete_permission": "must not permit raw, unbounded, or policy-conflicting deletion",
+        }
+        for name, text in cases.items():
+            with self.subTest(name=name):
+                self.assert_goal_error(text, messages[name])
+
+        raw_delete_variants = {
+            "gnu_long_flags": "rm --recursive --force /tmp/demo-goal-cache",
+            "gnu_split_flags": "rm -r -f /tmp/demo-goal-cache",
+            "powershell_alias": "rm -Recurse -Force C:\\Temp\\demo-goal-cache",
+            "powershell_remove_item": (
+                "Remove-Item -Recurse -Force C:\\Temp\\demo-goal-cache"
+            ),
+            "python_rmtree": "shutil.rmtree('/tmp/demo-goal-cache')",
+            "go_remove_all": "os.RemoveAll('/tmp/demo-goal-cache')",
+            "node_recursive_rm": (
+                "fs.rm('/tmp/demo-goal-cache', { recursive: true, force: true })"
+            ),
+        }
+        for name, command in raw_delete_variants.items():
+            with self.subTest(name=name):
+                text = disabled_closed.replace(
+                    "then `rm -rf` deleted them",
+                    f"then `{command}` deleted them",
+                )
+                self.assert_goal_error(text, "raw recursive fallback is recorded")
+
+        disabled_fenced_delete = disabled_closed.replace(
+            "Action: Preserved the exact retained roots, then `rm -rf` deleted them.",
+            "Action: Preserved the exact retained roots without cleanup.",
+        ).replace(
+            "Removed size: 3 KiB",
+            "```powershell\nRemove-Item -Recurse -Force /tmp/demo-goal-cache\n```\n"
+            "Removed size: 3 KiB",
+        )
+        self.assert_goal_error(
+            disabled_fenced_delete,
+            "raw recursive fallback is recorded",
+        )
+
+        disabled_fenced_before_housekeeping = disabled_closed.replace(
+            "Action: Preserved the exact retained roots, then `rm -rf` deleted them.",
+            "Action: Preserved the exact retained roots without cleanup.",
+        ).replace(
+            "8. Temporary cache / housekeeping evidence:",
+            "```powershell\nRemove-Item -Recurse -Force /tmp/demo-goal-cache\n```\n\n"
+            "8. Temporary cache / housekeeping evidence:",
+        )
+        self.assert_goal_error(
+            disabled_fenced_before_housekeeping,
+            "raw recursive fallback is recorded",
+        )
+
+    def test_not_applicable_accepts_a_direct_no_root_strategy(self) -> None:
+        text = replace_all(
+            self.ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+            (
+                "Task temporary cache root strategy: Resolve the host platform/runtime standard temporary root, allocate a goal-owned namespace beneath the resolved root, and record the exact owner root before first use.",
+                "Task temporary cache root strategy: Not applicable: no task temporary cache root will be created.",
+            ),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: Not applicable",
+            ),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: No task temporary cache root will be created; durable evidence remains outside temporary storage.",
+            ),
+        )
+        completed = self.run_goal(text, name="not-applicable-direct-strategy.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_closed_atomic_template_evidence_shape_is_accepted(self) -> None:
+        template_shaped_evidence = """
+## Close Gate
+
+Close 执行证据：
+
+3. 测试证据：
+   - Validation: all required checks passed.
+8. Temporary cache / housekeeping evidence：
+   - Recorded policy：Enabled
+   - Exact roots / Roots outcome：
+     - goal-owned: /tmp/demo-goal-cache
+   - Action：`watcher:housekeeping` inventoried the exact root and removed only confirmed disposable candidates.
+   - Removed size：1 KiB
+   - Preserved size：2 KiB
+   - Failed size：0 B
+   - Residual size：2 KiB
+
+Checkpoint evidence：close revision recorded.
+"""
+        closed = self.close_goal(
+            self.ready,
+            recorded_roots="goal-owned: /tmp/demo-goal-cache",
+            evidence=template_shaped_evidence,
+        )
+        completed = self.run_goal(closed, name="atomic-template-closed.md")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
     def test_harness_and_permission_rejection_matrix(self) -> None:
         ready = self.ready
         missing_harness = remove_between(ready, "## Loop Blueprint / Harness", "## Rollback path")
@@ -333,6 +1586,10 @@ class ReadyCheckerTests(unittest.TestCase):
             ("Overall status: Ready", "Overall status: Closed"),
             ("| M0 | Ready | Pending | Pending |", "| M0 | Done | Passed | Done |"),
             ("| Close | Not Started | Pending | Pending |", "| Close | Done | Passed | Done |"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: goal-owned: /tmp/demo-goal-cache",
+            ),
         ) + CLOSE_EVIDENCE
         skipped = replace_all(
             ready,
@@ -359,6 +1616,43 @@ class ReadyCheckerTests(unittest.TestCase):
             "Planned non-destructive local code and documentation edits, tests, and validation.",
             "Planned non-destructive local Release builds, tests, and validation.",
         )
+        legacy_without_housekeeping = remove_between(
+            ready,
+            "## Task Temporary Cache / Housekeeping",
+            "## Loop Blueprint / Harness",
+        )
+        disabled_housekeeping = replace_all(
+            ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Disabled"),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: Preserve and report every recorded root; keep durable evidence outside the cache root.",
+            ),
+        )
+        not_applicable_housekeeping = replace_all(
+            ready,
+            ("Close housekeeping policy: Enabled", "Close housekeeping policy: Not applicable"),
+            (
+                "Recorded task temporary cache roots: Resolve and record before first use.",
+                "Recorded task temporary cache roots: Not applicable",
+            ),
+            (
+                "Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.",
+                "Housekeeping boundary: No task temporary cache root will be created; durable evidence remains outside temporary storage.",
+            ),
+        )
+        confirmation_has_been_recorded = ready.replace(
+            "Explicit user confirmation recorded for this demo.",
+            "Explicit user confirmation has been recorded for this demo.",
+        )
+        user_explicitly_selected = ready.replace(
+            "Explicit user confirmation recorded for this demo.",
+            "User explicitly selected Enabled for this demo.",
+        )
+        user_explicitly_chose = ready.replace(
+            "Explicit user confirmation recorded for this demo.",
+            "User explicitly chose Enabled for this demo.",
+        )
 
         cases = {
             "ready": (ready, ()),
@@ -373,6 +1667,12 @@ class ReadyCheckerTests(unittest.TestCase):
             "close_blocked": (close_blocked, ()),
             "named_milestone": (named_milestone, ()),
             "safe_release": (safe_release, ()),
+            "legacy_without_housekeeping": (legacy_without_housekeeping, ()),
+            "disabled_housekeeping": (disabled_housekeeping, ()),
+            "not_applicable_housekeeping": (not_applicable_housekeeping, ()),
+            "confirmation_has_been_recorded": (confirmation_has_been_recorded, ()),
+            "user_explicitly_selected": (user_explicitly_selected, ()),
+            "user_explicitly_chose": (user_explicitly_chose, ()),
         }
         for name, (text, args) in cases.items():
             with self.subTest(name=name):

@@ -31,6 +31,30 @@ Checkpoint component: `components/checkpoint.md`
 
 Planning preflight component: `components/planning-preflight.md`
 
+## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Rough range
+
+Rough elapsed-time estimate: 2-4 hours
+
+Basis or blocker: 2026-07-20 range assumes serial execution of the bounded local milestone, targeted validation, warm dependency state, and no external waits.
+
+Critical-path time-cost distribution: Not required: rough range recorded.
+
+## Task Temporary Cache / Housekeeping
+
+Close housekeeping policy: Enabled
+
+Housekeeping decision source: Explicit user confirmation recorded for this demo.
+
+Task temporary cache root strategy: Resolve the host platform/runtime standard temporary root, allocate a goal-owned namespace beneath the resolved root, and record the exact owner root before first use.
+
+Recorded task temporary cache roots: Resolve and record before first use.
+
+Housekeeping boundary: Use `watcher:housekeeping` only for inventoried goal-owned disposable cache candidates, preserve unknown or unsafe content, and keep durable evidence outside the cache root.
+
 ## Loop Blueprint / Harness
 
 Execution mode: Manual staged execution
