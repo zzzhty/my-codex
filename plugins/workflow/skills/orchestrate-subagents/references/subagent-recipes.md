@@ -53,7 +53,7 @@ Suggested subagents:
 
 Required evidence: base/head or exact diff scope, paths inspected, commands run when available, blocking issues with file paths/evidence, and coverage gaps.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Review this branch against <base>`, bounded read-only subagents above, base/head and constraints, no edits, one task per subagent, no success without paths/commands/evidence, wait for all selected subagents, then consolidate blockers, risks, missing tests, evidence, gaps, and next action.
+Prompt-specific boundaries: include exact base/head; stay read-only; wait for selected reviewers; require paths, commands, and evidence.
 
 ## Debugging Or Failure Triage
 
@@ -67,7 +67,7 @@ Suggested subagents:
 
 Required evidence: failing command/log/error, reproduction result or why unavailable, likely failing path/boundary, and diagnostic commands/tests that distinguish hypotheses.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Diagnose <failure>`, the bounded subagents above, exact failure evidence, affected files or unknowns, recent changes, no guessing when evidence is missing, no edits unless later authorized, one task per subagent, stop if no subagent can access required failure context, then consolidate root-cause candidates, blocking evidence, missing diagnostics, and next action.
+Prompt-specific boundaries: do not edit or guess without evidence; stop if required failure context is inaccessible.
 
 ## Implementation Planning
 
@@ -81,7 +81,7 @@ Suggested subagents:
 
 Required evidence: relevant modules and owners, current entry points, existing tests/commands, recommended option and rejected alternatives, rollback/containment strategy.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Plan <feature/migration/refactor/architecture change>`, bounded read-only subagents above, goal, constraints, affected areas or unknowns, no edits, no workers until write scopes are explicit and implementation requested, one task per subagent, then consolidate plan, rejected alternatives, validation gates, rollback path, and unresolved decisions.
+Prompt-specific boundaries: stay read-only; do not use workers until implementation and disjoint write scopes are authorized.
 
 ## Bounded Parallel Implementation
 
@@ -95,7 +95,7 @@ Suggested subagents:
 
 Required evidence: exact owned files/directories, files each worker must not edit, commands and results, changed files and behavior impact, conflicts, skipped scope, rollback notes.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Implement <task> using disjoint worker scopes`, parent-owned shared files, each worker's allowed scope, blocked files, single implementation task, validation evidence for its slice, integration reviewer read-only scope, no cross-scope edits, tests as evidence not second tasks, no reverting others, stop if required edits leave owned scope, parent owns conflict resolution, shared files, final integration, final validation, and final summary.
+Prompt-specific boundaries: workers stay in disjoint owned paths and never revert others; tests are slice evidence; shared files, conflicts, integration, and final validation remain parent-owned; stop if required edits leave scope.
 
 ## API Or Schema Inspection
 
@@ -110,7 +110,7 @@ Suggested subagents:
 
 Required evidence: schema/migration/serializer/client/test paths, known consumers, compatibility boundaries, validation commands, fixture gaps, backward/forward compatibility risks.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Inspect API or schema compatibility for <change>`, bounded read-only subagents above, suspected contract surface, consumers or unknowns, proposed/observed change, no edits, one task per subagent, no compatibility claims without exact paths and command evidence, then consolidate surfaces, risks, fixtures, validation commands, and unknowns.
+Prompt-specific boundaries: stay read-only; make no compatibility claim without exact paths and command evidence.
 
 ## Documentation Alignment
 
@@ -124,7 +124,7 @@ Suggested subagents:
 
 Required evidence: active docs/indexes inspected, source-of-truth files, stale terms/broken links/missing entry points/outdated commands, and active-vs-archive distinction.
 
-Parent prompt must include: `Use $orchestrate-subagents`, task `Align documentation for <area>`, bounded read-only subagents above, docs root/scope, source of truth, terms/commands to audit, no archive edits unless requested, no archive-only hit as current guidance, one task per subagent, then consolidate active-doc findings, severity, edits, validation commands, link coverage, and unresolved gaps.
+Prompt-specific boundaries: stay read-only; do not edit archives or treat archive-only hits as current guidance.
 
 ## Anti-Patterns
 

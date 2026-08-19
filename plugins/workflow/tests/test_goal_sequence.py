@@ -378,6 +378,145 @@ class GoalSequenceCheckerTests(unittest.TestCase):
                 completed = self.run_sequence(workspace, *args)
                 self.assertEqual(completed.returncode, 0, completed.stderr)
 
+    def test_legacy_sequence_without_housekeeping_sections_remains_valid(self) -> None:
+        with self.sequence_workspace() as workspace:
+            for path in (
+                workspace / "sequence.md",
+                workspace / "children" / "child-a.md",
+                workspace / "children" / "child-b.md",
+            ):
+                self.assertNotIn(
+                    "## Task Temporary Cache / Housekeeping",
+                    path.read_text(encoding="utf-8"),
+                )
+            completed = self.run_sequence(workspace)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_parent_range_requires_every_child_to_have_a_range(self) -> None:
+        with self.sequence_workspace() as workspace:
+            parent = workspace / "sequence.md"
+            self.regex_replace_once(
+                parent,
+                r"^## Preflight Time Assessment\n(?s:.*?)(?=^## Child Preflight Register)",
+                """## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Rough range
+
+Rough elapsed-time estimate: 4-8 hours
+
+Basis or blocker: 2026-07-20 serial roll-up assumes bounded local children, warm dependencies, and no external waits.
+
+Critical-path time-cost distribution: Not required: rough range recorded.
+
+""",
+            )
+            completed = self.run_sequence(workspace)
+            self.assertEqual(completed.returncode, 1, completed.stdout)
+            self.assertIn(
+                "sequence parent Rough range requires Rough range from every child; "
+                "incompatible: child-b (distribution only)",
+                completed.stderr,
+            )
+
+    def test_parent_and_children_keep_independent_housekeeping_policies(self) -> None:
+        def section(owner: str, policy: str, roots: str, boundary: str) -> str:
+            return (
+                "## Task Temporary Cache / Housekeeping\n\n"
+                f"Close housekeeping policy: {policy}\n\n"
+                "Housekeeping decision source: Explicit user confirmation recorded for "
+                "this fixture.\n\n"
+                "Task temporary cache root strategy: Resolve the host platform/runtime "
+                f"standard temporary root, allocate a {owner}-owned namespace beneath the "
+                "resolved root, and record the exact owner root before first use.\n\n"
+                f"Recorded task temporary cache roots: {roots}\n\n"
+                f"Housekeeping boundary: {boundary}\n\n"
+            )
+
+        with self.sequence_workspace() as workspace:
+            parent = workspace / "sequence.md"
+            child_a = workspace / "children" / "child-a.md"
+            child_b = workspace / "children" / "child-b.md"
+            self.replace_once(
+                parent,
+                "## Child Preflight Register",
+                section(
+                    "sequence",
+                    "Enabled",
+                    "Resolve and record before first use.",
+                    "Use `watcher:housekeeping` only for inventoried sequence-owned "
+                    "orchestration/integration disposable candidates; never cover child roots.",
+                )
+                + "## Child Preflight Register",
+            )
+            self.replace_once(
+                child_a,
+                "## Loop Blueprint / Harness",
+                section(
+                    "goal",
+                    "Disabled",
+                    "Resolve and record before first use.",
+                    "Preserve and report every child-a-owned root without cleanup.",
+                )
+                + "## Loop Blueprint / Harness",
+            )
+            self.replace_once(
+                child_b,
+                "## Loop Blueprint / Harness",
+                section(
+                    "goal",
+                    "Not applicable",
+                    "Not applicable",
+                    "No child-b task temporary cache root will be created.",
+                )
+                + "## Loop Blueprint / Harness",
+            )
+
+            completed = self.run_sequence(workspace)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            register = parent.read_text(encoding="utf-8").split(
+                "## Child Preflight Register", 1
+            )[1].split("## Child Execution Register", 1)[0]
+            self.assertEqual(
+                register.splitlines()[2],
+                "| Child ID | Marker | Status | Source |",
+            )
+
+            self.replace_once(
+                parent,
+                "Use `watcher:housekeeping` only for inventoried sequence-owned "
+                "orchestration/integration disposable candidates; never cover child roots.",
+                "Use `watcher:housekeeping` to override every child policy and clean all "
+                "child-owned roots too.",
+            )
+            rejected = self.run_sequence(workspace)
+            self.assertEqual(rejected.returncode, 1, rejected.stdout)
+            self.assertIn(
+                "sequence parent housekeeping boundary must not inherit, widen, or override child policy",
+                rejected.stderr,
+            )
+
+            widening = (
+                "Use `watcher:housekeeping` to override every child policy and clean all "
+                "child-owned roots too."
+            )
+            for variant in (
+                "Use `watcher:housekeeping` to clean child-owned roots too.",
+                "Use `watcher:housekeeping` to include child-owned roots in cleanup.",
+                "Use `watcher:housekeeping` to cover child-owned roots.",
+                "Use `watcher:housekeeping` for inventoried sequence-owned disposable "
+                "candidates, do not clean durable evidence, and delete child-owned roots.",
+            ):
+                self.replace_once(parent, widening, variant)
+                rejected = self.run_sequence(workspace)
+                self.assertEqual(rejected.returncode, 1, rejected.stdout)
+                self.assertIn(
+                    "sequence parent housekeeping boundary must not inherit, widen, or override child policy",
+                    rejected.stderr,
+                )
+                widening = variant
+
     def test_sequence_rejection_matrix(self) -> None:
         def parent_skip(workspace: Path) -> None:
             parent = workspace / "sequence.md"

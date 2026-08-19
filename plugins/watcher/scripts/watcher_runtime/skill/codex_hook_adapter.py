@@ -34,6 +34,7 @@ FAILURE_TEXT_RE = re.compile(
     re.IGNORECASE,
 )
 TOKEN_RE_TEMPLATE = r"(?<![a-z0-9_-]){alias}(?![a-z0-9_-])"
+LOGICAL_GROUP_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 @dataclass(frozen=True)
@@ -301,11 +302,21 @@ def normalize_manifest_skill(
         if not isinstance(item, str) or not item.strip():
             raise SystemExit(f"invalid supporting skill for {skill_name} in {manifest_path}: {item!r}")
         supporting.append(item.strip())
-    return {
+    logical_group = raw_skill.get("logical_group")
+    if logical_group is not None:
+        if not isinstance(logical_group, str) or not LOGICAL_GROUP_RE.fullmatch(logical_group):
+            raise SystemExit(
+                f"invalid logical_group for {skill_name} in {manifest_path}: {logical_group!r}; "
+                "expected a lowercase kebab-case name"
+            )
+    normalized = {
         "role": role,
         "aliases": aliases,
         "supporting_skills": sorted(dict.fromkeys(supporting)),
     }
+    if logical_group:
+        normalized["logical_group"] = logical_group
+    return normalized
 
 
 def load_plugin_skill_metadata(plugin_dir: Path) -> tuple[dict[str, Any], dict[str, str]]:

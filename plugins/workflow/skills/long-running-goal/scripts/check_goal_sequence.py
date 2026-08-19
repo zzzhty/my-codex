@@ -17,7 +17,11 @@ sys.path.insert(0, str(SHARED))
 
 from markdown_contract import render_errors, strip_fenced_blocks  # noqa: E402
 
-from check_goal_ready import MilestoneState, milestone_states  # noqa: E402
+from check_goal_ready import (  # noqa: E402
+    MilestoneState,
+    milestone_states,
+    preflight_time_assessment_mode,
+)
 
 
 ATOMIC_CHECKER = Path(__file__).with_name("check_goal_ready.py")
@@ -348,14 +352,15 @@ def _validate_child_document(
     row: ExecutionRow,
     registered_marker: str | None,
     errors: list[str],
-) -> str | None:
+) -> tuple[str | None, str | None]:
     subject = f"child {row.child_id}"
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         errors.append(f"{subject} cannot read {path}: {exc}")
-        return None
+        return None, None
     visible = _visible_contract(text)
+    time_assessment_mode = preflight_time_assessment_mode(visible)
     actual_overall = _overall_status(visible, subject, errors)
     _strict_preflight(
         visible,
@@ -404,7 +409,7 @@ def _validate_child_document(
                 f"{subject} Draft requires every atomic milestone and Close row "
                 "Not Started/Pending/Pending; changed: " + ", ".join(executed)
             )
-        return None
+        return None, time_assessment_mode
 
     if row.state == "Closed":
         close_rows = [item for item in states if item.name == "Close"]
@@ -420,14 +425,14 @@ def _validate_child_document(
                 f"{subject} Closed Current milestone must be Close Done; "
                 f"found {row.current_milestone}"
             )
-        return None
+        return None, time_assessment_mode
 
     if len(currents) != 1:
         errors.append(
             f"{subject} {row.state} requires exactly one current milestone; "
             f"found {len(currents)}"
         )
-        return None
+        return None, time_assessment_mode
     if currents[0].status.casefold() == "blocked":
         child_sections = _milestone_contract_sections(visible)
         body_groups = child_sections.get(currents[0].name, [])
@@ -445,7 +450,7 @@ def _validate_child_document(
             f"{subject} Current milestone disagrees with atomic goal: "
             f"{row.current_milestone} != {expected}"
         )
-    return currents[0].status.casefold()
+    return currents[0].status.casefold(), time_assessment_mode
 
 
 def _parse_preflight_rows(raw_rows: list[list[str]], errors: list[str]) -> list[PreflightRow]:
@@ -1050,13 +1055,16 @@ def main() -> int:
         errors.append(
             "sequence parent and child goals must not share a planning preflight marker"
         )
+    parent_time_mode = preflight_time_assessment_mode(visible)
     child_current_statuses: dict[str, str | None] = {}
+    child_time_modes: dict[str, str | None] = {}
     resolved_parent = path.resolve()
     child_targets: dict[Path, str] = {}
     for row in execution_rows:
         normalized_state = row.state.casefold()
         if normalized_state not in CHILD_STATES:
             child_current_statuses[row.child_id] = None
+            child_time_modes[row.child_id] = None
             continue
 
         source_path: Path | None = None
@@ -1111,7 +1119,10 @@ def main() -> int:
                 child_targets[source_path] = row.child_id
 
         if source_path is not None:
-            child_current_statuses[row.child_id] = _validate_child_document(
+            (
+                child_current_statuses[row.child_id],
+                child_time_modes[row.child_id],
+            ) = _validate_child_document(
                 source_path,
                 row,
                 markers.get(row.child_id),
@@ -1119,6 +1130,18 @@ def main() -> int:
             )
         else:
             child_current_statuses[row.child_id] = None
+            child_time_modes[row.child_id] = None
+
+    children_without_ranges = sorted(
+        f"{child_id} ({mode or 'missing or invalid'})"
+        for child_id, mode in child_time_modes.items()
+        if mode != "rough range"
+    )
+    if parent_time_mode == "rough range" and children_without_ranges:
+        errors.append(
+            "sequence parent Rough range requires Rough range from every child; "
+            "incompatible: " + ", ".join(children_without_ranges)
+        )
 
     _validate_parent_mapping(
         visible,

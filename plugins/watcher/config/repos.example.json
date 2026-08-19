@@ -3,6 +3,7 @@
     {
       "name": "my-codex",
       "path": "../../..",
+      "profile": "current-authority",
       "docs": [
         "README.md",
         "AGENTS.md",
@@ -16,7 +17,7 @@
         "plugins/workflow/.codex-plugin/plugin.json",
         "plugins/workflow/skills"
       ],
-      "source_of_truth": [
+      "authority_paths": [
         "README.md",
         "AGENTS.md",
         "CONTEXT.md",
@@ -25,6 +26,11 @@
         "plugins/workflow/README.md"
       ],
       "watch_terms": [],
+      "link_validation": {
+        "mode": "markdown-relative"
+      },
+      "finding_policy": "actionable",
+      "check_change_alignment": true,
       "commit_threshold": 5
     }
   ]

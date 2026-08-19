@@ -35,6 +35,18 @@ Checkpoint component: `components/checkpoint.md`
 
 Planning preflight component: `components/planning-preflight.md`
 
+## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Rough range
+
+Rough elapsed-time estimate: 1-2 hours
+
+Basis or blocker: 2026-07-20 range assumes serial execution of one bounded local implementation milestone, targeted validation, and no external waits.
+
+Critical-path time-cost distribution: Not required: rough range recorded.
+
 ## Loop Blueprint / Harness
 
 Execution mode: Manual staged execution

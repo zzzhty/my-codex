@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from .codex_hook_adapter import load_runtime_metadata
 from .runtime_paths import report_state_path, reports_dir, safe_slug, utc_now
 
 
@@ -314,7 +315,25 @@ def render_table(headers: list[str], rows: list[list[Any]]) -> list[str]:
     return lines
 
 
-def usage_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def skill_logical_groups(metadata: dict[str, Any]) -> dict[str, str]:
+    skills = metadata.get("skills")
+    if not isinstance(skills, dict):
+        return {}
+    groups: dict[str, str] = {}
+    for name, values in skills.items():
+        if not isinstance(name, str) or not isinstance(values, dict):
+            continue
+        logical_group = values.get("logical_group")
+        if isinstance(logical_group, str) and logical_group:
+            groups[name] = logical_group
+    return groups
+
+
+def usage_rows(
+    events: list[dict[str, Any]],
+    logical_groups: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    logical_groups = logical_groups or {}
     summaries = turn_summary_events(events)
     stats: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
@@ -359,6 +378,7 @@ def usage_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "skill": name,
                 "role": values["role"] or "",
+                "logical_group": logical_groups.get(name, ""),
                 "effective_turns": effective_count,
                 "primary_turns": primary_count,
                 "supporting_turns": supporting_count,
@@ -366,6 +386,63 @@ def usage_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         )
     return sorted(rows, key=lambda row: (-row["effective_turns"], row["skill"]))
+
+
+def logical_group_rows(
+    events: list[dict[str, Any]],
+    logical_groups: dict[str, str],
+    *,
+    skill: str | None,
+) -> list[dict[str, Any]]:
+    observed = {
+        name
+        for event in turn_summary_events(events)
+        for name in effective_skill_names(event)
+    }
+    selected = {
+        name: group
+        for name, group in logical_groups.items()
+        if skill is None or name == skill or name in observed
+    }
+    if not selected:
+        return []
+
+    stats: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "skills": set(),
+            "effective_turns": set(),
+            "primary_turns": set(),
+            "supporting_turns": set(),
+        }
+    )
+    for name, group in selected.items():
+        stats[group]["skills"].add(name)
+
+    for event in turn_summary_events(events):
+        key = turn_key(event)
+        primary = primary_skill_name(event)
+        primary_group = selected.get(primary or "")
+        if primary_group:
+            stats[primary_group]["primary_turns"].add(key)
+            stats[primary_group]["effective_turns"].add(key)
+        for supporting in supporting_skill_names(event):
+            supporting_group = selected.get(supporting)
+            if not supporting_group:
+                continue
+            stats[supporting_group]["supporting_turns"].add(key)
+            stats[supporting_group]["effective_turns"].add(key)
+
+    rows = [
+        {
+            "logical_group": group,
+            "effective_turns": len(values["effective_turns"]),
+            "primary_turns": len(values["primary_turns"]),
+            "supporting_turns": len(values["supporting_turns"]),
+            "skills": sorted(values["skills"]),
+        }
+        for group, values in stats.items()
+    ]
+    return sorted(rows, key=lambda row: (-row["effective_turns"], row["logical_group"]))
 
 
 def render_samples(events: list[dict[str, Any]], key: str, *, limit: int = 5) -> list[str]:
@@ -412,7 +489,9 @@ def build_report(
     skill: str | None,
     since_raw: str | None,
     log_file: Path,
+    logical_groups: dict[str, str] | None = None,
 ) -> str:
+    logical_groups = logical_groups or {}
     raw_outcome_counts = count_values(events, "outcome")
     task_outcome_counts = count_task_outcomes(events)
     failure_counts = count_values(events, "failure_type")
@@ -420,7 +499,28 @@ def build_report(
     tool_failure_counts = count_tool_failure_observations(events)
     failed_events = [event for event in events if event.get("outcome") == "failure" or event.get("failure_type")]
     feedback_events = [event for event in events if event.get("user_feedback")]
-    rows = usage_rows(events)
+    rows = usage_rows(events, logical_groups)
+    group_rows = logical_group_rows(events, logical_groups, skill=skill)
+
+    group_section: list[str] = []
+    if group_rows:
+        group_section = [
+            "## Usage By Logical Group",
+            *render_table(
+                ["logical group", "effective turns", "primary turns", "supporting turns", "grouped skills"],
+                [
+                    [
+                        row["logical_group"],
+                        row["effective_turns"],
+                        row["primary_turns"],
+                        row["supporting_turns"],
+                        ", ".join(f"`{name}`" for name in row["skills"]),
+                    ]
+                    for row in group_rows
+                ],
+            ),
+            "",
+        ]
 
     lines = [
         "# Watcher Skill Report",
@@ -431,13 +531,23 @@ def build_report(
         f"- Event count: {len(events)}",
         f"- Turn summaries: {len(turn_summary_events(events))}",
         "",
+        *group_section,
         "## Usage By Effective Skill",
         *render_table(
-            ["skill", "role", "effective turns", "primary turns", "supporting turns", "class"],
+            [
+                "skill",
+                "role",
+                "logical group",
+                "effective turns",
+                "primary turns",
+                "supporting turns",
+                "class",
+            ],
             [
                 [
                     f"`{row['skill']}`",
                     row["role"] or "",
+                    row["logical_group"],
                     row["effective_turns"],
                     row["primary_turns"],
                     row["supporting_turns"],
@@ -626,6 +736,9 @@ def generate_report(query: ReportQuery, output_policy: ReportOutputPolicy) -> Re
         skill=query.skill,
         since_raw=report_since_display(query, since),
         log_file=query.log_file,
+        logical_groups=skill_logical_groups(
+            load_runtime_metadata(query.state_dir, allow_discovery=False)
+        ),
     )
 
     output = output_policy.output

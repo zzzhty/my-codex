@@ -148,9 +148,10 @@
         position: static;
       }
     }
+    {{walkthrough_styles}}
   </style>
 </head>
-<body>
+<body class="{{document_class}}">
   <header>
     <h1>{{heading}}</h1>
     {{subtitle}}
@@ -160,6 +161,7 @@
       {{nav}}
     </nav>
     <div class="content">
+      {{progress}}
       {{meta}}
       {{visuals}}
       {{sections}}
@@ -167,5 +169,6 @@
     </div>
   </main>
   <footer>{{footer}}</footer>
+  {{script}}
 </body>
 </html>

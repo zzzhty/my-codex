@@ -32,7 +32,7 @@ class DocAlignmentDisclosureTests(unittest.TestCase):
         reference = REFERENCE.read_text(encoding="utf-8")
 
         self.assertIn("references/alignment-reference.md", skill)
-        for trigger in ("script or entry-point", "documentation tree", "planning/TODO", "Codex skill", "validation"):
+        for trigger in ("script or entry-point", "documentation tree", "planning/TODO", "agent skill", "validation"):
             self.assertIn(trigger, skill)
         for moved_heading in (
             "## Script And Entry-Point Naming",

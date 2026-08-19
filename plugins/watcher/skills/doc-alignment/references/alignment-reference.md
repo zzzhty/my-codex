@@ -14,7 +14,7 @@ Keep directory naming consistent:
 - cleanup helpers: `clean_<target>`
 - sync helpers: `sync_<target>`
 
-Avoid names that encode old product semantics, local machine details, or implementation accidents. After renaming, update wrappers, package commands, `.devcontainer`, CI/workflow config, `.github`, `.codex`, README/runbook examples, and child runner calls. Preserve executable bits and validate syntax with the owning shell/runtime.
+Avoid names that encode old product semantics, local machine details, or implementation accidents. After renaming, update wrappers, package commands, `.devcontainer`, CI/workflow config, `.github`, the resolved repository skill root, README/runbook examples, and child runner calls. Preserve executable bits and validate syntax with the owning shell/runtime.
 
 Completion criterion: every executable path and caller uses the chosen name, the old name scan is clean outside declared history/compatibility, and the owning parser or runtime accepts the renamed entry point.
 
@@ -47,7 +47,7 @@ Completion criterion: active indexes contain only live work, closed/replaced evi
 
 ## Skill Alignment
 
-For Codex skills:
+For agent skills:
 
 1. Use the skill-creation/update workflow as companion truth for frontmatter, resource layout, `agents/openai.yaml`, and validation.
 2. Keep `SKILL.md` frontmatter to `name` and `description`.

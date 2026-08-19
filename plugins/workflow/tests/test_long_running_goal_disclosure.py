@@ -13,6 +13,8 @@ REFERENCES = {
     "cutover": SKILL_DIR / "references" / "production-cutover.md",
     "execute": SKILL_DIR / "references" / "execute-and-close.md",
 }
+PREFLIGHT = SKILL_DIR / "components" / "planning-preflight.md"
+ATOMIC_TEMPLATE = SKILL_DIR / "templates" / "long_running_goal_template.md"
 SEQUENCE_TEMPLATE = SKILL_DIR / "templates" / "long_running_goal_sequence_template.md"
 WATCHER = SKILL_DIR.parents[1] / ".codex-plugin" / "skill-watcher.json"
 
@@ -26,12 +28,12 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
             "## Goal File And Template",
             "## Components",
             "## Pre-Approval And YOLO Boundary",
-            "## Codex Goal Tool Boundary",
+            "## Harness Goal Tool Boundary",
             "## Quality Bar",
         ):
             self.assertIn(heading, text)
         self.assertIn("only at a runtime hard stop", text)
-        self.assertIn("Use Codex goal tools only when the user explicitly asks", text)
+        self.assertIn("Use the harness's native goal tools only when the user explicitly asks", text)
         self.assertIn("do not mark the goal `Ready` while placeholders remain", text)
         self.assertIn("After creating, upgrading, or evolving a goal, update only the current docs", text)
         self.assertLessEqual(len(text.splitlines()), 125)
@@ -81,7 +83,7 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
             skill,
         )
         self.assertIn("Long-Running Goal Sequence", reference)
-        self.assertIn("one active Codex system goal", reference)
+        self.assertIn("one active harness system goal", reference)
         self.assertIn("Completion criterion:", reference)
         self.assertIn("Done / grill-with-docs", reference)
         self.assertIn("never returns to `Ready` for a per-child authorization", reference)
@@ -109,6 +111,87 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
         }
         self.assertIn("long-running goal sequence", aliases)
         self.assertIn("umbrella long-running goal", aliases)
+
+    def test_task_temporary_cache_policy_is_explicit_cross_platform_and_bounded(self) -> None:
+        skill = SKILL.read_text(encoding="utf-8")
+        preflight = PREFLIGHT.read_text(encoding="utf-8")
+        execute = REFERENCES["execute"].read_text(encoding="utf-8")
+        sequence = REFERENCES["sequence"].read_text(encoding="utf-8")
+        atomic_template = ATOMIC_TEMPLATE.read_text(encoding="utf-8")
+        sequence_template = SEQUENCE_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertIn("Task temporary cache housekeeping is separate", skill)
+        self.assertIn("Close housekeeping policy", preflight)
+        self.assertIn("host platform or runtime's standard temporary-directory resolver", preflight)
+        self.assertIn("Skipping `grill-with-docs` does not skip this choice", preflight)
+        self.assertIn("not unconditional recursive deletion", preflight)
+        self.assertIn("If `watcher:housekeeping` is unavailable", execute)
+        self.assertIn("Before any command may write task-temporary data", execute)
+        self.assertIn("bind every task-temporary producer", execute)
+        self.assertIn("missing legacy field", execute)
+        self.assertIn("never inherits, widens, or overrides a child's policy", sequence)
+
+        for template in (atomic_template, sequence_template):
+            self.assertIn("## Task Temporary Cache / Housekeeping", template)
+            self.assertIn("Close housekeeping policy", template)
+            self.assertIn("Housekeeping decision source", template)
+            self.assertIn("Task temporary cache root strategy", template)
+            self.assertIn("Recorded task temporary cache roots", template)
+            self.assertIn("Housekeeping boundary", template)
+            self.assertIn("watcher:housekeeping", template)
+
+        self.assertIn("every child records and honors its own policy", sequence_template)
+        self.assertNotIn("| Housekeeping |", sequence_template)
+
+    def test_planning_preflight_inherits_grilling_frontier_rounds(self) -> None:
+        preflight = PREFLIGHT.read_text(encoding="utf-8")
+
+        self.assertIn("rounds/frontier cadence owned by `grilling`", preflight)
+        self.assertIn("whole currently unblocked frontier", preflight)
+        self.assertIn("number every question", preflight)
+        self.assertIn("recommended answer for each", preflight)
+        self.assertIn("Wait for the user's batch answers, then recompute the frontier", preflight)
+        self.assertIn("depend on unresolved answers belong to a later round", preflight)
+        self.assertNotIn("Ask one unresolved design question at a time", preflight)
+
+    def test_preflight_time_assessment_is_timeboxed_and_disclosed(self) -> None:
+        skill = SKILL.read_text(encoding="utf-8")
+        preflight = PREFLIGHT.read_text(encoding="utf-8")
+        create = REFERENCES["create"].read_text(encoding="utf-8")
+        sequence = REFERENCES["sequence"].read_text(encoding="utf-8")
+        execute = REFERENCES["execute"].read_text(encoding="utf-8")
+        templates = (
+            ATOMIC_TEMPLATE.read_text(encoding="utf-8"),
+            SEQUENCE_TEMPLATE.read_text(encoding="utf-8"),
+        )
+
+        self.assertIn("timeboxed execution-time assessment", skill)
+        self.assertIn("rough remaining elapsed-time range", skill)
+        self.assertIn("preflight time assessment satisfying", skill)
+        self.assertIn("## Preflight Time Assessment", preflight)
+        self.assertIn("Timebox the assessment", preflight)
+        self.assertIn("Not quickly estimable", preflight)
+        self.assertIn("Completion criterion:", preflight)
+        self.assertIn("reported to the user", preflight)
+        self.assertIn("external-wait and serial/parallel assumptions", preflight)
+        self.assertIn("time assessment satisfying", create)
+        self.assertIn("evidence rebaseline without rerunning the grill", execute)
+        self.assertIn("when resuming after an interruption or milestone transition", execute)
+        self.assertIn("range overrun is a timing rebaseline and non-stop", execute)
+        self.assertIn("never in either canonical register", sequence)
+        self.assertIn("only when every child has one", sequence)
+
+        for template in templates:
+            self.assertIn("## Preflight Time Assessment", template)
+            self.assertIn("Assessment target", template)
+            self.assertIn("Assessment mode", template)
+            self.assertIn("Rough elapsed-time estimate", template)
+            self.assertIn("Basis or blocker", template)
+            self.assertIn("Critical-path time-cost distribution", template)
+
+        sequence_template = templates[1]
+        self.assertIn("never in either canonical register", sequence_template)
+        self.assertNotIn("| Timing |", sequence_template)
 
 
 if __name__ == "__main__":

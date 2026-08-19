@@ -6,7 +6,11 @@ Use the matching sections after `../SKILL.md` routes an execute, resume, continu
 
 Follow the goal file rather than improvising. After context transition, interruption, or compaction, re-read the newest user request and active goal document before resuming.
 
-Before the first implementation milestone, confirm the goal file records a completed planning-preflight marker from `../components/planning-preflight.md` or an explicit user-skip marker. If not, run the preflight component before mutating implementation files.
+Before the first implementation milestone, confirm the goal file satisfies the marker and time-assessment completion criteria in `../components/planning-preflight.md`. If the marker is absent, run the component before mutating implementation files. If only an active legacy goal's time assessment is absent, add it as an evidence rebaseline without rerunning the grill or replacing the marker.
+
+At initial execution, or when resuming after an interruption or milestone transition, apply only the component's bounded timing inspection and report a refreshed assessment. Retain `Ready-to-Closed` before work advances; afterward use `current-milestone-to-Closed`. Reaffirm or update the dated evidence and execution assumptions without rerunning the grill or replacing its marker. A range overrun is a timing rebaseline and non-stop, not a runtime hard stop; continue unless an independent hard stop applies.
+
+For an `Enabled` or `Disabled` policy, apply this rule: Before any command may write task-temporary data, resolve the platform/runtime temporary root once, create the recorded goal/sequence-owned child namespace beneath it, replace a deferred roots field with the fully resolved absolute owner path, and bind every task-temporary producer in this goal to that recorded namespace. Reuse the recorded value for the rest of execution and at Close; if no producer ever creates a root, record the runtime outcome `None created` instead. A sequence parent binds only its orchestration/integration producers and never routes child temporary data through the parent root. A `Not applicable` policy creates no root.
 
 For each milestone:
 
@@ -36,11 +40,17 @@ When all milestones are done:
 1. Mark the Close row `In Progress` and keep the overall goal `In Progress` while preparing close evidence.
 2. Fill close execution evidence before removing or archiving the active goal.
 3. Sync durable outcomes into current docs, indexes, validation logs, and status/boundary registers.
-4. Follow local archive conventions; do not invent dated archive trees or checked-in closed copies just to preserve history.
-5. Remove closed goals from active navigation, or archive/delete the goal file according to local convention.
-6. Validate index topology with `check_todo_index.py --mode closed --archived-goal <archive-path> <old-active-path> <index>...` after archiving, or `--mode absent <old-active-path> <index>...` after deletion without an archive.
-7. Run `git diff --check -- <changed-paths>` and `check_md_links.py` when Markdown links changed.
-8. Record close checkpoint evidence. If version control is active and expected, use the local close commit/revision format, such as `<goal_slug> close: <summary>`.
-9. Only after every close gate and evidence check passes, set the Close row to `Done/Passed/Done` and the overall goal status to `Closed`.
+4. Apply the recorded task-temporary-cache outcome without re-resolving the platform temp root:
+   - `None created` or `Not applicable`: record explicitly that no roots were created; do not invoke cleanup or invent size metrics.
+   - concrete roots plus `Enabled`: confirm durable evidence is outside the recorded roots, then invoke `watcher:housekeeping` to inventory and clean only confirmed owner-specific disposable candidates. Do not replace it with raw recursive deletion, escalate privileges, cross symlink/junction/reparse-point boundaries, or delete dependencies, runtime state, logs, reports, unknown producers, or locked content. Record the policy, every exact root, the watcher action, and removed, preserved, failed, and residual sizes; safety-preserved residuals do not imply failure unless zero residue was separately confirmed in preflight.
+   - concrete roots plus `Disabled`: do not clean; record the policy, every retained exact root, the retained/preserved action, and removed, preserved, failed, and residual sizes.
+   - missing legacy field/section: treat cleanup as unauthorized, preserve any discovered roots, and record the legacy disposition without rerunning the full grill.
+   If `watcher:housekeeping` is unavailable for an enabled policy, keep Close and the overall goal `In Progress`, or use `Blocked` only when the normal runtime hard-stop contract is met. Report the missing capability and do not fall back to `rm -rf`, PowerShell recursive deletion, or another raw delete command. Continue as `Disabled` only after the user explicitly evolves the recorded preflight policy.
+5. Follow local archive conventions; do not invent dated archive trees or checked-in closed copies just to preserve history.
+6. Remove closed goals from active navigation, or archive/delete the goal file according to local convention.
+7. Validate index topology with `check_todo_index.py --mode closed --archived-goal <archive-path> <old-active-path> <index>...` after archiving, or `--mode absent <old-active-path> <index>...` after deletion without an archive.
+8. Run `git diff --check -- <changed-paths>` and `check_md_links.py` when Markdown links changed.
+9. Record close checkpoint evidence. If version control is active and expected, use the local close commit/revision format, such as `<goal_slug> close: <summary>`.
+10. Only after every close gate and evidence check passes, set the Close row to `Done/Passed/Done` and the overall goal status to `Closed`.
 
-Completion criterion: every milestone is `Done`, close evidence and validation are recorded, durable current docs are synchronized, active navigation no longer points to closed work, and archive/delete handling follows local convention.
+Completion criterion: every milestone is `Done`, close evidence and validation are recorded, the explicit or legacy task-temporary-cache disposition is recorded, durable current docs are synchronized, active navigation no longer points to closed work, and archive/delete handling follows local convention.

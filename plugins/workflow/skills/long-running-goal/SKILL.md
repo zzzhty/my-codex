@@ -36,13 +36,14 @@ If preserving a compact local goal style, the copied or handwritten goal must st
 5. Frozen YOLO non-stop boundary and runtime hard-stop boundary.
 6. Failure breakpoints and rollback/disable path.
 7. Current-doc/TODO sync requirements.
-8. Close/archive procedure and reusable continuation prompt.
+8. A preflight time assessment satisfying `components/planning-preflight.md`.
+9. Close/archive procedure, explicit task-temporary-cache housekeeping policy, and reusable continuation prompt.
 
 ## Components
 
 Use bundled components as internal workflow steps, not as standalone user-facing skills:
 
-1. `components/planning-preflight.md`: before goal creation/conversion or first implementation without a completed marker, run `grill-with-docs`; skip only by explicit user instruction and record the skip marker.
+1. `components/planning-preflight.md`: before goal creation/conversion or first implementation without a completed marker, run `grill-with-docs`, record its timeboxed execution-time assessment, obtain the user's explicit task-temporary-cache housekeeping choice, and satisfy every component completion criterion; skipping the grill does not skip timing or imply cleanup consent.
 2. `components/checkpoint.md`: before any milestone or close step is `Done`, record revision evidence without default empty commits.
 
 ## Branch Routing
@@ -52,17 +53,17 @@ Use bundled components as internal workflow steps, not as standalone user-facing
 - For a production cutover that compares a new implementation with an authoritative old path, read `references/production-cutover.md` before freezing modes or claiming speedup.
 - Before you execute, resume, continue, advance, evolve, or close a goal, read `references/execute-and-close.md`; follow the goal file and finish its matching execution or close criterion.
 
-Load every reference whose condition matches a combined task. These pointers disclose branch detail only; the inline supersession, `Ready`, pre-approval/YOLO, runtime hard-stop, and Codex goal-tool contracts always apply.
+Load every reference whose condition matches a combined task. These pointers disclose branch detail only; the inline supersession, `Ready`, pre-approval/YOLO, runtime hard-stop, and harness goal-tool contracts always apply.
 
 After creating, upgrading, or evolving a goal, update only the current docs that need concise pointers; keep detailed milestone plans in the goal file.
 
 ## Pre-Approval And YOLO Boundary
 
-Long-running goals preserve momentum across milestones. A milestone boundary, review gate, checkpoint, routine uncertainty, rebuild, refresh, reinstall, validation command, docs sync, generated-artifact cleanup, or other planned non-destructive local operation is not a permission prompt.
+Long-running goals preserve momentum across milestones. A milestone boundary, review gate, checkpoint, routine uncertainty, rebuild, refresh, reinstall, validation command, docs sync, project-owned generated-artifact cleanup, or other planned non-destructive local operation is not a permission prompt. Task temporary cache housekeeping is separate: never infer it from YOLO scope, a grill skip, or generic cleanup wording; use only the explicit preflight choice recorded in the goal.
 
 Before marking a goal `Ready`, freeze:
 
-1. Pre-approved YOLO local operations: non-destructive local actions needed by the plan, including code/docs/source-skill edits, rebuilds, refreshes, reinstalls, workspace dependency restores, tests, lint, formatting, link checks, plugin/cache refreshes, and generated-artifact cleanup.
+1. Pre-approved YOLO local operations: non-destructive local actions needed by the plan, including code/docs/source-skill edits, rebuilds, refreshes, reinstalls, workspace dependency restores, tests, lint, formatting, link checks, plugin/cache refreshes, and project-owned generated-artifact cleanup outside separately governed task temporary cache roots.
 2. Pre-approved external reads/writes: every connector, API, issue, PR, CI, automation, hook, or messaging surface that may be read or written. Foreseeable unapproved external writes keep the goal `Draft`.
 3. Runtime hard stops: only the conditions that may stop execution after the goal is `Ready`.
 
@@ -82,11 +83,11 @@ During execution, use YOLO mode inside the frozen scope:
 
 Runtime hard stops are true technical stop conditions, not status checkpoints. If the plan says report, record evidence, rebuild, refresh, validate, or sync docs, do that and continue unless a hard stop applies.
 
-## Codex Goal Tool Boundary
+## Harness Goal Tool Boundary
 
-Use Codex goal tools only when the user explicitly asks to create, execute, resume, or close a long-running goal in the active conversation. A planning document alone is not an active Codex goal.
+Use the harness's native goal tools only when the user explicitly asks to create, execute, resume, or close a long-running goal in the active conversation. A planning document alone is not an active harness goal.
 
-When creating an active Codex goal, set the objective to the project outcome, set a token budget only if requested, avoid nested active goals, and do not mark it `complete` until no required work remains. Do not mark it `blocked` unless the same blocker has repeated for the required threshold and no meaningful progress is possible.
+When creating an active harness goal, set the objective to the project outcome, set a token budget only if requested, avoid nested active goals, and do not mark it `complete` until no required work remains. Do not mark it `blocked` unless the same blocker has repeated for the required threshold and no meaningful progress is possible.
 
 During ordinary milestone execution, update the goal document and project evidence. Do not use goal completion as a substitute for milestone status, gates, commits, validation logs, or final reporting.
 
@@ -112,8 +113,9 @@ A useful long-running goal must answer:
 3. What is explicitly out of scope?
 4. What milestones must happen in order?
 5. What commands prove each milestone?
-6. What counts as blocked?
-7. Which actions are frozen as YOLO non-stops, and which runtime hard stops actually require the user?
-8. How does the work close and leave active docs clean?
-9. If Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, runtime hard stops, and durable learning?
-10. If a sequence, are every child boundary and required grill preflight frozen, one child current, handoffs consistent, and authorization no broader than the children?
+6. What is the rough remaining elapsed-time range, or which critical-path costs dominate when it cannot be estimated quickly?
+7. What counts as blocked?
+8. Which actions are frozen as YOLO non-stops, and which runtime hard stops actually require the user?
+9. How does the work close, leave active docs clean, and honor the user's explicit task-temporary-cache housekeeping choice?
+10. If Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, runtime hard stops, and durable learning?
+11. If a sequence, are every child boundary and required grill preflight frozen, one child current, handoffs consistent, and authorization no broader than the children?

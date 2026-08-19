@@ -35,6 +35,20 @@ Checkpoint component: `components/checkpoint.md`
 
 Planning preflight component: `components/planning-preflight.md`
 
+## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Distribution only
+
+Rough elapsed-time estimate: Not quickly estimable
+
+Basis or blocker: 2026-07-20 no representative validation elapsed-time evidence exists for the serial post-child-a integration surface, and external CI wait is unknown.
+
+Critical-path time-cost distribution:
+- child-b implementation — Material — The implementation scope is bounded but has no observed execution duration.
+- child-b validation — Unknown — Integration-dependent checks have no representative timing evidence.
+
 ## Loop Blueprint / Harness
 
 Execution mode: Manual staged execution

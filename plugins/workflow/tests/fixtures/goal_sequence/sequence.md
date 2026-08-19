@@ -14,6 +14,21 @@ Promotion policy: automatic-after-close
 
 Open decisions: None.
 
+## Preflight Time Assessment
+
+Assessment target: Ready-to-Closed
+
+Assessment mode: Distribution only
+
+Rough elapsed-time estimate: Not quickly estimable
+
+Basis or blocker: 2026-07-20 no representative child-b validation or integration elapsed-time evidence exists for a defensible serial range, and external CI wait is unknown.
+
+Critical-path time-cost distribution:
+- child-a assessment — Material — The bounded local implementation has a child-owned rough range.
+- child-b validation — Unknown — The validation path lacks representative elapsed-time evidence.
+- parent integration and Close — Minor — The parent owns only final composed checks and archive work.
+
 ## Child Preflight Register
 
 | Child ID | Marker | Status | Source |
