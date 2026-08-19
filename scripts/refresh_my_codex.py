@@ -21,6 +21,7 @@ MARKETPLACE_FILE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 INSTALL_MANIFEST_FILE = REPO_ROOT / ".agents" / "plugins" / "install-manifest.json"
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
+MACOS_APPLICATION_DIRS = (Path("/Applications"), Path.home() / "Applications")
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -43,6 +44,19 @@ def latest_files(root: Path, pattern: str) -> list[Path]:
     if not root.is_dir():
         return []
     return sorted(root.rglob(pattern), key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def macos_app_codex_candidates() -> list[str]:
+    if sys.platform != "darwin":
+        return []
+    candidates = [
+        candidate
+        for root in MACOS_APPLICATION_DIRS
+        if root.is_dir()
+        for candidate in root.glob("*.app/Contents/Resources/codex")
+        if candidate.is_file()
+    ]
+    return [str(path) for path in sorted(candidates, key=lambda path: path.stat().st_mtime, reverse=True)]
 
 
 def codex_extension_platform_dir() -> str | None:
@@ -132,6 +146,7 @@ def codex_fallback_candidates(codex_home: Path) -> list[str]:
         desktop_bin_root = expand_path(local_app_data) / "OpenAI" / "Codex" / "bin"
         candidates.extend(str(path) for path in latest_files(desktop_bin_root, executable_name))
 
+    candidates.extend(macos_app_codex_candidates())
     candidates.extend(codex_extension_candidates(user_home))
     return list(dict.fromkeys(candidates))
 
