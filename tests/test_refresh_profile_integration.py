@@ -42,7 +42,7 @@ class ProfileFixture:
             write_skill(self.repo, plugin, skill)
             write_json(
                 self.repo / "plugins" / plugin / ".codex-plugin" / "plugin.json",
-                {"name": plugin, "version": "1.0.0"},
+                {"name": plugin, "version": "1.0.0", "skills": "./skills/"},
             )
         write_json(
             self.repo / ".agents" / "plugins" / "marketplace.json",
@@ -60,7 +60,8 @@ class ProfileFixture:
         write_json(
             self.repo / ".agents" / "plugins" / "install-manifest.json",
             {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
+                "discoveryProfile": "plugin",
                 "marketplace": "test",
                 "plugins": [
                     {"name": plugin, "install": True, "check": True}
@@ -131,6 +132,21 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             mock.patch.object(refresh, "read_codex_plugin_rows", side_effect=self.fixture.rows),
             mock.patch.object(refresh, "run", side_effect=self.fixture.run),
         )
+
+    def test_install_manifest_is_explicitly_owned_by_plugin_profile(self) -> None:
+        manifest = self.fixture.repo / ".agents" / "plugins" / "install-manifest.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload.pop("discoveryProfile")
+        write_json(manifest, payload)
+
+        with self.assertRaisesRegex(SystemExit, "discoveryProfile must be 'plugin'"):
+            refresh.load_install_manifest(manifest)
+
+        payload["schemaVersion"] = 1
+        payload["discoveryProfile"] = "plugin"
+        write_json(manifest, payload)
+        with self.assertRaisesRegex(SystemExit, "schemaVersion must be 2"):
+            refresh.load_install_manifest(manifest)
 
     def test_round_trip_preserves_exactly_one_active_discovery_profile(self) -> None:
         self.fixture.enabled.update({"alpha", "beta"})

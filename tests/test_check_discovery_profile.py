@@ -16,6 +16,7 @@ from check_skill_discovery import (  # noqa: E402
     PluginListRow,
     codex_plugin_rows,
     plugin_installation_issues,
+    plugin_package_issues,
     plugin_profile_issues,
     universal_profile_issues,
 )
@@ -134,7 +135,7 @@ class PluginInstallationClosureTests(unittest.TestCase):
             source_manifest = source.parents[1] / ".codex-plugin" / "plugin.json"
             source_manifest.parent.mkdir(parents=True, exist_ok=True)
             source_manifest.write_text(
-                '{"name": "alpha", "version": "2.0.0"}\n',
+                '{"name": "alpha", "version": "2.0.0", "skills": "./skills/"}\n',
                 encoding="utf-8",
             )
             catalog = load_repo_skill_catalog(repo)
@@ -204,6 +205,7 @@ class PluginInstallationClosureTests(unittest.TestCase):
                         {
                             "name": overrides.get("source_name", "alpha"),
                             "version": "2.0.0",
+                            "skills": "./skills/",
                         }
                     )
                     + "\n",
@@ -249,6 +251,94 @@ class PluginInstallationClosureTests(unittest.TestCase):
                 )
 
             self.assertIn(expected, "\n".join(issues))
+
+    def test_source_package_contract_locks_manifest_and_loaded_skill_tree(self) -> None:
+        cases = (
+            (
+                "manifest-skills",
+                "manifest",
+                "source manifest skills must be exactly './skills/'",
+            ),
+            ("extra-directory", "extra", "outside the loaded catalog"),
+            ("identity-drift", "identity", "callable identity changed after catalog load"),
+        )
+        for label, mutation, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                repo = root / "repo"
+                source = write_skill(repo, "alpha", "one")
+                source_root = source.parents[1]
+                manifest = source_root / ".codex-plugin" / "plugin.json"
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                manifest.write_text(
+                    '{"name": "alpha", "version": "2.0.0", "skills": "./skills/"}\n',
+                    encoding="utf-8",
+                )
+                catalog = load_repo_skill_catalog(repo)
+                if mutation == "manifest":
+                    manifest.write_text(
+                        '{"name": "alpha", "version": "2.0.0", "skills": "./other/"}\n',
+                        encoding="utf-8",
+                    )
+                elif mutation == "extra":
+                    write_skill(repo, "alpha", "late-added")
+                else:
+                    source.joinpath("SKILL.md").write_text(
+                        "---\nname: changed\ndescription: fixture\n---\n",
+                        encoding="utf-8",
+                    )
+
+                issues = plugin_package_issues(
+                    catalog,
+                    plugin_sources={"alpha": source_root},
+                )
+
+            self.assertIn(expected, "\n".join(issues))
+
+    def test_plugin_installation_closure_rejects_universal_links_with_valid_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            source = write_skill(repo, "alpha", "one")
+            source_root = source.parents[1]
+            source_manifest = source_root / ".codex-plugin" / "plugin.json"
+            source_manifest.parent.mkdir(parents=True, exist_ok=True)
+            source_manifest.write_text(
+                '{"name": "alpha", "version": "2.0.0", "skills": "./skills/"}\n',
+                encoding="utf-8",
+            )
+            catalog = load_repo_skill_catalog(repo)
+            target = root / "agents" / "skills"
+            sync_layer(catalog, target_root=target, dry_run=False, prune=True)
+            version_root = root / "codex" / "plugins" / "cache" / "test" / "alpha" / "2.0.0"
+            cache_manifest = version_root / ".codex-plugin" / "plugin.json"
+            cache_manifest.parent.mkdir(parents=True, exist_ok=True)
+            cache_manifest.write_text(
+                '{"name": "alpha", "version": "2.0.0"}\n',
+                encoding="utf-8",
+            )
+            cached_skill = version_root / "skills" / "one"
+            cached_skill.mkdir(parents=True)
+            cached_skill.joinpath("SKILL.md").write_text(
+                "---\nname: one\ndescription: cached fixture\n---\n",
+                encoding="utf-8",
+            )
+
+            issues = plugin_installation_issues(
+                catalog,
+                marketplace_name="test",
+                target_root=target,
+                codex_home=root / "codex",
+                rows={
+                    ("test", "alpha"): PluginListRow(
+                        "installed, enabled",
+                        "2.0.0",
+                    )
+                },
+                plugin_sources={"alpha": source_root},
+            )
+
+        self.assertIn("universal callable identity remains active", "\n".join(issues))
 
 
 class CheckDiscoveryProfileCliTests(unittest.TestCase):

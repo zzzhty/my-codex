@@ -63,6 +63,42 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
             ):
                 self.run_main(arguments)
 
+    def test_universal_installs_only_repo_owned_hooks_and_never_adds_a_plugin(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            arguments = [
+                "--discovery-profile",
+                "universal",
+                "--codex-home",
+                str(root / "codex"),
+                "--agents-skills-root",
+                str(root / "agents" / "skills"),
+                "--dry-run",
+                "--skip-bootstrap",
+                "--skip-agents",
+                "--skip-doctor",
+            ]
+            with (
+                mock.patch.object(
+                    refresh,
+                    "resolve_codex_executable",
+                    side_effect=AssertionError("Codex must not be resolved"),
+                ),
+                mock.patch.object(
+                    refresh,
+                    "marketplace_plugin_sources",
+                    side_effect=AssertionError("marketplace must not be read"),
+                ),
+                mock.patch.object(refresh, "run", return_value=0) as run,
+            ):
+                self.run_main(arguments)
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(commands[0][2:5], ["skill", "install-hook", "--apply"])
+        self.assertEqual(commands[0][-2:], ["--repo-root", str(REPO_ROOT)])
+        self.assertNotIn("plugin", commands[0])
+
     def test_universal_with_configured_plugins_inspects_exact_enabled_set(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

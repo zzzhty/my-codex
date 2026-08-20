@@ -79,7 +79,7 @@ def enabled_plugin_names(
     }
 
 
-def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+def plugin_manifest_payload(manifest: Path, *, label: str) -> dict[str, object]:
     if not manifest.is_file():
         raise ValueError(f"{label} manifest missing: {manifest}")
     try:
@@ -88,6 +88,15 @@ def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
         raise ValueError(f"{label} manifest is not valid readable JSON: {manifest}: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"{label} manifest must be an object: {manifest}")
+    return payload
+
+
+def _plugin_manifest_identity(
+    payload: dict[str, object],
+    manifest: Path,
+    *,
+    label: str,
+) -> tuple[str, str]:
     identity: list[str] = []
     for field in ("name", "version"):
         value = payload.get(field)
@@ -95,6 +104,11 @@ def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
             raise ValueError(f"{label} manifest {field} must be a non-empty string: {manifest}")
         identity.append(value.strip())
     return identity[0], identity[1]
+
+
+def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+    payload = plugin_manifest_payload(manifest, label=label)
+    return _plugin_manifest_identity(payload, manifest, label=label)
 
 
 def _marketplace_payload(marketplace: Path) -> tuple[str, list[object]]:
@@ -220,8 +234,11 @@ def plugin_package_issues(
             )
             continue
         try:
-            manifest_name, _ = plugin_manifest_identity(
-                source_resolved / ".codex-plugin" / "plugin.json",
+            manifest = source_resolved / ".codex-plugin" / "plugin.json"
+            manifest_payload = plugin_manifest_payload(manifest, label="source")
+            manifest_name, _ = _plugin_manifest_identity(
+                manifest_payload,
+                manifest,
                 label="source",
             )
         except ValueError as exc:
@@ -231,6 +248,58 @@ def plugin_package_issues(
             issues.append(
                 f"{plugin_name}: source manifest name mismatch; found {manifest_name!r}"
             )
+        if manifest_payload.get("skills") != "./skills/":
+            issues.append(
+                f"{plugin_name}: source manifest skills must be exactly './skills/'; "
+                f"found {manifest_payload.get('skills')!r}"
+            )
+
+        expected_skills = {
+            source.directory_name: source.name
+            for source in catalog.sources
+            if source.plugin == plugin_name
+        }
+        skills_root = source_resolved / "skills"
+        try:
+            entries = sorted(skills_root.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            issues.append(
+                f"{plugin_name}: source package skills tree is not readable: "
+                f"{skills_root}: {exc}"
+            )
+            continue
+        actual_directories = {entry.name for entry in entries if entry.is_dir()}
+        malformed_entries = sorted(entry.name for entry in entries if not entry.is_dir())
+        if malformed_entries:
+            issues.append(
+                f"{plugin_name}: source package skills tree has non-directory entries: "
+                + ", ".join(malformed_entries)
+            )
+        missing_skills = sorted(set(expected_skills) - actual_directories)
+        extra_skills = sorted(actual_directories - set(expected_skills))
+        if missing_skills:
+            issues.append(
+                f"{plugin_name}: source package is missing catalog skill directories: "
+                + ", ".join(missing_skills)
+            )
+        if extra_skills:
+            issues.append(
+                f"{plugin_name}: source package has skill directories outside the loaded catalog: "
+                + ", ".join(extra_skills)
+            )
+        for directory_name in sorted(set(expected_skills) & actual_directories):
+            skill_file = skills_root / directory_name / "SKILL.md"
+            try:
+                actual_identity = skill_frontmatter_name(skill_file)
+            except SystemExit as exc:
+                issues.append(f"{plugin_name}/{directory_name}: {exc}")
+                continue
+            expected_identity = expected_skills[directory_name]
+            if actual_identity != expected_identity:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: callable identity changed after catalog load; "
+                    f"expected {expected_identity!r}, found {actual_identity!r}"
+                )
     return issues
 
 

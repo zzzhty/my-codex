@@ -25,6 +25,17 @@ Every refresh and closure check requires one explicit, mutually exclusive discov
 
 Profile transitions preflight the replacement before removing the old active path and roll back when activation or closure fails. The universal projection manages only symlinks proven to target direct skill directories in this checkout, prunes only repository-owned stale links, preserves unrelated user skills, and fails instead of overwriting an unmanaged same-name entry. The unchanged `plugins/mattpocock-skills/skills/` mirror remains source-identical because projection links never rewrite its content.
 
+The optional plugin distribution has no copied build tree or separate skill catalog: each canonical `plugins/<name>` directory is the package input and build artifact. `.agents/plugins/install-manifest.json` schema v2 declares `discoveryProfile: "plugin"`; each source manifest must expose exactly `./skills/`, and its name, version, skill directories, and callable frontmatter identities are checked against the repository catalog before install. Marketplace packages remain `AVAILABLE`, not installed by default. Source-package validation is independent of the active runtime profile:
+
+```bash
+PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}"
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" "$PLUGIN_VALIDATOR" plugins/watcher
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" "$PLUGIN_VALIDATOR" plugins/workflow
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/update_mattpocock_skills.py --validate-only
+```
+
+Installation uses `scripts/refresh_my_codex.py --discovery-profile plugin`; active-state verification uses `scripts/check_my_codex.py --discovery-profile plugin`. Both reject incomplete package selection, and the closure check fails while any repository-owned universal skill link is active. Universal refresh never installs a package and refreshes Watcher hooks directly from the repository with an explicit repo root.
+
 `scripts/sync_agents_skills.py` is the low-level universal projection tool. Use its `--check --prune` mode to inspect an already selected universal profile; use the profile-aware refresh helper for activation so plugins are deactivated in the required order:
 
 ```bash
@@ -209,7 +220,7 @@ The wrappers require and propagate the same profile to `scripts/refresh_my_codex
 
 Stale plugin pruning is off by default and valid only with the `plugin` profile. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
 
-Plugin-profile install selection lives in `.agents/plugins/install-manifest.json` and must cover every package that owns canonical skills. Repeated `--plugin` arguments may refresh a narrower package set only when the complete plugin profile is already active; closure checks always validate the full selected profile.
+Plugin-profile install selection lives in the explicitly tagged `.agents/plugins/install-manifest.json` and must cover every package that owns canonical skills. Repeated `--plugin` arguments may refresh a narrower package set only when the complete plugin profile is already active; closure checks always validate the full selected profile.
 
 Migrate legacy Watcher runtime roots explicitly before final checks:
 
@@ -254,7 +265,7 @@ $ToolingPython = Join-Path $CodexHome "venvs\my-codex\Scripts\python.exe"
 # or: & $ToolingPython scripts\check_my_codex.py --discovery-profile plugin
 ```
 
-The check script verifies the shared tooling Python, selected discovery closure, Watcher skill hook schema, subagent support-file sync state, source plugin validation, and Watcher skill doctor. Universal closure verifies every frontmatter-derived link and the absence of enabled skills-bearing plugins without reading marketplace or cache state. Plugin closure verifies the exact marketplace/source package set, enabled CLI status and source version, exactly one cache version per package, cached callable identities, and the absence of universal links. The script is read-only for plugin installs, hooks, and support files. Use `--skip-agents` to skip the unrelated support-file sync check.
+The check script verifies the shared tooling Python, selected discovery closure, Watcher skill hook schema, subagent support-file sync state, source plugin validation, and Watcher skill doctor. Universal closure verifies every frontmatter-derived link and the absence of enabled skills-bearing plugins without reading marketplace or cache state. Plugin closure verifies the exact marketplace/source package set, manifest `./skills/` projection, source package tree and identities, enabled CLI status and source version, exactly one cache version per package, cached callable identities, and the absence of universal links. The script is read-only for plugin installs, hooks, and support files. Use `--skip-agents` to skip the unrelated support-file sync check.
 
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 

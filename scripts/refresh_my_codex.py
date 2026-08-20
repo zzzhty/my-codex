@@ -371,8 +371,12 @@ def load_json_object(path: Path, *, label: str) -> dict:
 
 def load_install_manifest(manifest_file: Path = INSTALL_MANIFEST_FILE) -> dict:
     data = load_json_object(manifest_file, label="install manifest")
-    if data.get("schemaVersion") != 1:
-        raise SystemExit(f"install manifest schemaVersion must be 1: {manifest_file}")
+    if data.get("schemaVersion") != 2:
+        raise SystemExit(f"install manifest schemaVersion must be 2: {manifest_file}")
+    if data.get("discoveryProfile") != "plugin":
+        raise SystemExit(
+            f"install manifest discoveryProfile must be 'plugin': {manifest_file}"
+        )
 
     plugins = data.get("plugins")
     if not isinstance(plugins, list):
