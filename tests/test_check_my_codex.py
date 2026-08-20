@@ -129,6 +129,10 @@ class MarketplaceCatalogIdentityTests(unittest.TestCase):
                                     "source": "local",
                                     "path": "./catalog-sources/renamed-package-dir",
                                 },
+                                "policy": {
+                                    "installation": "AVAILABLE",
+                                    "authentication": "ON_INSTALL",
+                                },
                             }
                         ],
                     }
@@ -150,6 +154,7 @@ class MarketplaceCatalogIdentityTests(unittest.TestCase):
                     {
                         "name": "demo",
                         "source": {"source": "git", "path": "./catalog-sources/demo"},
+                        "policy": {"installation": "AVAILABLE"},
                     }
                 ],
                 "unsupported marketplace source kind",
@@ -160,13 +165,29 @@ class MarketplaceCatalogIdentityTests(unittest.TestCase):
                     {
                         "name": "demo",
                         "source": {"source": "local", "path": "./catalog-sources/demo"},
+                        "policy": {"installation": "AVAILABLE"},
                     },
                     {
                         "name": "demo",
                         "source": {"source": "local", "path": "./catalog-sources/demo"},
+                        "policy": {"installation": "AVAILABLE"},
                     },
                 ],
                 "duplicate marketplace plugin name",
+            ),
+            (
+                "installed-by-default",
+                [
+                    {
+                        "name": "demo",
+                        "source": {
+                            "source": "local",
+                            "path": "./catalog-sources/demo",
+                        },
+                        "policy": {"installation": "INSTALLED_BY_DEFAULT"},
+                    }
+                ],
+                "installation policy must be 'AVAILABLE'",
             ),
         )
         for label, plugins, expected in cases:

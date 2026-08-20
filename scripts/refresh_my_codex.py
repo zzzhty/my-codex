@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 from check_skill_discovery import (
@@ -57,6 +58,13 @@ CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expandus
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
 DEFAULT_AGENTS_SKILLS_ROOT = Path.home() / ".agents" / "skills"
 MACOS_APPLICATION_DIRS = (Path("/Applications"), Path.home() / "Applications")
+
+
+@dataclass(frozen=True)
+class MarketplaceSourceBinding:
+    source_type: str
+    source: str
+    revision: str | None = None
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -733,9 +741,14 @@ def apply_plugin_discovery_profile(
     marketplace_name: str,
     target_root: Path,
     requested_plugins: list[str] | None,
+    marketplace_source_binding: MarketplaceSourceBinding,
     env: dict[str, str],
     dry_run: bool,
 ) -> None:
+    require_profile_closure(
+        "plugin marketplace source binding",
+        marketplace_source_binding_issues(catalog, marketplace_source_binding),
+    )
     marketplace_file = catalog.repo_root / ".agents" / "plugins" / "marketplace.json"
     manifest_file = catalog.repo_root / ".agents" / "plugins" / "install-manifest.json"
     all_selectors = selected_plugins(
@@ -1050,15 +1063,36 @@ def git_remote_source(repo_root: Path) -> str | None:
     return source or None
 
 
-def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
-    worktree = subprocess.run(
+def git_head_revision(repo_root: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", "HEAD"],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        output = decode_text(result.stderr or result.stdout).strip()
+        raise SystemExit(f"repository HEAD is unavailable for marketplace binding: {output}")
+    revision = decode_text(result.stdout).strip()
+    if not revision:
+        raise SystemExit("repository HEAD is empty for marketplace binding")
+    return revision
+
+
+def git_worktree_clean(repo_root: Path) -> tuple[bool, str]:
+    result = subprocess.run(
         ["git", "-C", str(repo_root), "status", "--porcelain"],
         capture_output=True,
     )
-    if worktree.returncode != 0:
+    if result.returncode != 0:
         return False, "local worktree status is unavailable"
-    if decode_text(worktree.stdout).strip():
+    if decode_text(result.stdout).strip():
         return False, "local worktree has uncommitted changes"
+    return True, "local worktree is clean"
+
+
+def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
+    clean, reason = git_worktree_clean(repo_root)
+    if not clean:
+        return False, reason
 
     remote_ref = f"refs/remotes/origin/{ref}"
     head = subprocess.run(
@@ -1113,6 +1147,31 @@ def configured_marketplace(codex_home: Path, marketplace_name: str) -> dict[str,
             values[key] = toml_string_value(value)
 
     return values or None
+
+
+def configured_marketplace_source_binding(
+    codex_home: Path,
+    marketplace_name: str,
+) -> MarketplaceSourceBinding:
+    config = configured_marketplace(codex_home, marketplace_name)
+    if config is None:
+        raise ValueError(f"configured marketplace is missing: {marketplace_name}")
+    source_type = config.get("source_type")
+    source = config.get("source")
+    if source_type not in {"local", "git"}:
+        raise ValueError(
+            f"configured marketplace source_type must be local or git: {marketplace_name}"
+        )
+    if not source:
+        raise ValueError(f"configured marketplace source is missing: {marketplace_name}")
+    revision = config.get("ref") if source_type == "git" else None
+    if source_type == "git" and not revision:
+        raise ValueError(f"configured Git marketplace ref is missing: {marketplace_name}")
+    return MarketplaceSourceBinding(
+        source_type=source_type,
+        source=source,
+        revision=revision,
+    )
 
 
 def clear_readonly_attributes(root: Path) -> None:
@@ -1178,6 +1237,42 @@ def same_marketplace_source(left: str, right: str) -> bool:
 
 def same_marketplace_ref(left: str | None, right: str) -> bool:
     return (left or "").strip() == (right or "").strip()
+
+
+def marketplace_source_binding_issues(
+    catalog: SkillCatalog,
+    binding: MarketplaceSourceBinding,
+) -> list[str]:
+    if binding.source_type == "local":
+        if binding.revision is not None:
+            return ["local marketplace source binding must not declare a Git revision"]
+        if not same_path(binding.source, catalog.repo_root):
+            return [
+                "local marketplace source is not the validated canonical checkout; "
+                f"expected {catalog.repo_root}, found {binding.source}"
+            ]
+        return []
+    if binding.source_type != "git":
+        return [f"unsupported marketplace source binding type: {binding.source_type!r}"]
+
+    canonical_remote = git_remote_source(catalog.repo_root)
+    if canonical_remote is None:
+        return ["canonical checkout has no Git remote for Git marketplace binding"]
+    if not same_marketplace_source(binding.source, canonical_remote):
+        return [
+            "Git marketplace source is not the canonical checkout remote; "
+            f"expected {canonical_remote!r}, found {binding.source!r}"
+        ]
+    clean, reason = git_worktree_clean(catalog.repo_root)
+    if not clean:
+        return [f"canonical checkout cannot bind a Git package source: {reason}"]
+    revision = git_head_revision(catalog.repo_root)
+    if binding.revision != revision:
+        return [
+            "Git marketplace source is not pinned to the validated checkout revision; "
+            f"expected {revision}, found {binding.revision!r}"
+        ]
+    return []
 
 
 def ensure_git_marketplace_source(
@@ -1263,13 +1358,36 @@ def ensure_marketplace_source(
     local_source: str,
     env: dict[str, str],
     dry_run: bool,
-) -> None:
+) -> MarketplaceSourceBinding:
+    if not same_path(local_source, REPO_ROOT):
+        raise SystemExit(
+            "local marketplace source must be the validated canonical checkout: "
+            f"expected {REPO_ROOT}, found {local_source}"
+        )
     skipped_stale_git_source = False
     if git_source:
-        if not git_source_explicit:
+        canonical_remote = git_remote_source(REPO_ROOT)
+        if canonical_remote is None or not same_marketplace_source(git_source, canonical_remote):
+            message = (
+                "Git marketplace source must be the canonical checkout remote; "
+                f"expected {canonical_remote!r}, found {git_source!r}"
+            )
+            if git_source_explicit:
+                raise SystemExit(message)
+            print(f"{message}; using local source.")
+            git_source = None
+            skipped_stale_git_source = True
+        else:
             current, reason = git_remote_ref_status(REPO_ROOT, git_ref)
             if not current:
-                print(f"Local checkout is ahead of or not aligned with Git marketplace ref `{git_ref}`; using local source.")
+                if git_source_explicit:
+                    raise SystemExit(
+                        f"explicit Git marketplace ref is not the validated checkout: {reason}"
+                    )
+                print(
+                    f"Local checkout is ahead of or not aligned with Git marketplace ref "
+                    f"`{git_ref}`; using local source."
+                )
                 print(f"Reason: {reason}")
                 git_source = None
                 skipped_stale_git_source = True
@@ -1277,19 +1395,25 @@ def ensure_marketplace_source(
                 print(f"Git marketplace freshness check passed: {reason}")
 
     if git_source:
+        pinned_revision = git_head_revision(REPO_ROOT)
         print(f"Trying Git marketplace source first: {git_source}")
+        print(f"Pinning Git marketplace package source to validated revision: {pinned_revision}")
         git_exit = ensure_git_marketplace_source(
             codex,
             codex_home=codex_home,
             marketplace_name=marketplace_name,
             source=git_source,
-            ref=git_ref,
+            ref=pinned_revision,
             env=env,
             dry_run=dry_run,
         )
         if git_exit == 0:
             print("Marketplace source mode: git")
-            return
+            return MarketplaceSourceBinding(
+                source_type="git",
+                source=git_source,
+                revision=pinned_revision,
+            )
         print(f"Git marketplace source failed with exit code {git_exit}; falling back to local source.")
     elif not skipped_stale_git_source:
         print("Git marketplace source was not found; falling back to local source.")
@@ -1303,6 +1427,10 @@ def ensure_marketplace_source(
         dry_run=dry_run,
     )
     print("Marketplace source mode: local")
+    return MarketplaceSourceBinding(
+        source_type="local",
+        source=str(REPO_ROOT),
+    )
 
 
 def main() -> None:
@@ -1411,7 +1539,7 @@ def main() -> None:
 
     if profile is DiscoveryProfile.PLUGIN:
         assert codex is not None
-        ensure_marketplace_source(
+        marketplace_source_binding = ensure_marketplace_source(
             codex,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
@@ -1447,6 +1575,7 @@ def main() -> None:
             marketplace_name=args.marketplace_name,
             target_root=agents_skills_root,
             requested_plugins=args.plugin,
+            marketplace_source_binding=marketplace_source_binding,
             env=env,
             dry_run=args.dry_run,
         )

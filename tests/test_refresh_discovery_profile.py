@@ -26,6 +26,44 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         load_catalog.assert_not_called()
 
+    def test_git_marketplace_install_is_pinned_to_validated_checkout_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with (
+                mock.patch.object(refresh, "git_remote_source", return_value="git@example/repo.git"),
+                mock.patch.object(
+                    refresh,
+                    "git_remote_ref_status",
+                    return_value=(True, "checkout matches ref"),
+                ),
+                mock.patch.object(refresh, "git_head_revision", return_value="abc123"),
+                mock.patch.object(
+                    refresh,
+                    "ensure_git_marketplace_source",
+                    return_value=0,
+                ) as ensure_git,
+            ):
+                binding = refresh.ensure_marketplace_source(
+                    "codex",
+                    codex_home=Path(tmp) / "codex",
+                    marketplace_name="my-codex",
+                    git_source="git@example/repo.git",
+                    git_ref="main",
+                    git_source_explicit=True,
+                    local_source=str(REPO_ROOT),
+                    env={},
+                    dry_run=True,
+                )
+
+        self.assertEqual(
+            binding,
+            refresh.MarketplaceSourceBinding(
+                "git",
+                "git@example/repo.git",
+                "abc123",
+            ),
+        )
+        self.assertEqual(ensure_git.call_args.kwargs["ref"], "abc123")
+
     def test_invalid_profile_fails_closed(self) -> None:
         with mock.patch.object(refresh, "load_repo_skill_catalog") as load_catalog:
             with self.assertRaises(SystemExit) as raised:

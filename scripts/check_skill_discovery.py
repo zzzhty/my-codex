@@ -198,6 +198,16 @@ def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]
                 f"marketplace/source manifest name mismatch for entry #{index}; "
                 f"catalog has {plugin_name!r}, manifest has {manifest_name!r} at {manifest}"
             )
+        policy = entry.get("policy")
+        if not isinstance(policy, dict):
+            raise ValueError(
+                f"marketplace plugin policy must be an object for {plugin_name!r}: {marketplace}"
+            )
+        if policy.get("installation") != "AVAILABLE":
+            raise ValueError(
+                f"marketplace plugin installation policy must be 'AVAILABLE' for "
+                f"optional package {plugin_name!r}: {marketplace}"
+            )
         sources[plugin_name] = plugin_dir
     return marketplace_name, sources
 
@@ -233,12 +243,21 @@ def plugin_package_issues(
                 f"expected {expected_resolved}, found {source_resolved}"
             )
             continue
+        manifest = source_resolved / ".codex-plugin" / "plugin.json"
         try:
-            manifest = source_resolved / ".codex-plugin" / "plugin.json"
-            manifest_payload = plugin_manifest_payload(manifest, label="source")
+            resolved_manifest = manifest.resolve(strict=True)
+            resolved_manifest.relative_to(source_resolved)
+        except OSError as exc:
+            issues.append(f"{plugin_name}: source manifest cannot be resolved: {manifest}: {exc}")
+            continue
+        except ValueError:
+            issues.append(f"{plugin_name}: source manifest escapes package authority: {manifest}")
+            continue
+        try:
+            manifest_payload = plugin_manifest_payload(resolved_manifest, label="source")
             manifest_name, _ = _plugin_manifest_identity(
                 manifest_payload,
-                manifest,
+                resolved_manifest,
                 label="source",
             )
         except ValueError as exc:
@@ -255,17 +274,24 @@ def plugin_package_issues(
             )
 
         expected_skills = {
-            source.directory_name: source.name
+            source.directory_name: source
             for source in catalog.sources
             if source.plugin == plugin_name
         }
         skills_root = source_resolved / "skills"
         try:
-            entries = sorted(skills_root.iterdir(), key=lambda path: path.name)
+            resolved_skills_root = skills_root.resolve(strict=True)
+            resolved_skills_root.relative_to(source_resolved)
+            entries = sorted(resolved_skills_root.iterdir(), key=lambda path: path.name)
         except OSError as exc:
             issues.append(
                 f"{plugin_name}: source package skills tree is not readable: "
                 f"{skills_root}: {exc}"
+            )
+            continue
+        except ValueError:
+            issues.append(
+                f"{plugin_name}: source package skills tree escapes package authority: {skills_root}"
             )
             continue
         actual_directories = {entry.name for entry in entries if entry.is_dir()}
@@ -288,13 +314,48 @@ def plugin_package_issues(
                 + ", ".join(extra_skills)
             )
         for directory_name in sorted(set(expected_skills) & actual_directories):
-            skill_file = skills_root / directory_name / "SKILL.md"
+            expected_source = expected_skills[directory_name]
+            skill_directory = resolved_skills_root / directory_name
             try:
-                actual_identity = skill_frontmatter_name(skill_file)
+                resolved_directory = skill_directory.resolve(strict=True)
+                resolved_directory.relative_to(resolved_skills_root)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory cannot be resolved: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory escapes package authority"
+                )
+                continue
+            if resolved_directory != expected_source.path:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory does not match "
+                    f"loaded catalog source; expected {expected_source.path}, "
+                    f"found {resolved_directory}"
+                )
+                continue
+            skill_file = resolved_directory / "SKILL.md"
+            try:
+                resolved_skill_file = skill_file.resolve(strict=True)
+                resolved_skill_file.relative_to(resolved_directory)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill file cannot be resolved: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill file escapes package authority"
+                )
+                continue
+            try:
+                actual_identity = skill_frontmatter_name(resolved_skill_file)
             except SystemExit as exc:
                 issues.append(f"{plugin_name}/{directory_name}: {exc}")
                 continue
-            expected_identity = expected_skills[directory_name]
+            expected_identity = expected_source.name
             if actual_identity != expected_identity:
                 issues.append(
                     f"{plugin_name}/{directory_name}: callable identity changed after catalog load; "

@@ -261,6 +261,11 @@ class PluginInstallationClosureTests(unittest.TestCase):
             ),
             ("extra-directory", "extra", "outside the loaded catalog"),
             ("identity-drift", "identity", "callable identity changed after catalog load"),
+            (
+                "symlink-escape",
+                "symlink",
+                "source skill directory escapes package authority",
+            ),
         )
         for label, mutation, expected in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
@@ -282,6 +287,16 @@ class PluginInstallationClosureTests(unittest.TestCase):
                     )
                 elif mutation == "extra":
                     write_skill(repo, "alpha", "late-added")
+                elif mutation == "symlink":
+                    external = root / "external-skill"
+                    external.mkdir()
+                    external.joinpath("SKILL.md").write_text(
+                        "---\nname: one\ndescription: external fixture\n---\n",
+                        encoding="utf-8",
+                    )
+                    source.joinpath("SKILL.md").unlink()
+                    source.rmdir()
+                    source.symlink_to(external, target_is_directory=True)
                 else:
                     source.joinpath("SKILL.md").write_text(
                         "---\nname: changed\ndescription: fixture\n---\n",
