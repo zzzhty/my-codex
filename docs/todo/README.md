@@ -12,7 +12,7 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-No active long-running goal plans.
+- [Universal Agent Skills Migration](universal-agent-skills-migration.md): continuation-ready Phase 1b through Phase 6 plan for repository authority, explicit discovery profiles, Watcher decoupling, optional Codex adapters, controlled cutover, and owned legacy cleanup.
 
 No closed long-running goal index is currently tracked.
 
