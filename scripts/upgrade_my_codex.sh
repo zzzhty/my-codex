@@ -276,7 +276,7 @@ tooling_python=${MY_CODEX_PYTHON:-}
 marketplace_name=my-codex
 discovery_profile=
 git_marketplace_source=
-git_ref=main
+git_ref=
 dry_run=0
 skip_check=0
 prune_plugins=0
@@ -475,7 +475,6 @@ set -- "$repo_root/scripts/refresh_my_codex.py" \
     --python "$MY_CODEX_PYTHON" \
     --marketplace-name "$marketplace_name" \
     --marketplace-source "$repo_root" \
-    --git-ref "$git_ref" \
     --skip-bootstrap
 
 if [ -n "$codex_path" ]; then
@@ -484,6 +483,9 @@ fi
 
 if [ -n "$git_marketplace_source" ]; then
     set -- "$@" --git-marketplace-source "$git_marketplace_source"
+fi
+if [ -n "$git_ref" ]; then
+    set -- "$@" --git-ref "$git_ref"
 fi
 if [ "$dry_run" -eq 1 ]; then
     set -- "$@" --dry-run

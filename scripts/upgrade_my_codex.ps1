@@ -17,6 +17,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $CodexPathWasProvided = $PSBoundParameters.ContainsKey("CodexPath")
+$GitRefWasProvided = $PSBoundParameters.ContainsKey("GitRef")
 
 if (-not $DiscoveryProfile) {
     throw "missing required -DiscoveryProfile universal|plugin"
@@ -413,7 +414,6 @@ $refreshArgs = @(
     "--python", $env:MY_CODEX_PYTHON,
     "--marketplace-name", $MarketplaceName,
     "--marketplace-source", $repoRoot,
-    "--git-ref", $GitRef,
     "--skip-bootstrap"
 )
 if ($CodexPath) {
@@ -421,6 +421,9 @@ if ($CodexPath) {
 }
 if ($GitMarketplaceSource) {
     $refreshArgs += @("--git-marketplace-source", $GitMarketplaceSource)
+}
+if ($GitRefWasProvided) {
+    $refreshArgs += @("--git-ref", $GitRef)
 }
 if ($DryRun) {
     $refreshArgs += "--dry-run"

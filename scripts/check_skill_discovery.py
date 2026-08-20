@@ -212,6 +212,39 @@ def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]
     return marketplace_name, sources
 
 
+def _source_package_authority_issues(plugin_name: str, package_root: Path) -> list[str]:
+    """Reject unreadable or escaping descendants without following directory symlinks."""
+
+    issues: list[str] = []
+    pending = [package_root]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = sorted(directory.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            issues.append(
+                f"{plugin_name}: source package directory is not readable: {directory}: {exc}"
+            )
+            continue
+        for entry in entries:
+            try:
+                resolved_entry = entry.resolve(strict=True)
+                resolved_entry.relative_to(package_root)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}: source package entry cannot be resolved: {entry}: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}: source package entry escapes package authority: {entry}"
+                )
+                continue
+            if not entry.is_symlink() and resolved_entry.is_dir():
+                pending.append(resolved_entry)
+    return issues
+
+
 def plugin_package_issues(
     catalog: SkillCatalog,
     *,
@@ -243,6 +276,7 @@ def plugin_package_issues(
                 f"expected {expected_resolved}, found {source_resolved}"
             )
             continue
+        issues.extend(_source_package_authority_issues(plugin_name, source_resolved))
         manifest = source_resolved / ".codex-plugin" / "plugin.json"
         try:
             resolved_manifest = manifest.resolve(strict=True)

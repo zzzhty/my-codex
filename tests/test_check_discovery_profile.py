@@ -266,6 +266,16 @@ class PluginInstallationClosureTests(unittest.TestCase):
                 "symlink",
                 "source skill directory escapes package authority",
             ),
+            (
+                "nested-file-symlink-escape",
+                "nested-file-symlink",
+                "source package entry escapes package authority",
+            ),
+            (
+                "nested-directory-symlink-escape",
+                "nested-directory-symlink",
+                "source package entry escapes package authority",
+            ),
         )
         for label, mutation, expected in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
@@ -297,6 +307,20 @@ class PluginInstallationClosureTests(unittest.TestCase):
                     source.joinpath("SKILL.md").unlink()
                     source.rmdir()
                     source.symlink_to(external, target_is_directory=True)
+                elif mutation == "nested-file-symlink":
+                    external = root / "external-tool.py"
+                    external.write_text("print('external')\n", encoding="utf-8")
+                    scripts = source / "scripts"
+                    scripts.mkdir()
+                    scripts.joinpath("tool.py").symlink_to(external)
+                elif mutation == "nested-directory-symlink":
+                    external = root / "external-resources"
+                    external.mkdir()
+                    external.joinpath("data.txt").write_text("external\n", encoding="utf-8")
+                    source.joinpath("references").symlink_to(
+                        external,
+                        target_is_directory=True,
+                    )
                 else:
                     source.joinpath("SKILL.md").write_text(
                         "---\nname: changed\ndescription: fixture\n---\n",

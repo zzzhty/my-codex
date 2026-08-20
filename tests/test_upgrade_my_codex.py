@@ -79,6 +79,7 @@ class UnixUpgradeWrapperTests(unittest.TestCase):
         profile: str = "plugin",
         bootstrap_python: Path | str = sys.executable,
         tooling_python: Path | str | None = sys.executable,
+        extra_args: list[str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         command = [
             str(UPGRADE_SCRIPT),
@@ -93,6 +94,7 @@ class UnixUpgradeWrapperTests(unittest.TestCase):
         ]
         if tooling_python is not None:
             command.extend(["--tooling-python", str(tooling_python)])
+        command.extend(extra_args or [])
         return subprocess.run(
             command,
             cwd=REPO_ROOT,
@@ -220,6 +222,31 @@ class UnixUpgradeWrapperTests(unittest.TestCase):
         self.assertIn("CodexPath=auto-if-plugin-removal-is-required", result.stdout)
         self.assertIn("--discovery-profile universal", result.stdout)
 
+    def test_wrapper_only_forwards_git_ref_when_the_user_supplies_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_home = root / "home"
+            codex_home = user_home / ".codex"
+            env = os.environ.copy()
+            env.update({"HOME": str(user_home), "PATH": "/usr/bin:/bin"})
+
+            default_result = self.run_upgrade(
+                env=env,
+                codex_home=codex_home,
+                profile="universal",
+            )
+            explicit_result = self.run_upgrade(
+                env=env,
+                codex_home=codex_home,
+                profile="universal",
+                extra_args=["--git-ref", "release"],
+            )
+
+        self.assertEqual(default_result.returncode, 0, default_result.stderr)
+        self.assertNotIn("--git-ref", default_result.stdout)
+        self.assertEqual(explicit_result.returncode, 0, explicit_result.stderr)
+        self.assertIn("--git-ref release", explicit_result.stdout)
+
 
 class PowerShellUpgradeWrapperContractTests(unittest.TestCase):
     def test_required_profile_is_forwarded_to_refresh_and_check(self) -> None:
@@ -228,6 +255,8 @@ class PowerShellUpgradeWrapperContractTests(unittest.TestCase):
         self.assertIn('throw "missing required -DiscoveryProfile universal|plugin"', script)
         self.assertGreaterEqual(script.count('"--discovery-profile", $DiscoveryProfile'), 2)
         self.assertIn('$DiscoveryProfile -eq "plugin"', script)
+        self.assertIn('$GitRefWasProvided = $PSBoundParameters.ContainsKey("GitRef")', script)
+        self.assertIn('if ($GitRefWasProvided)', script)
         self.assertIn('"scripts\\bootstrap_tooling_env.py"', script)
         self.assertIn('"--skip-bootstrap"', script)
         self.assertLess(

@@ -733,22 +733,14 @@ def apply_universal_discovery_profile(
     transition_plugin_to_universal(runtime, selectors)
 
 
-def apply_plugin_discovery_profile(
+def preflight_plugin_distribution(
     catalog: SkillCatalog,
     *,
-    codex: str,
     codex_home: Path,
     marketplace_name: str,
-    target_root: Path,
-    requested_plugins: list[str] | None,
-    marketplace_source_binding: MarketplaceSourceBinding,
-    env: dict[str, str],
-    dry_run: bool,
-) -> None:
-    require_profile_closure(
-        "plugin marketplace source binding",
-        marketplace_source_binding_issues(catalog, marketplace_source_binding),
-    )
+) -> tuple[list[str], dict[str, Path]]:
+    """Validate every canonical plugin input before marketplace or profile mutation."""
+
     marketplace_file = catalog.repo_root / ".agents" / "plugins" / "marketplace.json"
     manifest_file = catalog.repo_root / ".agents" / "plugins" / "install-manifest.json"
     all_selectors = selected_plugins(
@@ -769,7 +761,8 @@ def apply_plugin_discovery_profile(
         raise SystemExit(str(exc)) from exc
     if marketplace_identity != marketplace_name:
         raise SystemExit(
-            f"marketplace identity mismatch: expected {marketplace_name!r}, found {marketplace_identity!r}"
+            f"marketplace identity mismatch: expected {marketplace_name!r}, "
+            f"found {marketplace_identity!r}"
         )
     require_profile_closure(
         "plugin package preflight",
@@ -782,13 +775,37 @@ def apply_plugin_discovery_profile(
             ),
         ],
     )
+    return all_selectors, plugin_sources
+
+
+def apply_plugin_discovery_profile(
+    catalog: SkillCatalog,
+    *,
+    codex: str,
+    codex_home: Path,
+    marketplace_name: str,
+    target_root: Path,
+    requested_plugins: list[str] | None,
+    marketplace_source_binding: MarketplaceSourceBinding,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    require_profile_closure(
+        "plugin marketplace source binding",
+        marketplace_source_binding_issues(catalog, marketplace_source_binding),
+    )
+    all_selectors, plugin_sources = preflight_plugin_distribution(
+        catalog,
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+    )
 
     selected = selected_plugins(
         requested_plugins,
         marketplace_name,
         action="install",
-        manifest_file=manifest_file,
-        marketplace_file=marketplace_file,
+        manifest_file=catalog.repo_root / ".agents" / "plugins" / "install-manifest.json",
+        marketplace_file=catalog.repo_root / ".agents" / "plugins" / "marketplace.json",
     )
     expected_names = set(catalog.plugin_names)
     invalid_selected = sorted(
@@ -1354,7 +1371,7 @@ def ensure_marketplace_source(
     marketplace_name: str,
     git_source: str | None,
     git_ref: str,
-    git_source_explicit: bool,
+    git_request_explicit: bool,
     local_source: str,
     env: dict[str, str],
     dry_run: bool,
@@ -1364,6 +1381,11 @@ def ensure_marketplace_source(
             "local marketplace source must be the validated canonical checkout: "
             f"expected {REPO_ROOT}, found {local_source}"
         )
+    if git_request_explicit and not git_source:
+        raise SystemExit(
+            "explicit Git marketplace request cannot be honored because the canonical "
+            f"checkout remote is unavailable for ref {git_ref!r}"
+        )
     skipped_stale_git_source = False
     if git_source:
         canonical_remote = git_remote_source(REPO_ROOT)
@@ -1372,7 +1394,7 @@ def ensure_marketplace_source(
                 "Git marketplace source must be the canonical checkout remote; "
                 f"expected {canonical_remote!r}, found {git_source!r}"
             )
-            if git_source_explicit:
+            if git_request_explicit:
                 raise SystemExit(message)
             print(f"{message}; using local source.")
             git_source = None
@@ -1380,7 +1402,7 @@ def ensure_marketplace_source(
         else:
             current, reason = git_remote_ref_status(REPO_ROOT, git_ref)
             if not current:
-                if git_source_explicit:
+                if git_request_explicit:
                     raise SystemExit(
                         f"explicit Git marketplace ref is not the validated checkout: {reason}"
                     )
@@ -1414,7 +1436,13 @@ def ensure_marketplace_source(
                 source=git_source,
                 revision=pinned_revision,
             )
-        print(f"Git marketplace source failed with exit code {git_exit}; falling back to local source.")
+        failure = (
+            f"Git marketplace source {git_source!r} at validated revision "
+            f"{pinned_revision} failed with exit code {git_exit}"
+        )
+        if git_request_explicit:
+            raise SystemExit(failure)
+        print(f"{failure}; falling back to local source.")
     elif not skipped_stale_git_source:
         print("Git marketplace source was not found; falling back to local source.")
 
@@ -1461,7 +1489,7 @@ def main() -> None:
         "--git-marketplace-source",
         help="Git marketplace source to try first. Defaults to this checkout's remote.origin.url.",
     )
-    parser.add_argument("--git-ref", default="main", help="Git ref for first-time Git marketplace add.")
+    parser.add_argument("--git-ref", help="Git ref for first-time Git marketplace add. Defaults to main.")
     parser.add_argument(
         "--plugin",
         action="append",
@@ -1511,6 +1539,11 @@ def main() -> None:
         if plugin_name in set(catalog.plugin_names) or marketplace == args.marketplace_name
     }
     if profile is DiscoveryProfile.PLUGIN:
+        preflight_plugin_distribution(
+            catalog,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+        )
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
         require_codex_plugin_commands(
             codex,
@@ -1539,13 +1572,16 @@ def main() -> None:
 
     if profile is DiscoveryProfile.PLUGIN:
         assert codex is not None
+        git_ref = args.git_ref or "main"
         marketplace_source_binding = ensure_marketplace_source(
             codex,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
             git_source=args.git_marketplace_source or git_remote_source(REPO_ROOT),
-            git_ref=args.git_ref,
-            git_source_explicit=args.git_marketplace_source is not None,
+            git_ref=git_ref,
+            git_request_explicit=(
+                args.git_marketplace_source is not None or args.git_ref is not None
+            ),
             local_source=args.marketplace_source,
             env=env,
             dry_run=args.dry_run,
