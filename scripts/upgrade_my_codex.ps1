@@ -79,106 +79,6 @@ function Resolve-Executable {
     throw "$Label not found. Checked:$([Environment]::NewLine)$($checked -join [Environment]::NewLine)"
 }
 
-function Resolve-ApplicationOnPath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name
-    )
-
-    $command = Get-Command -Name $Name -CommandType Application -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if (-not $command) {
-        return $null
-    }
-    if ($command.Path) {
-        return $command.Path
-    }
-    if ($command.Source) {
-        return $command.Source
-    }
-    return $command.Name
-}
-
-function Get-CodexExtensionPlatformDirectory {
-    if ($env:PROCESSOR_ARCHITEW6432) {
-        $architecture = $env:PROCESSOR_ARCHITEW6432
-    }
-    else {
-        $architecture = $env:PROCESSOR_ARCHITECTURE
-    }
-    if (-not $architecture) {
-        return $null
-    }
-
-    switch ($architecture.ToUpperInvariant()) {
-        "AMD64" { return "windows-x86_64" }
-        "ARM64" { return "windows-aarch64" }
-        default { return $null }
-    }
-}
-
-function Get-CodexCliFallbackCandidates {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$CodexHome
-    )
-
-    $candidates = New-Object System.Collections.Generic.List[string]
-
-    if ($env:CODEX_INSTALL_DIR) {
-        $visibleBinDir = $env:CODEX_INSTALL_DIR
-    }
-    elseif ($env:LOCALAPPDATA) {
-        $visibleBinDir = Join-Path $env:LOCALAPPDATA "Programs\OpenAI\Codex\bin"
-    }
-    else {
-        $visibleBinDir = $null
-    }
-    if ($visibleBinDir) {
-        $candidates.Add((Join-Path $visibleBinDir "codex.exe"))
-    }
-
-    $standaloneCurrent = Join-Path $CodexHome "packages\standalone\current"
-    $candidates.Add((Join-Path $standaloneCurrent "bin\codex.exe"))
-    $candidates.Add((Join-Path $standaloneCurrent "codex.exe"))
-
-    if ($env:LOCALAPPDATA) {
-        $desktopBinRoot = Join-Path $env:LOCALAPPDATA "OpenAI\Codex\bin"
-    }
-    else {
-        $desktopBinRoot = $null
-    }
-    if ($desktopBinRoot -and (Test-Path -LiteralPath $desktopBinRoot -PathType Container)) {
-        Get-ChildItem -LiteralPath $desktopBinRoot -Recurse -Filter "codex.exe" -File |
-            Sort-Object LastWriteTime -Descending |
-            ForEach-Object { $candidates.Add($_.FullName) }
-    }
-
-    $platformDirectory = Get-CodexExtensionPlatformDirectory
-    if ($platformDirectory -and $env:USERPROFILE) {
-        $extensionDirectories = @()
-        foreach ($extensionRoot in @(
-            (Join-Path $env:USERPROFILE ".vscode\extensions"),
-            (Join-Path $env:USERPROFILE ".vscode-insiders\extensions")
-        )) {
-            if (Test-Path -LiteralPath $extensionRoot -PathType Container) {
-                $extensionDirectories += Get-ChildItem `
-                    -LiteralPath $extensionRoot `
-                    -Directory `
-                    -Filter "openai.chatgpt-*"
-            }
-        }
-        foreach ($extension in ($extensionDirectories | Sort-Object LastWriteTime -Descending)) {
-            $candidate = Join-Path $extension.FullName "bin\$platformDirectory\codex.exe"
-            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-                $candidates.Add($candidate)
-            }
-        }
-    }
-
-    return $candidates.ToArray()
-}
-
 function Resolve-BootstrapPython {
     param(
         [string]$ExplicitPath
@@ -197,37 +97,6 @@ function Resolve-BootstrapPython {
             (Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"),
             (Join-Path $env:USERPROFILE ".codex\venvs\my-codex\Scripts\python.exe")
         )
-}
-
-function Resolve-CodexCli {
-    param(
-        [string]$ExplicitPath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$CodexHome,
-
-        [bool]$ExplicitPathProvided = $false
-    )
-
-    if ($ExplicitPathProvided) {
-        if ([string]::IsNullOrWhiteSpace($ExplicitPath)) {
-            throw "Codex CLI path was explicitly provided but empty"
-        }
-        return Resolve-Executable -Label "Codex CLI" -Candidates @($ExplicitPath)
-    }
-
-    if ($env:CODEX_BIN) {
-        return Resolve-Executable -Label "Codex CLI from CODEX_BIN" -Candidates @($env:CODEX_BIN)
-    }
-
-    $pathCodex = Resolve-ApplicationOnPath -Name "codex"
-    if ($pathCodex) {
-        return $pathCodex
-    }
-
-    return Resolve-Executable `
-        -Label "Codex CLI (PATH and managed install fallbacks)" `
-        -Candidates (Get-CodexCliFallbackCandidates -CodexHome $CodexHome)
 }
 
 function Invoke-Checked {
@@ -340,16 +209,6 @@ else {
     $BootstrapPython = Resolve-BootstrapPython -ExplicitPath $BootstrapPython
 }
 
-if ($DiscoveryProfile -eq "plugin") {
-    $CodexPath = Resolve-CodexCli `
-        -ExplicitPath $CodexPath `
-        -CodexHome $env:CODEX_HOME `
-        -ExplicitPathProvided $CodexPathWasProvided
-}
-elseif (-not $CodexPathWasProvided) {
-    $CodexPath = $null
-}
-
 if (-not $ToolingPython) {
     $ToolingPython = Join-Path $env:CODEX_HOME "venvs\my-codex\Scripts\python.exe"
 }
@@ -365,7 +224,7 @@ Write-Host "MY_CODEX_PYTHON=$env:MY_CODEX_PYTHON"
 Write-Host "MY_CODEX_TOOLING_PYTHON=$env:MY_CODEX_TOOLING_PYTHON"
 Write-Host "PLUGIN_VALIDATOR=$env:PLUGIN_VALIDATOR"
 Write-Host "BootstrapPython=$BootstrapPython"
-if ($CodexPath) {
+if ($CodexPathWasProvided) {
     Write-Host "CodexPath=$CodexPath"
 }
 else {
@@ -416,7 +275,7 @@ $refreshArgs = @(
     "--marketplace-source", $repoRoot,
     "--skip-bootstrap"
 )
-if ($CodexPath) {
+if ($CodexPathWasProvided) {
     $refreshArgs += @("--codex", $CodexPath)
 }
 if ($GitMarketplaceSource) {
@@ -449,7 +308,7 @@ elseif (-not $SkipCheck) {
         "--python", $env:MY_CODEX_PYTHON,
         "--marketplace-name", $MarketplaceName
     )
-    if ($CodexPath) {
+    if ($CodexPathWasProvided) {
         $checkArgs += @("--codex", $CodexPath)
     }
     Invoke-Checked `

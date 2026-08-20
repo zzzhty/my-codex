@@ -398,13 +398,12 @@ def plugin_package_issues(
     return issues
 
 
-def plugin_cache_preflight_issues(
-    catalog: SkillCatalog,
+def plugin_cache_shape_issues(
     *,
     codex_home: Path,
     marketplace_name: str,
 ) -> list[str]:
-    """Reject cache shapes that cannot be safely inspected after activation."""
+    """Reject cache shapes that cannot be safely inspected or targeted."""
 
     cache_root = codex_home / "plugins" / "cache" / marketplace_name
     if not cache_root.exists():
@@ -417,7 +416,6 @@ def plugin_cache_preflight_issues(
         return [f"plugin cache marketplace root cannot be resolved: {cache_root}: {exc}"]
 
     issues: list[str] = []
-    expected_plugins = set(catalog.plugin_names)
     for plugin_root in sorted(cache_root.iterdir(), key=lambda path: path.name):
         if not plugin_root.is_dir() or plugin_root.is_symlink():
             issues.append(f"plugin cache package entry is not an inspectable directory: {plugin_root}")
@@ -427,12 +425,6 @@ def plugin_cache_preflight_issues(
             resolved_plugin.relative_to(resolved_cache_root)
         except (OSError, ValueError) as exc:
             issues.append(f"plugin cache package escapes marketplace root: {plugin_root}: {exc}")
-            continue
-        if plugin_root.name not in expected_plugins:
-            issues.append(
-                "cached my-codex plugin has no canonical repository skills: "
-                + plugin_root.name
-            )
             continue
         for version_root in sorted(plugin_root.iterdir(), key=lambda path: path.name):
             if not version_root.is_dir() or version_root.is_symlink():
@@ -444,6 +436,35 @@ def plugin_cache_preflight_issues(
                 version_root.resolve(strict=True).relative_to(resolved_plugin)
             except (OSError, ValueError) as exc:
                 issues.append(f"plugin cache version escapes package root: {version_root}: {exc}")
+    return issues
+
+
+def plugin_cache_profile_issues(
+    catalog: SkillCatalog,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    ignored_plugin_names: set[str] | None = None,
+) -> list[str]:
+    """Require cache names to match the active profile after structural safety passes."""
+
+    issues = plugin_cache_shape_issues(
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+    )
+    if issues:
+        return issues
+    cache_root = codex_home / "plugins" / "cache" / marketplace_name
+    if not cache_root.exists():
+        return []
+    cached_plugins = {path.name for path in cache_root.iterdir() if path.is_dir()}
+    allowed = set(catalog.plugin_names) | set(ignored_plugin_names or ())
+    extra = sorted(cached_plugins - allowed)
+    if extra:
+        issues.append(
+            "cached my-codex plugins have no canonical repository skills: "
+            + ", ".join(extra)
+        )
     return issues
 
 
@@ -498,7 +519,7 @@ def plugin_installation_issues(
 
     issues = [
         *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-        *plugin_cache_preflight_issues(
+        *plugin_cache_profile_issues(
             catalog,
             codex_home=codex_home,
             marketplace_name=marketplace_name,
@@ -530,14 +551,6 @@ def plugin_installation_issues(
         expected_by_plugin.setdefault(source.plugin, set()).add(source.name)
 
     cache_marketplace_root = codex_home / "plugins" / "cache" / marketplace_name
-    if cache_marketplace_root.is_dir():
-        cached_packages = {path.name for path in cache_marketplace_root.iterdir() if path.is_dir()}
-        extra_cached = sorted(cached_packages - set(catalog.plugin_names))
-        if extra_cached:
-            issues.append(
-                "cached my-codex plugins have no canonical repository skills: "
-                + ", ".join(extra_cached)
-            )
 
     for plugin_name in catalog.plugin_names:
         source_root = plugin_sources.get(plugin_name)

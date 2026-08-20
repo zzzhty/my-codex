@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shlex
@@ -135,7 +136,7 @@ class UnixUpgradeWrapperTests(unittest.TestCase):
         )
         self.assertNotIn("bootstrap Python has no PyYAML", result.stderr)
 
-    def test_wrapper_uses_standalone_then_vscode_and_keeps_codex_bin_strict(self) -> None:
+    def test_wrapper_delegates_codex_resolution_and_keeps_codex_bin_strict(self) -> None:
         platform_dir = extension_platform_dir()
         if platform_dir is None:
             self.skipTest("unsupported Codex extension platform")
@@ -168,18 +169,74 @@ class UnixUpgradeWrapperTests(unittest.TestCase):
 
             standalone_result = self.run_upgrade(env=env, codex_home=codex_home)
             self.assertEqual(standalone_result.returncode, 0, standalone_result.stderr)
-            self.assertIn(f"CodexPath={standalone_cli}", standalone_result.stdout)
+            self.assertIn("CodexPath=auto-if-plugin-removal-is-required", standalone_result.stdout)
+            self.assertIn(str(standalone_cli), standalone_result.stdout)
             self.assertIn("--discovery-profile plugin", standalone_result.stdout)
 
             standalone_cli.unlink()
-            extension_result = self.run_upgrade(env=env, codex_home=codex_home)
+            extension_result = self.run_upgrade(
+                env=env,
+                codex_home=codex_home,
+                extra_args=["--codex", str(extension_cli)],
+            )
             self.assertEqual(extension_result.returncode, 0, extension_result.stderr)
-            self.assertIn(f"CodexPath={extension_cli}", extension_result.stdout)
+            self.assertIn(str(extension_cli), extension_result.stdout)
 
             env["CODEX_BIN"] = str(root / "missing-configured-codex")
             strict_result = self.run_upgrade(env=env, codex_home=codex_home)
             self.assertNotEqual(strict_result.returncode, 0)
-            self.assertIn("Codex CLI from CODEX_BIN not found", strict_result.stderr)
+            self.assertIn("executable not found. Checked:", strict_result.stderr)
+            self.assertIn(env["CODEX_BIN"], strict_result.stderr)
+
+    def test_invalid_distribution_fails_before_codex_resolution_in_wrapper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            shutil.copytree(
+                REPO_ROOT,
+                repo,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            marketplace = repo / ".agents" / "plugins" / "marketplace.json"
+            payload = json.loads(marketplace.read_text(encoding="utf-8"))
+            payload["plugins"][0]["policy"]["installation"] = "INSTALLED_BY_DEFAULT"
+            marketplace.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+            user_home = root / "home"
+            codex_home = user_home / ".codex"
+            missing_codex = root / "missing-codex"
+            env = os.environ.copy()
+            env.update(
+                {
+                    "HOME": str(user_home),
+                    "PATH": "/usr/bin:/bin",
+                    "CODEX_BIN": str(missing_codex),
+                }
+            )
+            result = subprocess.run(
+                [
+                    str(repo / "scripts" / "upgrade_my_codex.sh"),
+                    "--discovery-profile",
+                    "plugin",
+                    "--bootstrap-python",
+                    sys.executable,
+                    "--codex-home",
+                    str(codex_home),
+                    "--tooling-python",
+                    sys.executable,
+                    "--dry-run",
+                    "--skip-check",
+                ],
+                cwd=repo,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("installation policy must be 'AVAILABLE'", result.stderr)
+        self.assertNotIn("executable not found", result.stderr)
+        self.assertNotIn(str(missing_codex), result.stderr)
 
     def test_missing_profile_fails_before_executable_resolution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -254,9 +311,11 @@ class PowerShellUpgradeWrapperContractTests(unittest.TestCase):
         self.assertIn('[ValidateSet("universal", "plugin")]', script)
         self.assertIn('throw "missing required -DiscoveryProfile universal|plugin"', script)
         self.assertGreaterEqual(script.count('"--discovery-profile", $DiscoveryProfile'), 2)
-        self.assertIn('$DiscoveryProfile -eq "plugin"', script)
         self.assertIn('$GitRefWasProvided = $PSBoundParameters.ContainsKey("GitRef")', script)
         self.assertIn('if ($GitRefWasProvided)', script)
+        self.assertIn('$CodexPathWasProvided = $PSBoundParameters.ContainsKey("CodexPath")', script)
+        self.assertNotIn("Resolve-CodexCli", script)
+        self.assertNotIn("Get-CodexCliFallbackCandidates", script)
         self.assertIn('"scripts\\bootstrap_tooling_env.py"', script)
         self.assertIn('"--skip-bootstrap"', script)
         self.assertLess(

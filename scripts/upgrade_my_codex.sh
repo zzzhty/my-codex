@@ -50,107 +50,6 @@ resolve_command() {
     exit 1
 }
 
-codex_extension_platform_dir() {
-    case "$(uname -s 2>/dev/null || true)" in
-        Linux)
-            system=linux
-            ;;
-        Darwin)
-            system=macos
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-
-    case "$(uname -m 2>/dev/null || true)" in
-        x86_64|amd64)
-            architecture=x86_64
-            ;;
-        aarch64|arm64)
-            architecture=aarch64
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-
-    printf '%s-%s\n' "$system" "$architecture"
-}
-
-find_vscode_codex() {
-    platform_dir=$(codex_extension_platform_dir || true)
-    if [ -z "$platform_dir" ]; then
-        return 1
-    fi
-
-    latest=
-    for extension_root in \
-        "$HOME/.vscode-server/extensions" \
-        "$HOME/.vscode-server-insiders/extensions" \
-        "$HOME/.vscode/extensions" \
-        "$HOME/.vscode-insiders/extensions"
-    do
-        if [ ! -d "$extension_root" ]; then
-            continue
-        fi
-        for extension in "$extension_root"/openai.chatgpt-*; do
-            if [ ! -d "$extension" ]; then
-                continue
-            fi
-            candidate="$extension/bin/$platform_dir/codex"
-            if [ -f "$candidate" ] && { [ -z "$latest" ] || [ "$candidate" -nt "$latest" ]; }; then
-                latest=$candidate
-            fi
-        done
-    done
-
-    if [ -n "$latest" ]; then
-        printf '%s\n' "$latest"
-        return 0
-    fi
-    return 1
-}
-
-find_default_codex() {
-    resolved=$(command -v codex 2>/dev/null || true)
-    if [ -n "$resolved" ]; then
-        printf '%s\n' "$resolved"
-        return 0
-    fi
-
-    install_dir=${CODEX_INSTALL_DIR:-"$HOME/.local/bin"}
-    visible_codex="$install_dir/codex"
-    standalone_current="$codex_home/packages/standalone/current"
-    for candidate in \
-        "$visible_codex" \
-        "$standalone_current/bin/codex" \
-        "$standalone_current/codex"
-    do
-        if [ -f "$candidate" ]; then
-            printf '%s\n' "$candidate"
-            return 0
-        fi
-    done
-
-    vscode_codex=$(find_vscode_codex || true)
-    if [ -n "$vscode_codex" ]; then
-        printf '%s\n' "$vscode_codex"
-        return 0
-    fi
-
-    echo "Codex CLI not found. Checked:" >&2
-    echo "codex on PATH" >&2
-    echo "$visible_codex" >&2
-    echo "$standalone_current/bin/codex" >&2
-    echo "$standalone_current/codex" >&2
-    echo "$HOME/.vscode-server/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
-    echo "$HOME/.vscode-server-insiders/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
-    echo "$HOME/.vscode/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
-    echo "$HOME/.vscode-insiders/extensions/openai.chatgpt-*/bin/<platform>/codex" >&2
-    return 1
-}
-
 canonical_path() {
     path=$1
     if command -v realpath >/dev/null 2>&1; then
@@ -270,7 +169,6 @@ repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 
 bootstrap_python=${MY_CODEX_BOOTSTRAP_PYTHON:-}
 codex_path=
-codex_path_explicit=0
 codex_home=${CODEX_HOME:-"$HOME/.codex"}
 tooling_python=${MY_CODEX_PYTHON:-}
 marketplace_name=my-codex
@@ -295,13 +193,11 @@ while [ "$#" -gt 0 ]; do
         --codex)
             require_value "$1" "${2-}"
             codex_path=$2
-            codex_path_explicit=1
             shift 2
             ;;
         --codex=*)
             codex_path=${1#*=}
             require_value "--codex" "$codex_path"
-            codex_path_explicit=1
             shift
             ;;
         --codex-home)
@@ -405,16 +301,6 @@ if [ -z "$bootstrap_python" ]; then
     bootstrap_python=$(find_bootstrap_python)
 else
     bootstrap_python=$(resolve_command "Bootstrap Python" "$bootstrap_python")
-fi
-
-if [ "$discovery_profile" = plugin ]; then
-    if [ "$codex_path_explicit" -eq 1 ]; then
-        codex_path=$(resolve_command "Codex CLI" "$codex_path")
-    elif [ -n "${CODEX_BIN:-}" ]; then
-        codex_path=$(resolve_command "Codex CLI from CODEX_BIN" "$CODEX_BIN")
-    else
-        codex_path=$(find_default_codex)
-    fi
 fi
 
 if [ -z "$tooling_python" ]; then

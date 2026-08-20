@@ -137,6 +137,45 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             mock.patch.object(refresh, "run", side_effect=self.fixture.run),
         )
 
+    def run_pruning_main(self) -> None:
+        arguments = [
+            "refresh_my_codex.py",
+            "--discovery-profile",
+            "plugin",
+            "--marketplace-name",
+            "test",
+            "--marketplace-source",
+            str(self.fixture.repo),
+            "--codex-home",
+            str(self.fixture.codex_home),
+            "--agents-skills-root",
+            str(self.fixture.target),
+            "--dry-run",
+            "--prune-plugins",
+            "--skip-bootstrap",
+            "--skip-agents",
+            "--skip-hooks",
+            "--skip-doctor",
+        ]
+        rows_patch, run_patch = self.patches()
+        with (
+            mock.patch.object(sys, "argv", arguments),
+            mock.patch.object(refresh, "load_repo_skill_catalog", return_value=self.fixture.catalog),
+            mock.patch.object(refresh, "resolve_codex_executable", return_value="codex"),
+            mock.patch.object(refresh, "require_codex_plugin_commands"),
+            mock.patch.object(
+                refresh,
+                "ensure_marketplace_source",
+                return_value=refresh.MarketplaceSourceBinding(
+                    "local",
+                    str(self.fixture.repo),
+                ),
+            ),
+            rows_patch,
+            run_patch,
+        ):
+            refresh.main()
+
     def test_install_manifest_is_explicitly_owned_by_plugin_profile(self) -> None:
         manifest = self.fixture.repo / ".agents" / "plugins" / "install-manifest.json"
         payload = json.loads(manifest.read_text(encoding="utf-8"))
@@ -305,6 +344,54 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
                     env={},
                     dry_run=False,
                 )
+        self.assertEqual(self.fixture.events, [])
+
+    def test_prune_dry_run_reaches_cache_only_stale_plugin_before_full_closure(self) -> None:
+        stale_cache = (
+            self.fixture.codex_home
+            / "plugins"
+            / "cache"
+            / "test"
+            / "retired"
+            / "0.9.0"
+        )
+        stale_cache.mkdir(parents=True)
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "cached my-codex plugins have no canonical repository skills: retired",
+        ):
+            refresh.preflight_plugin_distribution(
+                self.fixture.catalog,
+                codex_home=self.fixture.codex_home,
+                marketplace_name="test",
+            )
+
+        self.run_pruning_main()
+
+        self.assertTrue(stale_cache.is_dir())
+        self.assertEqual(self.fixture.events, ["add:alpha", "add:beta"])
+
+    def test_prune_dry_run_reaches_enabled_stale_plugin_before_full_closure(self) -> None:
+        self.fixture.enabled.add("retired")
+        self.fixture.configure_plugins()
+
+        self.run_pruning_main()
+
+        self.assertEqual(
+            self.fixture.events,
+            ["remove:retired", "add:alpha", "add:beta"],
+        )
+
+    def test_prune_never_ignores_cli_only_uninventoried_plugin(self) -> None:
+        self.fixture.enabled.add("retired")
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "unclassified enabled my-codex plugins.*retired",
+        ):
+            self.run_pruning_main()
+
         self.assertEqual(self.fixture.events, [])
 
 

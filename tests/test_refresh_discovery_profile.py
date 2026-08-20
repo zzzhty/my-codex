@@ -155,6 +155,7 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
             root = Path(tmp)
             catalog = mock.Mock()
             catalog.plugin_names = ()
+            catalog.repo_root = REPO_ROOT
             arguments = [
                 "--discovery-profile",
                 "plugin",

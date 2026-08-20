@@ -22,7 +22,7 @@ from check_skill_discovery import (
     enabled_plugin_names,
     marketplace_plugin_names,
     marketplace_plugin_sources,
-    plugin_cache_preflight_issues,
+    plugin_cache_profile_issues,
     plugin_installation_issues,
     plugin_package_issues,
     require_profile_closure,
@@ -552,12 +552,14 @@ def _enabled_profile_plugins(
     codex: str,
     marketplace_name: str,
     env: dict[str, str],
+    ignored_unclassified: set[str] | None = None,
 ) -> set[str]:
     selectors = _enabled_skill_plugin_selectors(
         catalog,
         codex=codex,
         marketplace_name=marketplace_name,
         env=env,
+        ignored_unclassified=ignored_unclassified,
     )
     alternate = sorted(
         f"{plugin_name}@{marketplace}"
@@ -582,6 +584,7 @@ def _enabled_skill_plugin_selectors(
     codex: str,
     marketplace_name: str,
     env: dict[str, str],
+    ignored_unclassified: set[str] | None = None,
 ) -> set[tuple[str, str]]:
     rows = read_codex_plugin_rows(codex, env=env)
     expected = set(catalog.plugin_names)
@@ -590,10 +593,13 @@ def _enabled_skill_plugin_selectors(
         for (marketplace, plugin_name), row in rows.items()
         if row.status == "installed, enabled"
     }
+    ignored = set(ignored_unclassified or ())
     unclassified = sorted(
         plugin_name
         for marketplace, plugin_name in enabled
-        if marketplace == marketplace_name and plugin_name not in expected
+        if marketplace == marketplace_name
+        and plugin_name not in expected
+        and plugin_name not in ignored
     )
     if unclassified:
         raise SystemExit(
@@ -738,6 +744,7 @@ def preflight_plugin_distribution(
     *,
     codex_home: Path,
     marketplace_name: str,
+    ignored_stale_plugins: set[str] | None = None,
 ) -> tuple[list[str], dict[str, Path]]:
     """Validate every canonical plugin input before marketplace or profile mutation."""
 
@@ -768,10 +775,11 @@ def preflight_plugin_distribution(
         "plugin package preflight",
         [
             *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-            *plugin_cache_preflight_issues(
+            *plugin_cache_profile_issues(
                 catalog,
                 codex_home=codex_home,
                 marketplace_name=marketplace_name,
+                ignored_plugin_names=ignored_stale_plugins,
             ),
         ],
     )
@@ -789,6 +797,7 @@ def apply_plugin_discovery_profile(
     marketplace_source_binding: MarketplaceSourceBinding,
     env: dict[str, str],
     dry_run: bool,
+    ignored_stale_plugins: set[str] | None = None,
 ) -> None:
     require_profile_closure(
         "plugin marketplace source binding",
@@ -798,6 +807,7 @@ def apply_plugin_discovery_profile(
         catalog,
         codex_home=codex_home,
         marketplace_name=marketplace_name,
+        ignored_stale_plugins=ignored_stale_plugins,
     )
 
     selected = selected_plugins(
@@ -825,6 +835,7 @@ def apply_plugin_discovery_profile(
         codex=codex,
         marketplace_name=marketplace_name,
         env=env,
+        ignored_unclassified=ignored_stale_plugins,
     )
     universal_active = universal_layer_active(catalog, target_root=target_root)
     if universal_active and enabled_before:
@@ -843,13 +854,14 @@ def apply_plugin_discovery_profile(
     def current_enabled() -> set[str]:
         rows = current_rows()
         enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
-        unclassified = sorted(enabled - expected_names)
+        ignored = set(ignored_stale_plugins or ())
+        unclassified = sorted(enabled - expected_names - ignored)
         if unclassified:
             raise SystemExit(
                 "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
                 + ", ".join(unclassified)
             )
-        return enabled
+        return enabled - ignored
 
     def preflight_plugin() -> None:
         preflight_layer(catalog, target_root=target_root)
@@ -857,10 +869,11 @@ def apply_plugin_discovery_profile(
             "plugin package preflight",
             [
                 *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-                *plugin_cache_preflight_issues(
+                *plugin_cache_profile_issues(
                     catalog,
                     codex_home=codex_home,
                     marketplace_name=marketplace_name,
+                    ignored_plugin_names=ignored_stale_plugins,
                 ),
             ],
         )
@@ -1533,6 +1546,27 @@ def main() -> None:
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
     codex: str | None = None
+    desired_plugin_names = (
+        default_plugin_names(
+            "install",
+            marketplace_name=args.marketplace_name,
+            manifest_file=catalog.repo_root / ".agents" / "plugins" / "install-manifest.json",
+            marketplace_file=catalog.repo_root / ".agents" / "plugins" / "marketplace.json",
+        )
+        if profile is DiscoveryProfile.PLUGIN
+        else []
+    )
+    planned_pruned_plugins = (
+        set(
+            stale_plugin_names(
+                codex_home=codex_home,
+                marketplace_name=args.marketplace_name,
+                desired_plugin_names=desired_plugin_names,
+            )
+        )
+        if args.prune_plugins
+        else set()
+    )
     configured_profile_plugins = {
         (marketplace, plugin_name)
         for marketplace, plugin_name in enabled_configured_plugin_selectors(codex_home)
@@ -1543,6 +1577,7 @@ def main() -> None:
             catalog,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
+            ignored_stale_plugins=planned_pruned_plugins,
         )
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
         require_codex_plugin_commands(
@@ -1587,20 +1622,11 @@ def main() -> None:
             dry_run=args.dry_run,
         )
         if args.prune_plugins:
-            _enabled_profile_plugins(
-                catalog,
-                codex=codex,
-                marketplace_name=args.marketplace_name,
-                env=env,
-            )
             prune_stale_plugins(
                 codex,
                 codex_home=codex_home,
                 marketplace_name=args.marketplace_name,
-                desired_plugin_names=default_plugin_names(
-                    "install",
-                    marketplace_name=args.marketplace_name,
-                ),
+                desired_plugin_names=desired_plugin_names,
                 env=env,
                 dry_run=args.dry_run,
             )
@@ -1614,6 +1640,7 @@ def main() -> None:
             marketplace_source_binding=marketplace_source_binding,
             env=env,
             dry_run=args.dry_run,
+            ignored_stale_plugins=(planned_pruned_plugins if args.dry_run else None),
         )
     else:
         apply_universal_discovery_profile(
