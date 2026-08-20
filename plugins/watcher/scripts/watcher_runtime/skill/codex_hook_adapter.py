@@ -15,7 +15,11 @@ from typing import Any
 
 from .collect_event import append_event, ensure_runtime_dirs, normalize_event, state_dir_from_env_or_arg
 from .redact_event import redact_event, redact_string
-from ..repository_source import load_repository_skill_catalog, resolve_repository_source
+from ..repository_source import (
+    load_repository_skill_catalog,
+    resolve_repository_path,
+    resolve_repository_source,
+)
 from .runtime_paths import log_file_path, safe_slug as runtime_safe_slug, turns_dir, utc_now_text
 
 
@@ -221,6 +225,7 @@ def load_attribution_overlay(
     plugin_dir: Path,
     *,
     canonical_identities: set[str],
+    repository_root: Path,
 ) -> tuple[dict[str, Any], dict[str, str]]:
     """Overlay non-callable Watcher attribution metadata onto catalog identities."""
 
@@ -230,8 +235,14 @@ def load_attribution_overlay(
     }
     legacy_names: dict[str, str] = {}
     manifest_path = plugin_dir / ".codex-plugin" / "skill-watcher.json"
-    if not manifest_path.is_file():
+    if not manifest_path.exists() and not manifest_path.is_symlink():
         return skills, legacy_names
+    manifest_path = resolve_repository_path(
+        manifest_path,
+        root=repository_root,
+        label="Watcher skill attribution overlay",
+        kind="file",
+    )
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -281,6 +292,7 @@ def discover_skill_metadata(repo_root: str | Path | None = None) -> dict[str, An
         plugin_skills, plugin_legacy = load_attribution_overlay(
             plugin_dir,
             canonical_identities=canonical_identities,
+            repository_root=source.root,
         )
         overlap = set(skills).intersection(plugin_skills)
         if overlap:
@@ -368,12 +380,9 @@ def load_dynamic_monitored_skills(
     return tuple(sorted(skills)) if isinstance(skills, dict) else ()
 
 
-def refresh_dynamic_monitored_skills(
-    state_dir: Path,
-    *,
-    repo_root: str | Path | None = None,
-) -> dict[str, Any]:
-    metadata = discover_skill_metadata(repo_root)
+def write_dynamic_monitored_skills(state_dir: Path, metadata: dict[str, Any]) -> dict[str, Any]:
+    """Persist metadata that was fully discovered and validated before mutation."""
+
     path = metadata_cache_path(state_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -387,6 +396,15 @@ def refresh_dynamic_monitored_skills(
         "source_root": str(metadata.get("source_root") or ""),
         "updated": bool(skills),
     }
+
+
+def refresh_dynamic_monitored_skills(
+    state_dir: Path,
+    *,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
+    metadata = discover_skill_metadata(repo_root)
+    return write_dynamic_monitored_skills(state_dir, metadata)
 
 
 def text_for_matching(value: Any) -> str:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,7 @@ from watcher_runtime.skill.codex_hook_config import (  # noqa: E402
 )
 from check_my_codex import CheckRunner, decode_subprocess_output  # noqa: E402
 from watcher_runtime.skill.doctor import find_managed_hook_issues, main as doctor_main  # noqa: E402
+from watcher_runtime.skill.migrate_skill_watcher_schema import main as reset_schema_main  # noqa: E402
 from watcher_runtime.skill.report_pipeline import (  # noqa: E402
     event_hash,
     load_report_state,
@@ -835,6 +837,47 @@ class SkillWatcherTests(unittest.TestCase):
 
         self.assertIn("pass --repo-root or set MY_CODEX_ROOT", str(raised.exception))
 
+    def test_metadata_discovery_rejects_catalog_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "source"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            catalog = root / "scripts" / "repo_skill_catalog.py"
+            external_catalog = temporary_root / "outside-catalog.py"
+            shutil.copyfile(catalog, external_catalog)
+            catalog.unlink()
+            try:
+                catalog.symlink_to(external_catalog)
+            except OSError as exc:
+                self.skipTest(f"file symlinks unavailable: {exc}")
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("canonical repository skill catalog escapes explicit repository root", str(raised.exception))
+
+    def test_metadata_discovery_rejects_overlay_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "source"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            external_overlay = temporary_root / "outside-overlay.json"
+            external_overlay.write_text(
+                json.dumps({"schema_version": 1, "skills": {}, "legacy_names": {}}),
+                encoding="utf-8",
+            )
+            overlay = root / "plugins" / "demo" / ".codex-plugin" / "skill-watcher.json"
+            overlay.parent.mkdir(parents=True)
+            try:
+                overlay.symlink_to(external_overlay)
+            except OSError as exc:
+                self.skipTest(f"file symlinks unavailable: {exc}")
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("Watcher skill attribution overlay escapes explicit repository root", str(raised.exception))
+
     def test_metadata_discovery_rejects_unknown_overlay_skill(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1010,6 +1053,98 @@ class SkillWatcherTests(unittest.TestCase):
             events[0]["skill_attribution"]["primary"]["name"],
             "mattpocock-skills:diagnosing-bugs",
         )
+
+    def test_hook_command_quotes_space_paths_for_posix_and_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "repo with spaces"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            python = temporary_root / "tooling python" / "python"
+            adapter = root / "plugins" / "watcher" / "scripts" / "watcher"
+            expected_argv = [
+                str(python),
+                "-B",
+                str(adapter),
+                "skill",
+                "observe",
+                "--repo-root",
+                str(root.resolve()),
+            ]
+
+            with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "posix"):
+                posix_command = skill_watcher_command(python, adapter, repo_root=root)
+            with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "nt"):
+                windows_command = skill_watcher_command(python, adapter, repo_root=root)
+
+        self.assertEqual(shlex.split(posix_command, posix=True), expected_argv)
+        self.assertEqual(windows_command, subprocess.list2cmdline(expected_argv))
+
+    def test_reset_schema_validates_repository_before_runtime_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            log_file = log_file_path(state_dir)
+            turn_file = turns_dir(state_dir) / "turn.json"
+            log_file.parent.mkdir(parents=True)
+            turn_file.parent.mkdir(parents=True)
+            log_file.write_text("preserve-event\n", encoding="utf-8")
+            turn_file.write_text('{"preserve": true}\n', encoding="utf-8")
+
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(SystemExit) as raised:
+                    reset_schema_main(
+                        [
+                            "--state-dir",
+                            str(state_dir),
+                            "--reset-runtime-state",
+                        ]
+                    )
+
+            self.assertEqual(log_file.read_text(encoding="utf-8"), "preserve-event\n")
+            self.assertEqual(turn_file.read_text(encoding="utf-8"), '{"preserve": true}\n')
+            self.assertFalse((state_dir / "archives").exists())
+            self.assertFalse((state_dir / "skill-metadata-cache.json").exists())
+            self.assertFalse((state_dir / "schema-version.json").exists())
+
+        self.assertIn("pass --repo-root or set MY_CODEX_ROOT", str(raised.exception))
+
+    def test_reset_schema_uses_prevalidated_explicit_repository_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "repo with spaces"
+            state_dir = temporary_root / "state"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            log_file = log_file_path(state_dir)
+            turn_file = turns_dir(state_dir) / "turn.json"
+            log_file.parent.mkdir(parents=True)
+            turn_file.parent.mkdir(parents=True)
+            log_file.write_text("old-event\n", encoding="utf-8")
+            turn_file.write_text("{}\n", encoding="utf-8")
+
+            with mock.patch("sys.stdout", io.StringIO()):
+                result = reset_schema_main(
+                    [
+                        "--state-dir",
+                        str(state_dir),
+                        "--repo-root",
+                        str(root),
+                        "--reset-runtime-state",
+                    ]
+                )
+
+            archives = tuple((state_dir / "archives" / "pre-schema-v2").glob("events-*.jsonl"))
+            metadata = json.loads((state_dir / "skill-metadata-cache.json").read_text(encoding="utf-8"))
+            new_log = log_file.read_text(encoding="utf-8")
+            turn_exists = turn_file.exists()
+            archive_contents = tuple(path.read_text(encoding="utf-8") for path in archives)
+            source_root = str(root.resolve())
+
+        self.assertEqual(result, 0)
+        self.assertEqual(new_log, "")
+        self.assertFalse(turn_exists)
+        self.assertEqual(len(archives), 1)
+        self.assertEqual(archive_contents, ("old-event\n",))
+        self.assertEqual(tuple(metadata["skills"]), ("demo:entry",))
+        self.assertEqual(metadata["source_root"], source_root)
 
     def test_hook_config_runtime_helpers_and_stale_schema_detection(self) -> None:
         with mock.patch.dict("os.environ", {"MY_CODEX_PYTHON": "/tmp/shared-python"}, clear=True):

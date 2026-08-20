@@ -30,6 +30,34 @@ def expand_path(raw: str | Path) -> Path:
     return Path(os.path.expandvars(str(raw))).expanduser()
 
 
+def resolve_repository_path(
+    path: Path,
+    *,
+    root: Path,
+    label: str,
+    kind: str,
+) -> Path:
+    """Resolve one repository-owned path without allowing authority escape."""
+
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise SystemExit(f"cannot resolve {label} under explicit repository root: {path}: {exc}") from exc
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise SystemExit(
+            f"{label} escapes explicit repository root: {path} -> {resolved}"
+        ) from exc
+    if kind == "file" and not resolved.is_file():
+        raise SystemExit(f"{label} is not a file under explicit repository root: {resolved}")
+    if kind == "directory" and not resolved.is_dir():
+        raise SystemExit(f"{label} is not a directory under explicit repository root: {resolved}")
+    if kind not in {"file", "directory"}:
+        raise ValueError(f"unsupported repository path kind: {kind}")
+    return resolved
+
+
 def resolve_repository_source(repo_root: str | Path | None = None) -> RepositorySource:
     """Resolve and validate one explicit repository-root contract."""
 
@@ -47,16 +75,24 @@ def resolve_repository_source(repo_root: str | Path | None = None) -> Repository
     if not root.is_dir():
         raise SystemExit(f"my-codex repository root is not a directory: {root}")
 
-    catalog_module = root / "scripts" / "repo_skill_catalog.py"
-    watcher_plugin = root / "plugins" / "watcher"
-    watcher_cli = watcher_plugin / "scripts" / "watcher"
-    required = (
-        (catalog_module, "canonical repository skill catalog"),
-        (watcher_cli, "Watcher CLI"),
+    catalog_module = resolve_repository_path(
+        root / "scripts" / "repo_skill_catalog.py",
+        root=root,
+        label="canonical repository skill catalog",
+        kind="file",
     )
-    for path, label in required:
-        if not path.is_file():
-            raise SystemExit(f"{label} missing under explicit repository root: {path}")
+    watcher_plugin = resolve_repository_path(
+        root / "plugins" / "watcher",
+        root=root,
+        label="Watcher plugin",
+        kind="directory",
+    )
+    watcher_cli = resolve_repository_path(
+        watcher_plugin / "scripts" / "watcher",
+        root=root,
+        label="Watcher CLI",
+        kind="file",
+    )
     return RepositorySource(
         root=root,
         catalog_module=catalog_module,

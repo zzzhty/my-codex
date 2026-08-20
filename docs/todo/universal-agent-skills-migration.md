@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M1 after the explicit 2026-08-20 execution request. Work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M2 after the explicit 2026-08-20 execution request and the merged M1 checkpoint. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 and M1 are complete and M2 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -157,7 +157,7 @@ Harness applicability: `Not applicable: manual staged execution. The work is seq
 
 ## Pre-Approval / YOLO
 
-Ready activation: The following pre-approvals are active because the planning preflight is complete, every approval-sensitive surface is settled, and the goal status is `Ready`.
+Ready activation: The following pre-approvals became active when the planning preflight completed, every approval-sensitive surface was settled, and the goal reached `Ready`; they remain active while the goal is `In Progress`.
 
 1. Pre-approved YOLO local operations:
    - Non-destructive local repository code, docs, and test edits for M1-M4; branch creation; local dependency restore; focused and full tests; lint, formatting, and static checks; read-only inventories; generated test fixtures; Git commits and pushes; Draft PR updates; and fixes inside the current milestone.
@@ -472,7 +472,8 @@ Execution evidence:
 - Repository `.codex-plugin/skill-watcher.json` files remain the sole non-callable attribution overlays. Compatibility assertions preserve the pre-M2 baseline of 34 Watcher identities, 11 legacy mappings, 145 aliases, 11 supporting-skill edges, and the exact role distribution; existing legacy attribution scenarios remain unchanged.
 - Installed hook commands embed `--repo-root`; SessionStart, hook validation, refresh/check callers, and doctor share that contract. A subprocess test produced the same attribution from repository and universal-symlink working directories, and a complete doctor integration used only `TemporaryDirectory` state, hook target, validator, and sample-event paths.
 - A malformed marketplace and malformed plugin manifest were ignored while catalog discovery, SessionStart cache creation, and report rendering still resolved the canonical skill and attribution overlay. The derived runtime cache remained a runtime projection rather than a discovery authority.
-- Post-change validation on 2026-08-21 passed all 65 Watcher tests with three platform skips and all 71 root tests; owner-venv byte compilation, actual Watcher plugin validation, observe/install-hook/doctor help, Watcher Markdown links, and `git diff --check` passed. No command targeted the real `$CODEX_HOME/watcher`, hooks, plugins, cache, or universal links.
+- The first independent review found three in-scope transition gaps: catalog or overlay symlink escape, unproven quoting for space-bearing repository roots, and `reset-schema` mutating logs before a missing repository root failed. M2 now resolves every executable or readable authority path inside the explicit root, covers POSIX and Windows command serialization with a valid space-bearing root, and completes metadata discovery before any schema-reset mutation; focused escape and failure-ordering regressions pass.
+- Post-fix validation on 2026-08-21 passed all 70 Watcher tests with three platform skips and all 71 root tests; owner-venv syntax compilation, actual Watcher plugin validation, observe/install-hook/doctor/reset-schema help, Watcher Markdown links, goal readiness, active TODO index, and `git diff --check` passed. No command targeted the real `$CODEX_HOME/watcher`, hooks, plugins, cache, or universal links.
 - Independent Standards and Contract re-review remains pending before the M2 gate passes.
 
 Checkpoint evidence: `M2 commits, PR and merge record, metadata comparison evidence, and runtime-locator validation.`
