@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M4 are complete and M5 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active M5 branch or PR, and the newest user request before acting. M0 through M4 are complete; M5 is `Blocked` at a recorded runtime hard stop after candidate universal discovery preserved exact-once source loading but exposed plugin-qualified invocation identities instead of the frozen bare callable identities. The current Mac has been restored to the plugin profile with repaired repo-owned hooks. Do not retry final universal cutover, change the identity oracle, relocate sources, or alter projection semantics without explicit formal goal evolution. Preserve the protected backup, callable identity contract, frozen slimming baseline, user-owned installation state, and single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -38,7 +38,7 @@ Planning preflight evidence: `grill-with-docs rounds 1-3 completed on 2026-08-20
 
 Resolved decisions: `The one-off Phase 1b prompt and prototype were retired. The current Mac is the sole M5 cutover target. Bare SKILL.md frontmatter names are callable identities; namespaced forms remain Watcher or distribution identities. Discovery profile selection is an explicit required CLI argument. Universal mode uses repo-owned hooks without a zero-skill adapter and retains an inactive mutually exclusive skills-bearing plugin profile. M6 cleanup is a future independent goal. M3 freezes no physical move. Conditional Git/GitHub milestone writes are authorized. Task temporary cache policy is Not applicable. M5 may mutate only inventory-confirmed my-codex skills-bearing plugin state, repository-owned universal links, and the minimum my-codex marketplace, plugin, hook, and agent-support state required for the profile transition; unrelated or unmanaged state, Watcher durable state, and cleanup remain excluded. Cleanup eligibility remains at least five successful universal sessions across at least three working days. ADR-0003 records the discovery-authority trade-off. M5 uses an owner-only durable backup outside Watcher state, performs plugin-to-universal-to-plugin-to-final-universal comparison, validates each mode in a fresh non-interactive Codex CLI process without restarting Desktop, and retains the proven plugin rollback baseline until a separately Ready cleanup goal authorizes deletion.`
 
-Open decisions: `None.`
+Open decisions: `The runtime hard stop requires an explicit product decision and formal goal evolution before more M5 implementation: preserve the frozen bare-identity contract through a newly authorized projection or physical-layout strategy, wait for a Codex loader behavior change, or explicitly migrate the callable-identity contract with a new consumer and compatibility analysis. No option is authorized by the current goal.`
 
 Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/README.md; CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md`
 
@@ -204,7 +204,7 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
 | M3 Physical Layout Verification — No Move | Done | Passed | Done |
 | M4 Optional Plugin Distribution Packaging | Done | Passed | Done |
-| M5 Controlled Universal Profile Cutover | In Progress | Pending | Pending |
+| M5 Controlled Universal Profile Cutover | Blocked | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
 
 ## M0 Contract, Plan, and Baseline Freeze
@@ -651,7 +651,7 @@ Completion criterion: `Optional plugin packaging builds and validates independen
 
 ## M5 Controlled Universal Profile Cutover
 
-Status: `In Progress`
+Status: `Blocked`
 
 Objective: Move one real, rollback-capable environment from the skills-bearing plugin profile to the universal profile and prove exact-once discovery and behavior.
 
@@ -733,7 +733,22 @@ Evidence to record:
 
 - The protected backup path and redacted manifest; before, candidate, rollback, and final config and link inventories; `codex plugin list`; cache inventory; visible skill list; invocation scenarios; Watcher doctor and report output; hook checks; and rollback-rehearsal result. Raw backup material remains local.
 
+Runtime hard-stop evidence: `2026-08-21 candidate universal discovery preserved exact-once loading but contradicted the frozen bare callable-identity contract; the plugin rollback completed successfully.`
+
+- M5 pre-apply source `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` added an exact canonical name-to-source transition boundary. Both directions fail before plugin mutation on mapping drift or an extra repo-target link, use no generic stale-link prune, and remove only canonical links. All 95 root tests and the exact live dry-run passed. An independent second pre-apply review returned Clean.
+- The owner-only protected backup and raw evidence root is `/Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z`; all files are mode `0600` and directories mode `0700`. It retains the complete pre-cutover config and hooks, three exact cache archives, metadata, all comparison outputs, and targeted rollback material. Raw content remains local and uncommitted.
+- Baseline plugin discovery produced 20 unique model-visible canonical skills with exact plugin-qualified identities and cache locators. The deterministic external gate passed. Baseline Watcher health recorded one known defect: the four managed hook commands lacked explicit `--repo-root`; this was the reviewed M2 apply item rather than a waived candidate gate.
+- Candidate universal apply removed only `mattpocock-skills@my-codex`, `watcher@my-codex`, and `workflow@my-codex`, created exactly 34 canonical links, and repaired only the four managed Watcher commands. Universal closure and Watcher doctor passed with zero warnings; all 119 tracked skill files resolved byte-identically through the links; the three package caches were inactive; unrelated config, agent support, and live Watcher durable state were unchanged.
+- The distinct candidate fresh process loaded all 20 canonical model-visible skills exactly once from `/Users/max/.agents/skills/*/SKILL.md`, but reported every invocation identity as plugin-qualified. In particular, explicit `long-running-goal` resolved to `workflow:long-running-goal`, docs alignment routed to `watcher:doc-alignment`, and stable SOP routed to `workflow:sop`. The fail-fast universal identity gate exited `1`. Bare SKILL.md frontmatter and universal source locators were correct, so silently rebaselining this result would contradict the frozen callable-identity contract and change product semantics.
+- The exact breakpoint is the universal branch of the deterministic fresh-output gate after successful candidate closure, resource, hook, and doctor checks. The final-universal phase was not attempted.
+- The reviewed rollback removed the 34 canonical links and reinstalled the same three package selectors at versions `1.2.3+codex.20260812033502`, `0.1.0+codex.20260817071906`, and `0.1.0+codex.20260814091823`. Plugin closure and isolated Watcher doctor passed with zero warnings. A third fresh process reproduced the baseline 20 identity, bare-identity, and cache-locator triples exactly, with no duplicates. Live Watcher durable-state stat inventory remained exactly unchanged, and the protected pre-cutover cache archives remain available.
+- Current safe state is the single active plugin discovery profile with the repo-owned hooks repaired and healthy; `/Users/max/.agents/skills` is inactive and empty. No retained backup, Watcher state, unrelated plugin, marketplace, config, or user entry was deleted. Further M5 work requires user-directed formal goal evolution at this runtime hard stop.
+
 Checkpoint evidence: `M5 preflight authorization record, exact commands, before and after evidence, comparison matrix, retained-state inventory, and rollback rehearsal.`
+
+Checkpoint component: Pending because the candidate universal identity gate failed and M5 is Blocked.
+
+Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed pre-apply source; the blocked-state evidence remains at the active `codex/universal-agent-skills-m5` branch head and unmerged while the checkpoint is Pending.
 
 Rollback:
 

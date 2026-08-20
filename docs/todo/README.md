@@ -13,7 +13,7 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-- [Universal Agent Skills Migration](universal-agent-skills-migration.md): In-progress long-running goal executing M1 repository authority and explicit discovery profiles before Watcher decoupling, optional plugin distribution, and controlled cutover on the current Mac.
+- [Universal Agent Skills Migration](universal-agent-skills-migration.md): Blocked long-running goal; candidate universal loading found all canonical skills exactly once but retained plugin-qualified invocation identities, so the current Mac was safely rolled back to the healthy plugin profile pending formal goal evolution.
 
 No closed long-running goal index is currently tracked.
 
