@@ -8,7 +8,11 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .codex_hook_adapter import SCHEMA_VERSION, refresh_dynamic_monitored_skills
+from .codex_hook_adapter import (
+    SCHEMA_VERSION,
+    discover_skill_metadata,
+    write_dynamic_monitored_skills,
+)
 from .runtime_paths import ensure_runtime_dirs, log_file_path, state_dir_from_env_or_arg, turns_dir
 
 
@@ -45,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/watcher/skill.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
     parser.add_argument(
+        "--repo-root",
+        help="Canonical my-codex repository root. Defaults to $MY_CODEX_ROOT.",
+    )
+    parser.add_argument(
         "--reset-runtime-state",
         action="store_true",
         help="Required acknowledgement that old events and turn state should be archived/reset.",
@@ -53,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.reset_runtime_state:
         raise SystemExit("refusing to migrate without --reset-runtime-state")
 
+    metadata = discover_skill_metadata(args.repo_root)
     state_dir = state_dir_from_env_or_arg(args.state_dir)
     log_file = log_file_path(state_dir, args.log_file)
     ensure_runtime_dirs(state_dir)
@@ -60,14 +69,14 @@ def main(argv: list[str] | None = None) -> int:
     log_file.parent.mkdir(parents=True, exist_ok=True)
     log_file.write_text("", encoding="utf-8")
     removed_turns = reset_turn_state(state_dir)
-    metadata = refresh_dynamic_monitored_skills(state_dir)
+    metadata_update = write_dynamic_monitored_skills(state_dir, metadata)
 
     print(f"schema_version: {SCHEMA_VERSION}")
     print(f"state_dir: {state_dir}")
     print(f"archived_events: {archived or 'none'}")
     print(f"reset_turn_state_files: {removed_turns}")
-    print(f"metadata_cache: {metadata['path']}")
-    print(f"metadata_skills: {metadata['skill_count']}")
+    print(f"metadata_cache: {metadata_update['path']}")
+    print(f"metadata_skills: {metadata_update['skill_count']}")
     return 0
 
 

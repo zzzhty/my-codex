@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M1 after the explicit 2026-08-20 execution request. Work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M2 after the explicit 2026-08-20 execution request and the merged M1 checkpoint. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 and M1 are complete and M2 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -157,7 +157,7 @@ Harness applicability: `Not applicable: manual staged execution. The work is seq
 
 ## Pre-Approval / YOLO
 
-Ready activation: The following pre-approvals are active because the planning preflight is complete, every approval-sensitive surface is settled, and the goal status is `Ready`.
+Ready activation: The following pre-approvals became active when the planning preflight completed, every approval-sensitive surface was settled, and the goal reached `Ready`; they remain active while the goal is `In Progress`.
 
 1. Pre-approved YOLO local operations:
    - Non-destructive local repository code, docs, and test edits for M1-M4; branch creation; local dependency restore; focused and full tests; lint, formatting, and static checks; read-only inventories; generated test fixtures; Git commits and pushes; Draft PR updates; and fixes inside the current milestone.
@@ -200,8 +200,8 @@ Ready activation: The following pre-approvals are active because the planning pr
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
-| M1 Repository-Authoritative Discovery and Profile Integration | In Progress | Pending | Pending |
-| M2 Watcher Metadata and Shared-Runtime Decoupling | Not Started | Pending | Pending |
+| M1 Repository-Authoritative Discovery and Profile Integration | Done | Passed | Done |
+| M2 Watcher Metadata and Shared-Runtime Decoupling | In Progress | Pending | Pending |
 | M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
 | M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
 | M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
@@ -274,7 +274,7 @@ Completion criterion: `The preflight and housekeeping decisions are truthfully r
 
 ## M1 Repository-Authoritative Discovery and Profile Integration
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Land the repository-derived catalog and managed projection together with all refresh, check, and wrapper callers so the source batch is internally consistent before merge.
 
@@ -392,9 +392,19 @@ Execution evidence:
 - The independent Standards and Spec reviews found strict-parser, duplicate-authority, transition-interface, alternate-marketplace, selector-scope, universal-link-removal rollback, shared-manifest behavior-coverage, dead-helper, and wrapper-bootstrap gaps. The branch now fails closed on malformed CLI rows and config disagreement, centralizes plugin and marketplace identity parsing, rejects or precisely removes alternate-marketplace copies, limits selectors to the canonical catalog and chosen marketplace, uses direction-specific transition runtimes, rolls back partial universal-link removal, exercises manifest schema and identity failures through the shared closure, removes superseded helper surfaces, and uses the bootstrap Python only to establish the tooling venv before running profile helpers with its PyYAML-capable Python. Final independent re-review of `3da1d41...d78eccb` passed both Standards and Spec with no actionable findings; each reviewer independently reran all 52 focused tests.
 - Post-fix validation on 2026-08-21 passed the required 52 focused tests, all 71 root tests, all 64 Workflow tests, and all 62 Watcher tests with three platform skips; owner-venv byte compilation, shell syntax, CLI help, Markdown links, goal readiness, and `git diff --check` also passed. The bare system `python3` correctly remained unsuitable because it lacks PyYAML, so all supported checks used `/Users/max/.codex/venvs/my-codex/bin/python` as frozen.
 - A real-environment read-only inventory parsed all current `codex plugin list` rows, confirmed the canonical three `my-codex` packages enabled at one exact cache version each with 34 callable identities and plugin-profile closure, and confirmed `/Users/max/.agents/skills` is absent. No refresh, check, link, plugin, hook, cache, or durable-state mutation was run against the live installation during M1.
-- Draft [PR #6](https://github.com/zzzhty/my-codex/pull/6) was created from `codex/universal-agent-skills-m1`; GitHub reported it mergeable with no repository CI checks configured. The PR remains pending final checkpoint and merge recording.
+- [PR #6](https://github.com/zzzhty/my-codex/pull/6) merged the reviewed M1 branch to `main` as `9f6e3a739c00e0c780d8c71946600ba578f1f892` after GitHub reported it mergeable with no repository CI checks configured. The merged remote and local M1 branches contained no commits absent from `main` and were deleted before M2 started from that merge.
 
-Checkpoint evidence: `M1 commits, PR URL, merge authorization and result, focused and full validation logs, independent review, and remaining runtime blockers.`
+Checkpoint component: Done
+
+Checkpoint type: git merge
+
+Revision: 9f6e3a739c00e0c780d8c71946600ba578f1f892
+
+Changed files: README.md; docs/todo/README.md; docs/todo/skill-slimming-batch-1-validation.md; docs/todo/universal-agent-skills-migration.md; scripts/check_my_codex.py; scripts/check_skill_discovery.py; scripts/discovery_profile_runtime.py; scripts/refresh_my_codex.py; scripts/repo_skill_catalog.py; scripts/skill_discovery_profiles.py; scripts/sync_agents_skills.py; scripts/upgrade_my_codex.ps1; scripts/upgrade_my_codex.sh; focused root tests
+
+Validation recorded: 52 focused, 71 root, 64 Workflow, and 62 Watcher tests passed; three Watcher platform tests skipped; static, docs, lifecycle, wrapper, failure-injection, real-environment read-only inventory, and independent Standards and Spec gates passed on 2026-08-21
+
+Out-of-scope dirty changes: none observed before merge or at the M2 branch point
 
 Rollback: `Revert the source PR. Because M1 performs no real cutover, no user installation rollback is required.`
 
@@ -408,7 +418,7 @@ Completion criterion: `The integrated source PR is merged to main, all callers u
 
 ## M2 Watcher Metadata and Shared-Runtime Decoupling
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Make Watcher core work from canonical repository source and stable runtime locators without marketplace catalog or plugin-cache authority.
 
@@ -454,6 +464,17 @@ Review gate:
 Evidence to record:
 
 - Metadata fixture comparison, legacy-name tests, report snapshots or diffs, runtime-locator tests, isolated doctor-test output, and updated Watcher architecture docs.
+
+Execution evidence:
+
+- M2 started from merged `main` revision `9f6e3a739c00e0c780d8c71946600ba578f1f892` on `codex/universal-agent-skills-m2` after the M1 branch and remote ref were safely removed.
+- Watcher now loads the exact M1 `scripts/repo_skill_catalog.py` implementation from an explicit validated repository root and derives its durable namespaced identities from that catalog. Marketplace JSON, plugin manifests, plugin cache, adapter ancestry, and runtime state no longer enumerate callable skills.
+- Repository `.codex-plugin/skill-watcher.json` files remain the sole non-callable attribution overlays. Compatibility assertions preserve the pre-M2 baseline of 34 Watcher identities, 11 legacy mappings, 145 aliases, 11 supporting-skill edges, and the exact role distribution; existing legacy attribution scenarios remain unchanged.
+- Installed hook commands embed `--repo-root`; SessionStart, hook validation, refresh/check callers, and doctor share that contract. A subprocess test produced the same attribution from repository and universal-symlink working directories, and a complete doctor integration used only `TemporaryDirectory` state, hook target, validator, and sample-event paths.
+- A malformed marketplace and malformed plugin manifest were ignored while catalog discovery, SessionStart cache creation, and report rendering still resolved the canonical skill and attribution overlay. The derived runtime cache remained a runtime projection rather than a discovery authority.
+- The first independent review found three in-scope transition gaps: catalog or overlay symlink escape, unproven quoting for space-bearing repository roots, and `reset-schema` mutating logs before a missing repository root failed. M2 now resolves every executable or readable authority path inside the explicit root, covers POSIX and Windows command serialization with a valid space-bearing root, and completes metadata discovery before any schema-reset mutation; focused escape and failure-ordering regressions pass.
+- Post-fix validation on 2026-08-21 passed all 70 Watcher tests with three platform skips and all 71 root tests; owner-venv syntax compilation, actual Watcher plugin validation, observe/install-hook/doctor/reset-schema help, Watcher Markdown links, goal readiness, active TODO index, and `git diff --check` passed. No command targeted the real `$CODEX_HOME/watcher`, hooks, plugins, cache, or universal links.
+- Independent Standards and Contract re-reviews of `9f6e3a739c00e0c780d8c71946600ba578f1f892...0a8214795ee73ed5bfc9a04041eefcec9e81698d` both returned clean on 2026-08-21. Each reviewer independently reran the 70-test Watcher suite, 71-test root suite, scoped diff and Markdown checks; Standards confirmed authority containment and cross-platform command serialization, while Contract confirmed `reset-schema` prevalidation ordering, marketplace independence, identity stability, and runtime-cache non-authority. The milestone table remains pending until the reviewed branch is merged and its checkpoint is recorded on the next milestone branch.
 
 Checkpoint evidence: `M2 commits, PR and merge record, metadata comparison evidence, and runtime-locator validation.`
 

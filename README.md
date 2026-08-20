@@ -284,7 +284,7 @@ The generated hook handlers observe:
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default. Metadata discovery treats the marketplace catalog and plugin manifests as one strict contract: missing or malformed catalog data, catalog/manifest identity drift, unknown `skill-watcher.json` schema versions, and invalid skill references fail visibly instead of falling back to a directory scan or silently dropping metadata.
+`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default. The callable inventory comes only from the repository catalog under the explicit `--repo-root`; marketplace metadata, plugin manifests, plugin cache, and the runtime cache are not callable authorities. Repository `.codex-plugin/skill-watcher.json` files are non-callable attribution overlays for namespaced identities, roles, aliases, supporting relationships, logical groups, and legacy mappings. Missing repository source, catalog failures, unknown overlay schemas, and invalid references fail visibly.
 
 Expected command-hook schema:
 
@@ -292,7 +292,7 @@ Expected command-hook schema:
 {
   "type": "command",
   "async": false,
-  "command": "...",
+  "command": "... watcher skill observe --repo-root <my-codex-root>",
   "timeoutSec": 10,
   "statusMessage": "Watcher skill: observe <event>"
 }
@@ -305,16 +305,16 @@ Install or refresh Watcher skill hooks from the source checkout:
 Unix:
 
 ```bash
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --dry-run
-"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --apply
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --repo-root "$MY_CODEX_ROOT" --dry-run
+"$MY_CODEX_PYTHON" "$MY_CODEX_ROOT/plugins/watcher/scripts/watcher" skill install-hook --repo-root "$MY_CODEX_ROOT" --apply
 ```
 
 Windows PowerShell:
 
 ```powershell
 $python = "$env:USERPROFILE\.codex\venvs\my-codex\Scripts\python.exe"
-& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --dry-run --python $python
-& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --apply --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --repo-root $env:MY_CODEX_ROOT --dry-run --python $python
+& $python "$env:MY_CODEX_ROOT\plugins\watcher\scripts\watcher" skill install-hook --repo-root $env:MY_CODEX_ROOT --apply --python $python
 ```
 
 After applying hooks, open `/hooks` in Codex and trust the Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
@@ -333,7 +333,7 @@ turns/
 
 The hook adapter records summaries, lengths, hashes, tool names, outcomes, and redacted metadata. It does not store full prompts, full assistant messages, full shell commands, full tool responses, file contents, secrets, or private business data.
 
-Watcher monitors the skills packaged by the `my-codex` marketplace by default and can be narrowed with `WATCHER_SKILL_MONITORED_SKILLS`. Because Codex hook payloads do not provide a stable native skill id, attribution is recorded as `provided`, `prompt_mention`, `assistant_announcement`, or `unknown`. Successful tool calls are counted in transient turn state but are not persisted as individual records; failed tool calls and one `turn_summary` are persisted for active monitored skills.
+Watcher monitors the canonical repository skill set by default and can be narrowed with `WATCHER_SKILL_MONITORED_SKILLS`. Installed hooks embed the explicit repository root, so repository and universal-symlink execution share the same source runtime and do not depend on plugin cache or working-directory inference. Because Codex hook payloads do not provide a stable native skill id, attribution is recorded as `provided`, `prompt_mention`, `assistant_announcement`, or `unknown`. Successful tool calls are counted in transient turn state but are not persisted as individual records; failed tool calls and one `turn_summary` are persisted for active monitored skills.
 
 When the user explicitly invokes a monitored skill, the adapter stores a redacted `user_skill_context` summary/hash for the extra information mentioned with that skill. This is intended as future skill-improvement evidence without retaining the raw prompt.
 

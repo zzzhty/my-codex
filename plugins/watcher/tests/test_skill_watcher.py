@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,7 +25,7 @@ sys.path.insert(0, str(SCRIPTS))
 import refresh_my_codex  # noqa: E402
 from watcher_runtime.skill.codex_hook_adapter import (  # noqa: E402
     HookRuntimePaths,
-    discover_packaged_skills,
+    discover_watcher_skill_identities,
     discover_skill_metadata,
     load_dynamic_monitored_skills,
     normalize_hook_payload,
@@ -36,7 +39,8 @@ from watcher_runtime.skill.codex_hook_config import (  # noqa: E402
     skill_watcher_command,
 )
 from check_my_codex import CheckRunner, decode_subprocess_output  # noqa: E402
-from watcher_runtime.skill.doctor import find_managed_hook_issues  # noqa: E402
+from watcher_runtime.skill.doctor import find_managed_hook_issues, main as doctor_main  # noqa: E402
+from watcher_runtime.skill.migrate_skill_watcher_schema import main as reset_schema_main  # noqa: E402
 from watcher_runtime.skill.report_pipeline import (  # noqa: E402
     event_hash,
     load_report_state,
@@ -56,6 +60,7 @@ from refresh_my_codex import (  # noqa: E402
     selected_plugins,
     stale_plugin_names,
 )
+from repo_skill_catalog import load_repo_skill_catalog  # noqa: E402
 from watcher_runtime.skill.runtime_paths import (  # noqa: E402
     ensure_runtime_dirs as runtime_ensure_runtime_dirs,
     hook_backup_dir,
@@ -80,6 +85,30 @@ WINDOWS_PWSH_ENCODING_TEST = unittest.skipUnless(
     sys.platform == "win32",
     "Windows PowerShell encoding regression",
 )
+
+
+def initialize_catalog_repo(root: Path, skills: dict[str, tuple[str, ...]]) -> None:
+    catalog_target = root / "scripts" / "repo_skill_catalog.py"
+    catalog_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT_SCRIPTS / "repo_skill_catalog.py", catalog_target)
+    watcher_cli = root / "plugins" / "watcher" / "scripts" / "watcher"
+    watcher_cli.parent.mkdir(parents=True, exist_ok=True)
+    watcher_cli.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    for plugin_name, callable_names in skills.items():
+        for callable_name in callable_names:
+            skill_file = root / "plugins" / plugin_name / "skills" / callable_name / "SKILL.md"
+            skill_file.parent.mkdir(parents=True, exist_ok=True)
+            skill_file.write_text(
+                f"---\nname: {callable_name}\ndescription: Test.\n---\n",
+                encoding="utf-8",
+            )
+
+
+def write_attribution_overlay(root: Path, plugin_name: str, payload: dict[str, object]) -> Path:
+    path = root / "plugins" / plugin_name / ".codex-plugin" / "skill-watcher.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
 
 
 class SkillWatcherTests(unittest.TestCase):
@@ -345,9 +374,41 @@ class SkillWatcherTests(unittest.TestCase):
                     str(ROOT / "scripts" / "watcher"),
                     "skill",
                     "doctor",
+                    "--repo-root",
+                    str(REPO_ROOT),
                 ]
             ],
         )
+
+    def test_skill_doctor_runs_entirely_in_temporary_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_dir = root / "watcher" / "skill"
+            hook_target = root / "hooks.json"
+            validator = root / "validate_plugin.py"
+            validator.write_text("raise SystemExit(0)\n", encoding="utf-8")
+            output = io.StringIO()
+
+            with mock.patch("sys.stdout", output):
+                result = doctor_main(
+                    [
+                        "--repo-root",
+                        str(REPO_ROOT),
+                        "--state-dir",
+                        str(state_dir),
+                        "--hook-target",
+                        str(hook_target),
+                        "--python",
+                        sys.executable,
+                        "--validator",
+                        str(validator),
+                    ]
+                )
+
+            self.assertEqual(result, 0, output.getvalue())
+            self.assertTrue((state_dir / "logs").is_dir())
+            self.assertTrue((state_dir / "reports").is_dir())
+            self.assertIn("doctor passed with 1 warning(s)", output.getvalue())
 
     def test_install_manifest_drives_default_plugin_selection(self) -> None:
         expected = [
@@ -465,7 +526,27 @@ class SkillWatcherTests(unittest.TestCase):
 
     def test_mattpocock_v123_metadata_preserves_native_and_historical_attribution(self) -> None:
         metadata = discover_skill_metadata(REPO_ROOT)
-        packaged = set(metadata["skills"])
+        watcher_identities = set(metadata["skills"])
+        self.assertEqual(len(watcher_identities), 34)
+        self.assertEqual(len(metadata["legacy_names"]), 11)
+        self.assertEqual(
+            sum(len(values["aliases"]) for values in metadata["skills"].values()),
+            145,
+        )
+        self.assertEqual(
+            sum(len(values["supporting_skills"]) for values in metadata["skills"].values()),
+            11,
+        )
+        self.assertEqual(
+            {
+                role: sum(
+                    values["role"] == role
+                    for values in metadata["skills"].values()
+                )
+                for role in {values["role"] for values in metadata["skills"].values()}
+            },
+            {"discipline": 6, "entrypoint": 2, "specialized": 23, "wrapper": 3},
+        )
         for skill_name in (
             "code-review",
             "implement",
@@ -481,7 +562,7 @@ class SkillWatcherTests(unittest.TestCase):
             "writing-for-agents",
         ):
             full_name = f"mattpocock-skills:{skill_name}"
-            self.assertIn(full_name, packaged)
+            self.assertIn(full_name, watcher_identities)
             aliases = metadata["skills"][full_name]["aliases"]
             self.assertIn(
                 {"value": full_name, "kind": "skill_name", "match": "phrase"},
@@ -519,10 +600,10 @@ class SkillWatcherTests(unittest.TestCase):
             )
             self.assertEqual(values["logical_group"], expected_group)
 
-        self.assertNotIn("mattpocock-skills:to-prd", packaged)
-        self.assertNotIn("mattpocock-skills:to-issues", packaged)
-        self.assertNotIn("mattpocock-skills:writing-great-skills", packaged)
-        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
+        self.assertNotIn("mattpocock-skills:to-prd", watcher_identities)
+        self.assertNotIn("mattpocock-skills:to-issues", watcher_identities)
+        self.assertNotIn("mattpocock-skills:writing-great-skills", watcher_identities)
+        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", watcher_identities)
         self.assertEqual(
             set(metadata["skills"]["mattpocock-skills:implement"]["supporting_skills"]),
             {
@@ -560,7 +641,8 @@ class SkillWatcherTests(unittest.TestCase):
                     {
                         "hook_event_name": "UserPromptSubmit",
                         "skill_name": legacy_full_name,
-                    }
+                    },
+                    repo_root=REPO_ROOT,
                 )
                 self.assertEqual(provided["skill_attribution"]["primary"]["name"], current_name)
                 self.assertEqual(provided["skill_attribution"]["primary"]["source"], "provided")
@@ -571,7 +653,8 @@ class SkillWatcherTests(unittest.TestCase):
                         {
                             "hook_event_name": "UserPromptSubmit",
                             "prompt": f"Use ${prompt_alias} for this work",
-                        }
+                        },
+                        repo_root=REPO_ROOT,
                     )
                     primary = prompt["skill_attribution"]["primary"]
                     self.assertEqual(primary["name"], current_name)
@@ -579,15 +662,18 @@ class SkillWatcherTests(unittest.TestCase):
                     self.assertEqual(primary["alias_kind"], "legacy")
 
     def test_codex_hook_lifecycle_filters_summarizes_and_guards_skill_list(self) -> None:
-        packaged = sorted(
-            f"{plugin_name}:{skill_file.parent.name}"
-            for plugin_name in default_plugin_names("install", marketplace_name="my-codex")
-            for skill_file in (REPO_ROOT / "plugins" / plugin_name / "skills").glob("*/SKILL.md")
+        catalog = load_repo_skill_catalog(REPO_ROOT)
+        watcher_identities = sorted(
+            f"{source.plugin}:{source.name}"
+            for source in catalog.sources
         )
-        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", packaged)
-        self.assertEqual(discover_packaged_skills(REPO_ROOT), tuple(packaged))
+        self.assertIn("mattpocock-skills:setup-matt-pocock-skills", watcher_identities)
+        self.assertEqual(
+            discover_watcher_skill_identities(REPO_ROOT),
+            tuple(watcher_identities),
+        )
         metadata = discover_skill_metadata(REPO_ROOT)
-        self.assertEqual(set(metadata["skills"]), set(packaged))
+        self.assertEqual(set(metadata["skills"]), set(watcher_identities))
         self.assertEqual(
             metadata["legacy_names"]["mattpocock-skills:diagnose"],
             "mattpocock-skills:diagnosing-bugs",
@@ -606,7 +692,8 @@ class SkillWatcherTests(unittest.TestCase):
                 "tool_name": "Bash",
                 "tool_input": {"command": "printf sk-testsecret123456789"},
                 "tool_response": {"exit_code": 1, "stderr": "error token sk-testsecret123456789"},
-            }
+            },
+            repo_root=REPO_ROOT,
         )
         serialized = json.dumps(normalized, sort_keys=True)
         self.assertEqual(normalized["event_type"], "post_tool_use")
@@ -628,6 +715,7 @@ class SkillWatcherTests(unittest.TestCase):
                     "turn_id": "turn-start",
                 },
                 state_dir=state_dir,
+                repo_root=REPO_ROOT,
             )
             unknown = write_hook_event(
                 {
@@ -638,6 +726,7 @@ class SkillWatcherTests(unittest.TestCase):
                     "prompt": "ordinary task without a monitored skill",
                 },
                 state_dir=state_dir,
+                repo_root=REPO_ROOT,
             )
             base = {
                 "cwd": "/tmp/workspace",
@@ -651,6 +740,7 @@ class SkillWatcherTests(unittest.TestCase):
                     "prompt": "Use diagnose on flaky tests with sk-testsecret123456789",
                 },
                 state_dir=state_dir,
+                repo_root=REPO_ROOT,
             )
             success = write_hook_event(
                 {
@@ -660,6 +750,7 @@ class SkillWatcherTests(unittest.TestCase):
                     "tool_response": {"exit_code": 0, "stdout": "ok"},
                 },
                 state_dir=state_dir,
+                repo_root=REPO_ROOT,
             )
             failure = write_hook_event(
                 {
@@ -669,14 +760,22 @@ class SkillWatcherTests(unittest.TestCase):
                     "tool_response": {"exit_code": 1, "stderr": "error"},
                 },
                 state_dir=state_dir,
+                repo_root=REPO_ROOT,
             )
-            summary = write_hook_event({**base, "hook_event_name": "Stop"}, state_dir=state_dir)
+            summary = write_hook_event(
+                {**base, "hook_event_name": "Stop"},
+                state_dir=state_dir,
+                repo_root=REPO_ROOT,
+            )
             lines = log_file_path(state_dir).read_text(encoding="utf-8").splitlines()
             dynamic_skills = load_dynamic_monitored_skills(state_dir)
 
         self.assertFalse(session_start["codex"]["persisted"])
-        self.assertEqual(session_start["codex"]["metadata_update"]["skill_count"], len(packaged))
-        self.assertEqual(dynamic_skills, tuple(packaged))
+        self.assertEqual(
+            session_start["codex"]["metadata_update"]["skill_count"],
+            len(watcher_identities),
+        )
+        self.assertEqual(dynamic_skills, tuple(watcher_identities))
         self.assertFalse(unknown["codex"]["persisted"])
         self.assertEqual(prompt["skill_attribution"]["primary"]["name"], "mattpocock-skills:diagnosing-bugs")
         self.assertEqual(prompt["skill_attribution"]["primary"]["source"], "prompt_mention")
@@ -697,7 +796,8 @@ class SkillWatcherTests(unittest.TestCase):
             {
                 "hook_event_name": "UserPromptSubmit",
                 "prompt": "请使用标准流程整理这次重复任务。",
-            }
+            },
+            repo_root=REPO_ROOT,
         )
         self.assertEqual(sop_prompt["skill_attribution"]["primary"]["name"], "workflow:sop")
         self.assertEqual(sop_prompt["skill_attribution"]["primary"]["source"], "prompt_mention")
@@ -707,154 +807,105 @@ class SkillWatcherTests(unittest.TestCase):
             {
                 "hook_event_name": "Stop",
                 "last_assistant_message": "I will use $sop for this recurring procedure.",
-            }
+            },
+            repo_root=REPO_ROOT,
         )
         self.assertEqual(sop_assistant["skill_attribution"]["primary"]["name"], "workflow:sop")
         self.assertEqual(sop_assistant["skill_attribution"]["primary"]["source"], "assistant_announcement")
         self.assertEqual(sop_assistant["skill_attribution"]["primary"]["matched_alias"], "sop")
 
-    def test_metadata_discovery_rejects_invalid_marketplace_contracts(self) -> None:
-        cases = (
-            ("missing", None, "marketplace file missing"),
-            ("invalid-json", "{not-json\n", "invalid marketplace JSON"),
-            ("invalid-plugins", json.dumps({"plugins": {}}), "plugins must be a list"),
-            ("invalid-entry", json.dumps({"plugins": ["bad"]}), "entry #1 must be an object"),
-            (
-                "missing-name",
-                json.dumps({"plugins": [{"source": {"source": "local", "path": "./plugins/demo"}}]}),
-                "entry #1 name missing",
-            ),
-            (
-                "unknown-source-kind",
-                json.dumps({"plugins": [{"name": "demo", "source": {"source": "git"}}]}),
-                "unsupported marketplace source kind",
-            ),
-            (
-                "missing-local-plugin",
-                json.dumps(
-                    {
-                        "plugins": [
-                            {
-                                "name": "missing",
-                                "source": {"source": "local", "path": "./plugins/missing"},
-                            }
-                        ]
-                    }
-                ),
-                "local plugin path missing",
-            ),
-        )
-        for label, marketplace_text, expected in cases:
-            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                marketplace = root / ".agents" / "plugins" / "marketplace.json"
-                if marketplace_text is not None:
-                    marketplace.parent.mkdir(parents=True)
-                    marketplace.write_text(marketplace_text, encoding="utf-8")
-
-                with self.assertRaises(SystemExit) as raised:
-                    discover_skill_metadata(root)
-
-                self.assertIn(expected, str(raised.exception))
-
-    def test_metadata_discovery_rejects_invalid_plugin_manifest(self) -> None:
+    def test_metadata_discovery_ignores_marketplace_and_plugin_manifests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            plugin = root / "plugins" / "demo"
+            initialize_catalog_repo(root, {"demo": ("foo",)})
             marketplace = root / ".agents" / "plugins" / "marketplace.json"
             marketplace.parent.mkdir(parents=True)
-            marketplace.write_text(
-                json.dumps(
-                    {
-                        "plugins": [
-                            {
-                                "name": "demo",
-                                "source": {"source": "local", "path": "./plugins/demo"},
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-            skill = plugin / "skills" / "foo" / "SKILL.md"
-            skill.parent.mkdir(parents=True)
-            skill.write_text("---\nname: foo\ndescription: Test.\n---\n", encoding="utf-8")
-            manifest = plugin / ".codex-plugin" / "plugin.json"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text("{not-json\n", encoding="utf-8")
+            marketplace.write_text("{not-json\n", encoding="utf-8")
+            plugin_manifest = root / "plugins" / "demo" / ".codex-plugin" / "plugin.json"
+            plugin_manifest.parent.mkdir(parents=True)
+            plugin_manifest.write_text("{not-json\n", encoding="utf-8")
+
+            metadata = discover_skill_metadata(root)
+
+        self.assertEqual(tuple(metadata["skills"]), ("demo:foo",))
+        self.assertEqual(metadata["source_root"], str(root.resolve()))
+
+    def test_metadata_discovery_requires_explicit_repository_root(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata()
+
+        self.assertIn("pass --repo-root or set MY_CODEX_ROOT", str(raised.exception))
+
+    def test_metadata_discovery_rejects_catalog_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "source"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            catalog = root / "scripts" / "repo_skill_catalog.py"
+            external_catalog = temporary_root / "outside-catalog.py"
+            shutil.copyfile(catalog, external_catalog)
+            catalog.unlink()
+            try:
+                catalog.symlink_to(external_catalog)
+            except OSError as exc:
+                self.skipTest(f"file symlinks unavailable: {exc}")
 
             with self.assertRaises(SystemExit) as raised:
                 discover_skill_metadata(root)
 
-        self.assertIn("invalid plugin manifest JSON", str(raised.exception))
+        self.assertIn("canonical repository skill catalog escapes explicit repository root", str(raised.exception))
 
-    def test_metadata_discovery_rejects_catalog_manifest_name_mismatch(self) -> None:
+    def test_metadata_discovery_rejects_overlay_symlink_escape(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            plugin = root / "plugins" / "demo"
-            marketplace = root / ".agents" / "plugins" / "marketplace.json"
-            marketplace.parent.mkdir(parents=True)
-            marketplace.write_text(
-                json.dumps(
-                    {
-                        "plugins": [
-                            {
-                                "name": "catalog-name",
-                                "source": {"source": "local", "path": "./plugins/demo"},
-                            }
-                        ]
-                    }
-                ),
+            temporary_root = Path(tmp)
+            root = temporary_root / "source"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            external_overlay = temporary_root / "outside-overlay.json"
+            external_overlay.write_text(
+                json.dumps({"schema_version": 1, "skills": {}, "legacy_names": {}}),
                 encoding="utf-8",
             )
-            manifest = plugin / ".codex-plugin" / "plugin.json"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(
-                json.dumps({"name": "manifest-name", "version": "1.0.0"}),
-                encoding="utf-8",
+            overlay = root / "plugins" / "demo" / ".codex-plugin" / "skill-watcher.json"
+            overlay.parent.mkdir(parents=True)
+            try:
+                overlay.symlink_to(external_overlay)
+            except OSError as exc:
+                self.skipTest(f"file symlinks unavailable: {exc}")
+
+            with self.assertRaises(SystemExit) as raised:
+                discover_skill_metadata(root)
+
+        self.assertIn("Watcher skill attribution overlay escapes explicit repository root", str(raised.exception))
+
+    def test_metadata_discovery_rejects_unknown_overlay_skill(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            write_attribution_overlay(
+                root,
+                "demo",
+                {
+                    "schema_version": 1,
+                    "skills": {"demo:missing": {}},
+                    "legacy_names": {},
+                },
             )
 
             with self.assertRaises(SystemExit) as raised:
                 discover_skill_metadata(root)
 
-        self.assertIn("marketplace/plugin manifest name mismatch", str(raised.exception))
+        self.assertIn("unknown canonical skill demo:missing", str(raised.exception))
 
-    def test_metadata_discovery_requires_known_manifest_schema(self) -> None:
+    def test_metadata_discovery_requires_known_overlay_schema(self) -> None:
         for schema_version in (None, 999):
             with self.subTest(schema_version=schema_version), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
-                plugin = root / "plugins" / "demo"
-                marketplace = root / ".agents" / "plugins" / "marketplace.json"
-                marketplace.parent.mkdir(parents=True)
-                marketplace.write_text(
-                    json.dumps(
-                        {
-                            "plugins": [
-                                {
-                                    "name": "demo",
-                                    "source": {"source": "local", "path": "./plugins/demo"},
-                                }
-                            ]
-                        }
-                    ),
-                    encoding="utf-8",
-                )
-                plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
-                plugin_manifest.parent.mkdir(parents=True)
-                plugin_manifest.write_text(
-                    json.dumps({"name": "demo", "version": "1.0.0"}),
-                    encoding="utf-8",
-                )
-                skill = plugin / "skills" / "foo" / "SKILL.md"
-                skill.parent.mkdir(parents=True)
-                skill.write_text("---\nname: foo\ndescription: Test.\n---\n", encoding="utf-8")
-                metadata = {"skills": {}, "legacy_names": {}}
+                initialize_catalog_repo(root, {"demo": ("foo",)})
+                metadata: dict[str, object] = {"skills": {}, "legacy_names": {}}
                 if schema_version is not None:
                     metadata["schema_version"] = schema_version
-                (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
-                    json.dumps(metadata),
-                    encoding="utf-8",
-                )
+                write_attribution_overlay(root, "demo", metadata)
 
                 with self.assertRaises(SystemExit) as raised:
                     discover_skill_metadata(root)
@@ -864,38 +915,25 @@ class SkillWatcherTests(unittest.TestCase):
     def test_metadata_discovery_rejects_duplicate_legacy_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            entries = []
-            for plugin_name in ("alpha", "beta"):
-                plugin = root / "plugins" / plugin_name
-                entries.append(
+            initialize_catalog_repo(
+                root,
+                {"alpha": ("alpha-entry",), "beta": ("beta-entry",)},
+            )
+            for plugin_name, callable_name in (
+                ("alpha", "alpha-entry"),
+                ("beta", "beta-entry"),
+            ):
+                write_attribution_overlay(
+                    root,
+                    plugin_name,
                     {
-                        "name": plugin_name,
-                        "source": {"source": "local", "path": f"./plugins/{plugin_name}"},
-                    }
+                        "schema_version": 1,
+                        "skills": {},
+                        "legacy_names": {
+                            "legacy:shared": f"{plugin_name}:{callable_name}"
+                        },
+                    },
                 )
-                plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
-                plugin_manifest.parent.mkdir(parents=True)
-                plugin_manifest.write_text(
-                    json.dumps({"name": plugin_name, "version": "1.0.0"}),
-                    encoding="utf-8",
-                )
-                skill_name = f"{plugin_name}:entry"
-                skill = plugin / "skills" / "entry" / "SKILL.md"
-                skill.parent.mkdir(parents=True)
-                skill.write_text("---\nname: entry\ndescription: Test.\n---\n", encoding="utf-8")
-                (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
-                    json.dumps(
-                        {
-                            "schema_version": 1,
-                            "skills": {},
-                            "legacy_names": {"legacy:shared": skill_name},
-                        }
-                    ),
-                    encoding="utf-8",
-                )
-            marketplace = root / ".agents" / "plugins" / "marketplace.json"
-            marketplace.parent.mkdir(parents=True)
-            marketplace.write_text(json.dumps({"plugins": entries}), encoding="utf-8")
 
             with self.assertRaises(SystemExit) as raised:
                 discover_skill_metadata(root)
@@ -905,40 +943,15 @@ class SkillWatcherTests(unittest.TestCase):
     def test_metadata_discovery_rejects_invalid_logical_group(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            plugin = root / "plugins" / "demo"
-            marketplace = root / ".agents" / "plugins" / "marketplace.json"
-            marketplace.parent.mkdir(parents=True)
-            marketplace.write_text(
-                json.dumps(
-                    {
-                        "plugins": [
-                            {
-                                "name": "demo",
-                                "source": {"source": "local", "path": "./plugins/demo"},
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-            plugin_manifest = plugin / ".codex-plugin" / "plugin.json"
-            plugin_manifest.parent.mkdir(parents=True)
-            plugin_manifest.write_text(
-                json.dumps({"name": "demo", "version": "1.0.0"}),
-                encoding="utf-8",
-            )
-            skill = plugin / "skills" / "entry" / "SKILL.md"
-            skill.parent.mkdir(parents=True)
-            skill.write_text("---\nname: entry\ndescription: Test.\n---\n", encoding="utf-8")
-            (plugin / ".codex-plugin" / "skill-watcher.json").write_text(
-                json.dumps(
-                    {
-                        "schema_version": 1,
-                        "skills": {"demo:entry": {"logical_group": "Not Valid"}},
-                        "legacy_names": {},
-                    }
-                ),
-                encoding="utf-8",
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            write_attribution_overlay(
+                root,
+                "demo",
+                {
+                    "schema_version": 1,
+                    "skills": {"demo:entry": {"logical_group": "Not Valid"}},
+                    "legacy_names": {},
+                },
             )
 
             with self.assertRaises(SystemExit) as raised:
@@ -950,23 +963,24 @@ class SkillWatcherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"
             state_dir = Path(tmp) / "state"
-            marketplace = root / ".agents" / "plugins" / "marketplace.json"
-            marketplace.parent.mkdir(parents=True)
-            marketplace.write_text("{not-json\n", encoding="utf-8")
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            overlay = root / "plugins" / "demo" / ".codex-plugin" / "skill-watcher.json"
+            overlay.parent.mkdir(parents=True)
+            overlay.write_text("{not-json\n", encoding="utf-8")
 
-            with mock.patch.dict("os.environ", {"MY_CODEX_ROOT": str(root)}, clear=False):
-                with self.assertRaises(SystemExit) as raised:
-                    process_hook(
-                        {
-                            "hook_event_name": "SessionStart",
-                            "session_id": "metadata-failure",
-                        },
-                        HookRuntimePaths(state_dir=state_dir, log_file=log_file_path(state_dir)),
-                    )
+            with self.assertRaises(SystemExit) as raised:
+                process_hook(
+                    {
+                        "hook_event_name": "SessionStart",
+                        "session_id": "metadata-failure",
+                    },
+                    HookRuntimePaths(state_dir=state_dir, log_file=log_file_path(state_dir)),
+                    repo_root=root,
+                )
 
             self.assertFalse((state_dir / "skill-metadata-cache.json").exists())
 
-        self.assertIn("invalid marketplace JSON", str(raised.exception))
+        self.assertIn("invalid skill metadata JSON", str(raised.exception))
 
     def test_hook_runtime_dry_run_normalizes_without_writing_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -981,6 +995,7 @@ class SkillWatcherTests(unittest.TestCase):
                 },
                 HookRuntimePaths(state_dir=state_dir, log_file=log_file_path(state_dir)),
                 persist=False,
+                repo_root=REPO_ROOT,
             )
 
             self.assertFalse(log_file_path(state_dir).exists())
@@ -989,6 +1004,147 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertTrue(result.persisted)
         self.assertEqual(result.hook_event_name, "UserPromptSubmit")
         self.assertEqual(result.event["skill_attribution"]["primary"]["name"], "mattpocock-skills:diagnosing-bugs")
+
+    def test_explicit_repo_root_resolves_runtime_from_universal_skill_symlink(self) -> None:
+        payload = json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "runtime-locator",
+                "prompt": "Use diagnose on this failure",
+            }
+        )
+        watcher = ROOT / "scripts" / "watcher"
+        with tempfile.TemporaryDirectory() as tmp:
+            universal_skill = Path(tmp) / "agents" / "skills" / "diagnosing-bugs"
+            universal_skill.parent.mkdir(parents=True)
+            try:
+                universal_skill.symlink_to(
+                    REPO_ROOT / "plugins" / "mattpocock-skills" / "skills" / "diagnosing-bugs",
+                    target_is_directory=True,
+                )
+            except OSError as exc:
+                self.skipTest(f"directory symlinks unavailable: {exc}")
+
+            events = []
+            for cwd in (REPO_ROOT, universal_skill):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(watcher),
+                        "skill",
+                        "observe",
+                        "--repo-root",
+                        str(REPO_ROOT),
+                        "--dry-run",
+                    ],
+                    cwd=cwd,
+                    input=payload,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                events.append(json.loads(result.stdout))
+
+        self.assertEqual(
+            events[0]["skill_attribution"],
+            events[1]["skill_attribution"],
+        )
+        self.assertEqual(
+            events[0]["skill_attribution"]["primary"]["name"],
+            "mattpocock-skills:diagnosing-bugs",
+        )
+
+    def test_hook_command_quotes_space_paths_for_posix_and_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "repo with spaces"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            python = temporary_root / "tooling python" / "python"
+            adapter = root / "plugins" / "watcher" / "scripts" / "watcher"
+            expected_argv = [
+                str(python),
+                "-B",
+                str(adapter),
+                "skill",
+                "observe",
+                "--repo-root",
+                str(root.resolve()),
+            ]
+
+            with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "posix"):
+                posix_command = skill_watcher_command(python, adapter, repo_root=root)
+            with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "nt"):
+                windows_command = skill_watcher_command(python, adapter, repo_root=root)
+
+        self.assertEqual(shlex.split(posix_command, posix=True), expected_argv)
+        self.assertEqual(windows_command, subprocess.list2cmdline(expected_argv))
+
+    def test_reset_schema_validates_repository_before_runtime_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            log_file = log_file_path(state_dir)
+            turn_file = turns_dir(state_dir) / "turn.json"
+            log_file.parent.mkdir(parents=True)
+            turn_file.parent.mkdir(parents=True)
+            log_file.write_text("preserve-event\n", encoding="utf-8")
+            turn_file.write_text('{"preserve": true}\n', encoding="utf-8")
+
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(SystemExit) as raised:
+                    reset_schema_main(
+                        [
+                            "--state-dir",
+                            str(state_dir),
+                            "--reset-runtime-state",
+                        ]
+                    )
+
+            self.assertEqual(log_file.read_text(encoding="utf-8"), "preserve-event\n")
+            self.assertEqual(turn_file.read_text(encoding="utf-8"), '{"preserve": true}\n')
+            self.assertFalse((state_dir / "archives").exists())
+            self.assertFalse((state_dir / "skill-metadata-cache.json").exists())
+            self.assertFalse((state_dir / "schema-version.json").exists())
+
+        self.assertIn("pass --repo-root or set MY_CODEX_ROOT", str(raised.exception))
+
+    def test_reset_schema_uses_prevalidated_explicit_repository_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "repo with spaces"
+            state_dir = temporary_root / "state"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            log_file = log_file_path(state_dir)
+            turn_file = turns_dir(state_dir) / "turn.json"
+            log_file.parent.mkdir(parents=True)
+            turn_file.parent.mkdir(parents=True)
+            log_file.write_text("old-event\n", encoding="utf-8")
+            turn_file.write_text("{}\n", encoding="utf-8")
+
+            with mock.patch("sys.stdout", io.StringIO()):
+                result = reset_schema_main(
+                    [
+                        "--state-dir",
+                        str(state_dir),
+                        "--repo-root",
+                        str(root),
+                        "--reset-runtime-state",
+                    ]
+                )
+
+            archives = tuple((state_dir / "archives" / "pre-schema-v2").glob("events-*.jsonl"))
+            metadata = json.loads((state_dir / "skill-metadata-cache.json").read_text(encoding="utf-8"))
+            new_log = log_file.read_text(encoding="utf-8")
+            turn_exists = turn_file.exists()
+            archive_contents = tuple(path.read_text(encoding="utf-8") for path in archives)
+            source_root = str(root.resolve())
+
+        self.assertEqual(result, 0)
+        self.assertEqual(new_log, "")
+        self.assertFalse(turn_exists)
+        self.assertEqual(len(archives), 1)
+        self.assertEqual(archive_contents, ("old-event\n",))
+        self.assertEqual(tuple(metadata["skills"]), ("demo:entry",))
+        self.assertEqual(metadata["source_root"], source_root)
 
     def test_hook_config_runtime_helpers_and_stale_schema_detection(self) -> None:
         with mock.patch.dict("os.environ", {"MY_CODEX_PYTHON": "/tmp/shared-python"}, clear=True):
@@ -1007,9 +1163,10 @@ class SkillWatcherTests(unittest.TestCase):
         adapter = Path(r"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\watcher")
         with mock.patch("watcher_runtime.skill.codex_hook_config.os.name", "nt"):
             self.assertEqual(
-                skill_watcher_command(python, adapter),
+                skill_watcher_command(python, adapter, repo_root=REPO_ROOT),
                 r'"C:\Users\Max Smith\.codex\venvs\my-codex\Scripts\python.exe" -B '
-                r'"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\watcher" skill observe',
+                r'"C:\Users\Max Smith\Projects\my-codex\plugins\watcher\scripts\watcher" skill observe '
+                f'--repo-root {REPO_ROOT}',
             )
 
         self.assertEqual(marketplace_source_arg("https://github.com/example/my-codex"), "https://github.com/example/my-codex")
@@ -1026,11 +1183,13 @@ class SkillWatcherTests(unittest.TestCase):
             existing,
             python_path=Path("/tmp/python"),
             adapter=Path("/tmp/watcher/scripts/watcher"),
+            repo_root=REPO_ROOT,
         )
         installed_again, removed = install_skill_watcher_hooks(
             installed,
             python_path=Path("/tmp/python"),
             adapter=Path("/tmp/watcher/scripts/watcher"),
+            repo_root=REPO_ROOT,
         )
         uninstalled, removed_on_uninstall = remove_skill_watcher_hooks(installed)
 
@@ -1064,6 +1223,7 @@ class SkillWatcherTests(unittest.TestCase):
             },
             python_path=Path("/tmp/python"),
             adapter=Path("/tmp/watcher/scripts/watcher"),
+            repo_root=REPO_ROOT,
         )
 
         self.assertEqual(matched_events, {"SessionStart", "UserPromptSubmit"})
@@ -1175,6 +1335,61 @@ class SkillWatcherTests(unittest.TestCase):
         self.assertEqual(state_since(loaded, key), datetime(2026, 6, 6, tzinfo=timezone.utc))
         self.assertEqual(loaded["reports"][key]["last_event_count"], 2)
         self.assertEqual(len(loaded["reports"][key]["recent_event_hashes"]), 2)
+
+    def test_report_uses_catalog_and_overlay_cache_without_marketplace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            state_dir = Path(tmp) / "state"
+            initialize_catalog_repo(root, {"demo": ("entry",)})
+            write_attribution_overlay(
+                root,
+                "demo",
+                {
+                    "schema_version": 1,
+                    "skills": {
+                        "demo:entry": {
+                            "role": "entrypoint",
+                            "logical_group": "explicit-workflows",
+                        }
+                    },
+                    "legacy_names": {"legacy:entry": "demo:entry"},
+                },
+            )
+            marketplace = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace.parent.mkdir(parents=True)
+            marketplace.write_text("{not-json\n", encoding="utf-8")
+            base = {"session_id": "catalog-report", "turn_id": "turn-1"}
+            write_hook_event(
+                {**base, "hook_event_name": "SessionStart"},
+                state_dir=state_dir,
+                repo_root=root,
+            )
+            write_hook_event(
+                {
+                    **base,
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": "Use entry for this task",
+                },
+                state_dir=state_dir,
+                repo_root=root,
+            )
+            write_hook_event(
+                {**base, "hook_event_name": "Stop"},
+                state_dir=state_dir,
+                repo_root=root,
+            )
+
+            result = run_report_pipeline(
+                ReportQuery(
+                    state_dir=state_dir,
+                    log_file=log_file_path(state_dir),
+                ),
+                ReportOutputPolicy(write_output=False),
+            )
+
+        self.assertIn("`demo:entry`", result.report)
+        self.assertIn("explicit-workflows", result.report)
+        self.assertEqual(result.event_count, 2)
 
     def test_report_pipeline_writes_report_state_and_counts_outcomes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

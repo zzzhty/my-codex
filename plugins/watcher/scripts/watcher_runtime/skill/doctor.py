@@ -16,8 +16,6 @@ from .codex_hook_config import (
     CODEX_HOME,
     DEFAULT_TARGET,
     HOOK_EVENTS,
-    PLUGIN_ROOT,
-    adapter_path,
     default_python,
     desired_handler,
     expand_path,
@@ -27,6 +25,7 @@ from .codex_hook_config import (
 )
 from .collect_event import DEFAULT_STATE_DIR, ensure_runtime_dirs
 from .runtime_paths import log_file_path
+from ..repository_source import RepositorySource, resolve_repository_source
 
 
 def describe_handler_mismatch(handler: dict[str, object], expected: dict[str, object]) -> list[str]:
@@ -45,6 +44,7 @@ def find_managed_hook_issues(
     *,
     python_path: Path,
     adapter: Path,
+    repo_root: Path,
 ) -> tuple[set[str], list[str]]:
     hooks = config.get("hooks", {})
     if not isinstance(hooks, dict):
@@ -70,7 +70,12 @@ def find_managed_hook_issues(
                     issues.append(f"{location} is a stale Watcher skill event; default install no longer uses {event}")
                     continue
                 matched_events.add(str(event))
-                expected = desired_handler(str(event), python_path=python_path, adapter=adapter)
+                expected = desired_handler(
+                    str(event),
+                    python_path=python_path,
+                    adapter=adapter,
+                    repo_root=repo_root,
+                )
                 mismatches = describe_handler_mismatch(handler, expected)
                 if mismatches:
                     issues.append(f"{location} does not match desired handler schema: {'; '.join(mismatches)}")
@@ -85,7 +90,20 @@ def validator_path() -> Path:
 
 
 class Doctor:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        source: RepositorySource,
+        python_path: Path,
+        state_dir: Path,
+        hook_target: Path,
+        validator: Path,
+    ) -> None:
+        self.source = source
+        self.python_path = python_path
+        self.state_dir = state_dir
+        self.hook_target = hook_target
+        self.validator = validator
         self.failures = 0
         self.warnings = 0
 
@@ -101,15 +119,14 @@ class Doctor:
         print(f"FAIL {message}")
 
     def run(self) -> None:
-        python_path = default_python()
-        if python_path.is_file():
-            self.ok(f"tooling python exists: {python_path}")
+        if self.python_path.is_file():
+            self.ok(f"tooling python exists: {self.python_path}")
         else:
-            self.fail(f"tooling python missing: {python_path}")
+            self.fail(f"tooling python missing: {self.python_path}")
             return
 
-        self.check_pyyaml(python_path)
-        self.check_plugin_validation(python_path)
+        self.check_pyyaml()
+        self.check_plugin_validation()
         self.check_state_dir()
         self.check_hook_config()
         self.check_sample_event()
@@ -122,9 +139,9 @@ class Doctor:
             return
         print(f"doctor passed with {self.warnings} warning(s)")
 
-    def check_pyyaml(self, python_path: Path) -> None:
+    def check_pyyaml(self) -> None:
         result = subprocess.run(
-            [str(python_path), "-c", "import yaml; print(yaml.__version__)"],
+            [str(self.python_path), "-c", "import yaml; print(yaml.__version__)"],
             text=True,
             capture_output=True,
         )
@@ -133,12 +150,19 @@ class Doctor:
         else:
             self.fail(f"PyYAML import failed: {result.stderr.strip() or result.stdout.strip()}")
 
-    def check_plugin_validation(self, python_path: Path) -> None:
-        validator = validator_path()
-        if not validator.is_file():
-            self.fail(f"plugin validator missing: {validator}")
+    def check_plugin_validation(self) -> None:
+        if not self.validator.is_file():
+            self.fail(f"plugin validator missing: {self.validator}")
             return
-        result = subprocess.run([str(python_path), str(validator), str(PLUGIN_ROOT)], text=True, capture_output=True)
+        result = subprocess.run(
+            [
+                str(self.python_path),
+                str(self.validator),
+                str(self.source.watcher_plugin),
+            ],
+            text=True,
+            capture_output=True,
+        )
         if result.returncode == 0:
             self.ok("plugin validation passed")
         else:
@@ -147,18 +171,18 @@ class Doctor:
 
     def check_state_dir(self) -> None:
         try:
-            ensure_runtime_dirs(DEFAULT_STATE_DIR)
+            ensure_runtime_dirs(self.state_dir)
         except OSError as exc:
-            self.fail(f"state directory is not writable: {DEFAULT_STATE_DIR}: {exc}")
+            self.fail(f"state directory is not writable: {self.state_dir}: {exc}")
             return
-        self.ok(f"state directory writable: {DEFAULT_STATE_DIR}")
+        self.ok(f"state directory writable: {self.state_dir}")
 
     def check_hook_config(self) -> None:
-        if not DEFAULT_TARGET.exists():
-            self.warn(f"hook config not installed yet: {DEFAULT_TARGET}")
+        if not self.hook_target.exists():
+            self.warn(f"hook config not installed yet: {self.hook_target}")
             return
         try:
-            config = load_config(DEFAULT_TARGET)
+            config = load_config(self.hook_target)
         except SystemExit as exc:
             self.fail(str(exc))
             return
@@ -168,24 +192,31 @@ class Doctor:
             self.fail(str(exc))
             return
 
-        python_path = default_python()
-        matched_events, issues = find_managed_hook_issues(config, python_path=python_path, adapter=adapter_path())
+        matched_events, issues = find_managed_hook_issues(
+            config,
+            python_path=self.python_path,
+            adapter=self.source.watcher_cli,
+            repo_root=self.source.root,
+        )
         if set(matched_events) == set(HOOK_EVENTS):
-            self.ok(f"Watcher skill hook handlers installed: {DEFAULT_TARGET}")
+            self.ok(f"Watcher skill hook handlers installed: {self.hook_target}")
         else:
             missing = sorted(set(HOOK_EVENTS) - set(matched_events))
-            self.warn(f"Watcher skill hook config incomplete at {DEFAULT_TARGET}; missing: {', '.join(missing)}")
+            self.warn(
+                f"Watcher skill hook config incomplete at {self.hook_target}; "
+                f"missing: {', '.join(missing)}"
+            )
 
         if issues:
             self.fail(
                 "Watcher skill hook config has stale managed handlers at "
-                f"{DEFAULT_TARGET}. Run scripts/watcher skill install-hook --apply to refresh. Issues: {issues}"
+                f"{self.hook_target}. Run scripts/watcher skill install-hook --apply to refresh. Issues: {issues}"
             )
 
     def check_sample_event(self) -> None:
         sample = {
             "hook_event_name": "UserPromptSubmit",
-            "cwd": str(PLUGIN_ROOT),
+            "cwd": str(self.source.watcher_plugin),
             "session_id": "doctor-session",
             "turn_id": "doctor-turn",
             "model": "doctor-model",
@@ -193,8 +224,16 @@ class Doctor:
         }
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp)
-            write_hook_event({**sample, "hook_event_name": "SessionStart"}, state_dir=state_dir)
-            event = write_hook_event(sample, state_dir=state_dir)
+            write_hook_event(
+                {**sample, "hook_event_name": "SessionStart"},
+                state_dir=state_dir,
+                repo_root=self.source.root,
+            )
+            event = write_hook_event(
+                sample,
+                state_dir=state_dir,
+                repo_root=self.source.root,
+            )
             log_file = log_file_path(state_dir)
             raw = log_file.read_text(encoding="utf-8")
         if "sk-doctorsecret" in raw:
@@ -216,8 +255,39 @@ def main(argv: list[str] | None = None) -> int:
         prog="watcher skill doctor",
         description="Check Watcher skill-domain plugin, hooks, and runtime basics.",
     )
-    parser.parse_args(argv)
-    doctor = Doctor()
+    parser.add_argument(
+        "--repo-root",
+        help="Canonical my-codex repository root. Defaults to $MY_CODEX_ROOT.",
+    )
+    parser.add_argument(
+        "--state-dir",
+        default=str(DEFAULT_STATE_DIR),
+        help="Watcher skill state directory. Defaults to $CODEX_HOME/watcher/skill.",
+    )
+    parser.add_argument(
+        "--hook-target",
+        default=str(DEFAULT_TARGET),
+        help="Hook configuration to inspect. Defaults to $CODEX_HOME/hooks.json.",
+    )
+    parser.add_argument(
+        "--python",
+        dest="python_path",
+        default=str(default_python()),
+        help="Tooling Python used by Watcher hooks.",
+    )
+    parser.add_argument(
+        "--validator",
+        default=str(validator_path()),
+        help="Plugin validator script.",
+    )
+    args = parser.parse_args(argv)
+    doctor = Doctor(
+        source=resolve_repository_source(args.repo_root),
+        python_path=expand_path(args.python_path),
+        state_dir=expand_path(args.state_dir),
+        hook_target=expand_path(args.hook_target),
+        validator=expand_path(args.validator),
+    )
     doctor.run()
     return 1 if doctor.failures else 0
 

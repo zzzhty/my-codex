@@ -26,6 +26,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--target", default=str(DEFAULT_TARGET), help="Hook config path. Defaults to $CODEX_HOME/hooks.json.")
     parser.add_argument("--python", dest="python_path", default=str(default_python()), help="Python interpreter for the hook command.")
+    parser.add_argument(
+        "--repo-root",
+        help="Canonical my-codex repository root embedded in hook commands. Defaults to $MY_CODEX_ROOT.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show the diff without writing.")
     parser.add_argument("--apply", action="store_true", help="Write the hook config.")
     args = parser.parse_args(argv)
@@ -35,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
 
     target = expand_path(args.target)
     python_path = expand_path(args.python_path)
-    adapter = adapter_path()
+    adapter = adapter_path(args.repo_root)
 
     if args.apply:
         if not python_path.is_file():
@@ -44,7 +48,12 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"hook adapter does not exist: {adapter}")
 
     before = load_config(target)
-    after, removed = install_skill_watcher_hooks(before, python_path=python_path, adapter=adapter)
+    after, removed = install_skill_watcher_hooks(
+        before,
+        python_path=python_path,
+        adapter=adapter,
+        repo_root=args.repo_root,
+    )
 
     print(f"target: {target}")
     print(f"handler: {python_path} {adapter}")
