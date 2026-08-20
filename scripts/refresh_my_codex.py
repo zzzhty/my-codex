@@ -45,7 +45,7 @@ from skill_discovery_profiles import (
 )
 from sync_agents_skills import (
     managed_destination,
-    preflight_layer,
+    preflight_profile_layer,
     remove_managed_layer,
     sync_layer,
 )
@@ -724,12 +724,15 @@ def apply_universal_discovery_profile(
         )
 
     runtime = PluginToUniversalRuntime(
-        preflight_universal=lambda: preflight_layer(catalog, target_root=target_root),
+        preflight_universal=lambda: preflight_profile_layer(
+            catalog,
+            target_root=target_root,
+        ),
         activate_universal=lambda: sync_layer(
             catalog,
             target_root=target_root,
             dry_run=dry_run,
-            prune=True,
+            prune=False,
         ),
         deactivate_universal=lambda: remove_managed_layer(
             catalog,
@@ -840,7 +843,7 @@ def apply_plugin_discovery_profile(
             "--plugin selectors must name canonical skills-bearing packages in the selected marketplace: "
             + ", ".join(invalid_selected)
         )
-    preflight_layer(catalog, target_root=target_root)
+    preflight_profile_layer(catalog, target_root=target_root)
     enabled_before = _enabled_profile_plugins(
         catalog,
         codex=codex,
@@ -875,7 +878,7 @@ def apply_plugin_discovery_profile(
         return enabled - ignored
 
     def preflight_plugin() -> None:
-        preflight_layer(catalog, target_root=target_root)
+        preflight_profile_layer(catalog, target_root=target_root)
         require_profile_closure(
             "plugin package preflight",
             [
@@ -937,7 +940,7 @@ def apply_plugin_discovery_profile(
             catalog,
             target_root=target_root,
             dry_run=dry_run,
-            prune=True,
+            prune=False,
         ),
         deactivate_universal=lambda: remove_managed_layer(
             catalog,
