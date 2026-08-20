@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import errno
 import io
 import subprocess
 import sys
@@ -213,8 +214,21 @@ class RepositoryCatalogTests(unittest.TestCase):
             probe_target.mkdir()
             try:
                 probe_link.symlink_to(probe_target, target_is_directory=True)
-            except (NotImplementedError, OSError) as exc:  # pragma: no cover - OS privilege boundary
+            except NotImplementedError as exc:  # pragma: no cover - unsupported platform boundary
                 self.skipTest(f"directory symlinks unavailable: {exc}")
+            except OSError as exc:  # pragma: no cover - platform/filesystem capability boundary
+                unsupported_errnos = {
+                    code
+                    for code in (
+                        getattr(errno, "ENOSYS", None),
+                        getattr(errno, "ENOTSUP", None),
+                        getattr(errno, "EOPNOTSUPP", None),
+                    )
+                    if code is not None
+                }
+                if getattr(exc, "winerror", None) in {1, 50, 1314} or exc.errno in unsupported_errnos:
+                    self.skipTest(f"directory symlinks unavailable: {exc}")
+                raise
             probe_link.unlink()
 
             target_root = temporary_root / "agents" / "skills"
