@@ -551,7 +551,8 @@ Validation evidence:
 - Focused `tests.test_sync_agents_skills` passed 10 tests, including explicit directory-link generation and every-tracked-resource projection.
 - All 73 root tests, 64 Workflow tests, and 70 Watcher tests passed; three Watcher platform tests were skipped on macOS.
 - Actual Watcher and Workflow plugin validation, Matt `--validate-only`, owner-venv syntax compilation, Unix shell syntax, goal readiness, active TODO index, managed agent-support check, consumer inventory, and `git diff --check` passed. No command changed live plugins, links, hooks, caches, agent-support files, or Watcher durable state.
-- Independent compatibility review remains pending before the frozen no-change decision passes its gate.
+- The first Standards review found that the live directory-link probe skipped every `OSError`, which could hide an I/O, read-only-filesystem, or space failure. Commit `2eb8a6e` limits skips to explicit unsupported-platform, unsupported-filesystem, and Windows symlink-privilege cases; injected `EIO` now produces a test error rather than a skip.
+- Final independent Standards and Contract reviews of `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd...2eb8a6efcd66db2f517198b59deb4e689ac5cd9f` both returned clean on 2026-08-21. Each reviewer reran the focused and root gates; Contract independently reproduced the 34-skill, 119-file, 13-consumer, 38-link, two-placeholder inventory and found no physical-layout blocker. The read-only live check confirmed hooks still point to the repo-owned Watcher CLI but have not yet received M2's explicit `--repo-root`; that expected pre-cutover drift remains an M5 apply item and does not require a source move.
 
 Checkpoint evidence: `M3 no-change decision, validation evidence, and compatibility review.`
 
