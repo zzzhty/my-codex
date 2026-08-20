@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 from check_skill_discovery import (
@@ -21,7 +22,7 @@ from check_skill_discovery import (
     enabled_plugin_names,
     marketplace_plugin_names,
     marketplace_plugin_sources,
-    plugin_cache_preflight_issues,
+    plugin_cache_profile_issues,
     plugin_installation_issues,
     plugin_package_issues,
     require_profile_closure,
@@ -57,6 +58,23 @@ CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expandus
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
 DEFAULT_AGENTS_SKILLS_ROOT = Path.home() / ".agents" / "skills"
 MACOS_APPLICATION_DIRS = (Path("/Applications"), Path.home() / "Applications")
+
+
+@dataclass(frozen=True)
+class MarketplaceSourceBinding:
+    source_type: str
+    source: str
+    revision: str | None = None
+
+
+@dataclass(frozen=True)
+class PluginPrunePlan:
+    configured: frozenset[str]
+    cached: frozenset[str]
+
+    @property
+    def names(self) -> frozenset[str]:
+        return self.configured | self.cached
 
 
 def expand_path(raw: str | Path) -> Path:
@@ -371,8 +389,12 @@ def load_json_object(path: Path, *, label: str) -> dict:
 
 def load_install_manifest(manifest_file: Path = INSTALL_MANIFEST_FILE) -> dict:
     data = load_json_object(manifest_file, label="install manifest")
-    if data.get("schemaVersion") != 1:
-        raise SystemExit(f"install manifest schemaVersion must be 1: {manifest_file}")
+    if data.get("schemaVersion") != 2:
+        raise SystemExit(f"install manifest schemaVersion must be 2: {manifest_file}")
+    if data.get("discoveryProfile") != "plugin":
+        raise SystemExit(
+            f"install manifest discoveryProfile must be 'plugin': {manifest_file}"
+        )
 
     plugins = data.get("plugins")
     if not isinstance(plugins, list):
@@ -540,12 +562,14 @@ def _enabled_profile_plugins(
     codex: str,
     marketplace_name: str,
     env: dict[str, str],
+    ignored_unclassified: set[str] | None = None,
 ) -> set[str]:
     selectors = _enabled_skill_plugin_selectors(
         catalog,
         codex=codex,
         marketplace_name=marketplace_name,
         env=env,
+        ignored_unclassified=ignored_unclassified,
     )
     alternate = sorted(
         f"{plugin_name}@{marketplace}"
@@ -570,6 +594,7 @@ def _enabled_skill_plugin_selectors(
     codex: str,
     marketplace_name: str,
     env: dict[str, str],
+    ignored_unclassified: set[str] | None = None,
 ) -> set[tuple[str, str]]:
     rows = read_codex_plugin_rows(codex, env=env)
     expected = set(catalog.plugin_names)
@@ -578,10 +603,13 @@ def _enabled_skill_plugin_selectors(
         for (marketplace, plugin_name), row in rows.items()
         if row.status == "installed, enabled"
     }
+    ignored = set(ignored_unclassified or ())
     unclassified = sorted(
         plugin_name
         for marketplace, plugin_name in enabled
-        if marketplace == marketplace_name and plugin_name not in expected
+        if marketplace == marketplace_name
+        and plugin_name not in expected
+        and plugin_name not in ignored
     )
     if unclassified:
         raise SystemExit(
@@ -721,17 +749,15 @@ def apply_universal_discovery_profile(
     transition_plugin_to_universal(runtime, selectors)
 
 
-def apply_plugin_discovery_profile(
+def preflight_plugin_distribution(
     catalog: SkillCatalog,
     *,
-    codex: str,
     codex_home: Path,
     marketplace_name: str,
-    target_root: Path,
-    requested_plugins: list[str] | None,
-    env: dict[str, str],
-    dry_run: bool,
-) -> None:
+    ignored_stale_cache_plugins: set[str] | frozenset[str] | None = None,
+) -> tuple[list[str], dict[str, Path]]:
+    """Validate every canonical plugin input before marketplace or profile mutation."""
+
     marketplace_file = catalog.repo_root / ".agents" / "plugins" / "marketplace.json"
     manifest_file = catalog.repo_root / ".agents" / "plugins" / "install-manifest.json"
     all_selectors = selected_plugins(
@@ -752,26 +778,55 @@ def apply_plugin_discovery_profile(
         raise SystemExit(str(exc)) from exc
     if marketplace_identity != marketplace_name:
         raise SystemExit(
-            f"marketplace identity mismatch: expected {marketplace_name!r}, found {marketplace_identity!r}"
+            f"marketplace identity mismatch: expected {marketplace_name!r}, "
+            f"found {marketplace_identity!r}"
         )
     require_profile_closure(
         "plugin package preflight",
         [
             *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-            *plugin_cache_preflight_issues(
+            *plugin_cache_profile_issues(
                 catalog,
                 codex_home=codex_home,
                 marketplace_name=marketplace_name,
+                ignored_plugin_names=set(ignored_stale_cache_plugins or ()),
             ),
         ],
+    )
+    return all_selectors, plugin_sources
+
+
+def apply_plugin_discovery_profile(
+    catalog: SkillCatalog,
+    *,
+    codex: str,
+    codex_home: Path,
+    marketplace_name: str,
+    target_root: Path,
+    requested_plugins: list[str] | None,
+    marketplace_source_binding: MarketplaceSourceBinding,
+    env: dict[str, str],
+    dry_run: bool,
+    ignored_stale_cache_plugins: set[str] | frozenset[str] | None = None,
+    ignored_stale_enabled_plugins: set[str] | frozenset[str] | None = None,
+) -> None:
+    require_profile_closure(
+        "plugin marketplace source binding",
+        marketplace_source_binding_issues(catalog, marketplace_source_binding),
+    )
+    all_selectors, plugin_sources = preflight_plugin_distribution(
+        catalog,
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+        ignored_stale_cache_plugins=ignored_stale_cache_plugins,
     )
 
     selected = selected_plugins(
         requested_plugins,
         marketplace_name,
         action="install",
-        manifest_file=manifest_file,
-        marketplace_file=marketplace_file,
+        manifest_file=catalog.repo_root / ".agents" / "plugins" / "install-manifest.json",
+        marketplace_file=catalog.repo_root / ".agents" / "plugins" / "marketplace.json",
     )
     expected_names = set(catalog.plugin_names)
     invalid_selected = sorted(
@@ -791,6 +846,7 @@ def apply_plugin_discovery_profile(
         codex=codex,
         marketplace_name=marketplace_name,
         env=env,
+        ignored_unclassified=set(ignored_stale_enabled_plugins or ()),
     )
     universal_active = universal_layer_active(catalog, target_root=target_root)
     if universal_active and enabled_before:
@@ -809,13 +865,14 @@ def apply_plugin_discovery_profile(
     def current_enabled() -> set[str]:
         rows = current_rows()
         enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
-        unclassified = sorted(enabled - expected_names)
+        ignored = set(ignored_stale_enabled_plugins or ())
+        unclassified = sorted(enabled - expected_names - ignored)
         if unclassified:
             raise SystemExit(
                 "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
                 + ", ".join(unclassified)
             )
-        return enabled
+        return enabled - ignored
 
     def preflight_plugin() -> None:
         preflight_layer(catalog, target_root=target_root)
@@ -823,10 +880,11 @@ def apply_plugin_discovery_profile(
             "plugin package preflight",
             [
                 *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-                *plugin_cache_preflight_issues(
+                *plugin_cache_profile_issues(
                     catalog,
                     codex_home=codex_home,
                     marketplace_name=marketplace_name,
+                    ignored_plugin_names=set(ignored_stale_cache_plugins or ()),
                 ),
             ],
         )
@@ -935,15 +993,34 @@ def plugin_cache_dir(codex_home: Path, marketplace_name: str, plugin_name: str) 
     return codex_home / "plugins" / "cache" / marketplace_name / plugin_name
 
 
+def plugin_prune_plan(
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    desired_plugin_names: list[str],
+) -> PluginPrunePlan:
+    desired = set(desired_plugin_names)
+    return PluginPrunePlan(
+        configured=frozenset(
+            configured_plugin_names(codex_home, marketplace_name) - desired
+        ),
+        cached=frozenset(cached_plugin_names(codex_home, marketplace_name) - desired),
+    )
+
+
 def stale_plugin_names(
     *,
     codex_home: Path,
     marketplace_name: str,
     desired_plugin_names: list[str],
 ) -> list[str]:
-    discovered = configured_plugin_names(codex_home, marketplace_name) | cached_plugin_names(codex_home, marketplace_name)
-    desired = set(desired_plugin_names)
-    return sorted(discovered - desired)
+    return sorted(
+        plugin_prune_plan(
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            desired_plugin_names=desired_plugin_names,
+        ).names
+    )
 
 
 def remove_cached_plugin_dir(
@@ -976,34 +1053,31 @@ def prune_stale_plugins(
     *,
     codex_home: Path,
     marketplace_name: str,
-    desired_plugin_names: list[str],
+    plan: PluginPrunePlan,
     env: dict[str, str],
     dry_run: bool,
 ) -> None:
-    stale = stale_plugin_names(
-        codex_home=codex_home,
-        marketplace_name=marketplace_name,
-        desired_plugin_names=desired_plugin_names,
-    )
+    stale = sorted(plan.names)
     if not stale:
         print(f"No stale plugins to prune for marketplace `{marketplace_name}`.")
         return
 
-    configured = configured_plugin_names(codex_home, marketplace_name)
-    cached = cached_plugin_names(codex_home, marketplace_name)
     print("Stale plugins selected for pruning:")
     for name in stale:
         print(f"- {name}@{marketplace_name}")
-    for name in stale:
-        if name in configured:
-            run([codex, "plugin", "remove", f"{name}@{marketplace_name}"], env=env, dry_run=dry_run)
-        if name in cached:
-            remove_cached_plugin_dir(
-                codex_home=codex_home,
-                marketplace_name=marketplace_name,
-                plugin_name=name,
-                dry_run=dry_run,
-            )
+    for name in sorted(plan.configured):
+        run(
+            [codex, "plugin", "remove", f"{name}@{marketplace_name}"],
+            env=env,
+            dry_run=dry_run,
+        )
+    for name in sorted(plan.cached):
+        remove_cached_plugin_dir(
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            plugin_name=name,
+            dry_run=dry_run,
+        )
 
 
 def tooling_python_from_args(args: argparse.Namespace, venv_path: Path) -> Path:
@@ -1046,15 +1120,36 @@ def git_remote_source(repo_root: Path) -> str | None:
     return source or None
 
 
-def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
-    worktree = subprocess.run(
+def git_head_revision(repo_root: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", "HEAD"],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        output = decode_text(result.stderr or result.stdout).strip()
+        raise SystemExit(f"repository HEAD is unavailable for marketplace binding: {output}")
+    revision = decode_text(result.stdout).strip()
+    if not revision:
+        raise SystemExit("repository HEAD is empty for marketplace binding")
+    return revision
+
+
+def git_worktree_clean(repo_root: Path) -> tuple[bool, str]:
+    result = subprocess.run(
         ["git", "-C", str(repo_root), "status", "--porcelain"],
         capture_output=True,
     )
-    if worktree.returncode != 0:
+    if result.returncode != 0:
         return False, "local worktree status is unavailable"
-    if decode_text(worktree.stdout).strip():
+    if decode_text(result.stdout).strip():
         return False, "local worktree has uncommitted changes"
+    return True, "local worktree is clean"
+
+
+def git_remote_ref_status(repo_root: Path, ref: str) -> tuple[bool, str]:
+    clean, reason = git_worktree_clean(repo_root)
+    if not clean:
+        return False, reason
 
     remote_ref = f"refs/remotes/origin/{ref}"
     head = subprocess.run(
@@ -1109,6 +1204,31 @@ def configured_marketplace(codex_home: Path, marketplace_name: str) -> dict[str,
             values[key] = toml_string_value(value)
 
     return values or None
+
+
+def configured_marketplace_source_binding(
+    codex_home: Path,
+    marketplace_name: str,
+) -> MarketplaceSourceBinding:
+    config = configured_marketplace(codex_home, marketplace_name)
+    if config is None:
+        raise ValueError(f"configured marketplace is missing: {marketplace_name}")
+    source_type = config.get("source_type")
+    source = config.get("source")
+    if source_type not in {"local", "git"}:
+        raise ValueError(
+            f"configured marketplace source_type must be local or git: {marketplace_name}"
+        )
+    if not source:
+        raise ValueError(f"configured marketplace source is missing: {marketplace_name}")
+    revision = config.get("ref") if source_type == "git" else None
+    if source_type == "git" and not revision:
+        raise ValueError(f"configured Git marketplace ref is missing: {marketplace_name}")
+    return MarketplaceSourceBinding(
+        source_type=source_type,
+        source=source,
+        revision=revision,
+    )
 
 
 def clear_readonly_attributes(root: Path) -> None:
@@ -1174,6 +1294,42 @@ def same_marketplace_source(left: str, right: str) -> bool:
 
 def same_marketplace_ref(left: str | None, right: str) -> bool:
     return (left or "").strip() == (right or "").strip()
+
+
+def marketplace_source_binding_issues(
+    catalog: SkillCatalog,
+    binding: MarketplaceSourceBinding,
+) -> list[str]:
+    if binding.source_type == "local":
+        if binding.revision is not None:
+            return ["local marketplace source binding must not declare a Git revision"]
+        if not same_path(binding.source, catalog.repo_root):
+            return [
+                "local marketplace source is not the validated canonical checkout; "
+                f"expected {catalog.repo_root}, found {binding.source}"
+            ]
+        return []
+    if binding.source_type != "git":
+        return [f"unsupported marketplace source binding type: {binding.source_type!r}"]
+
+    canonical_remote = git_remote_source(catalog.repo_root)
+    if canonical_remote is None:
+        return ["canonical checkout has no Git remote for Git marketplace binding"]
+    if not same_marketplace_source(binding.source, canonical_remote):
+        return [
+            "Git marketplace source is not the canonical checkout remote; "
+            f"expected {canonical_remote!r}, found {binding.source!r}"
+        ]
+    clean, reason = git_worktree_clean(catalog.repo_root)
+    if not clean:
+        return [f"canonical checkout cannot bind a Git package source: {reason}"]
+    revision = git_head_revision(catalog.repo_root)
+    if binding.revision != revision:
+        return [
+            "Git marketplace source is not pinned to the validated checkout revision; "
+            f"expected {revision}, found {binding.revision!r}"
+        ]
+    return []
 
 
 def ensure_git_marketplace_source(
@@ -1255,17 +1411,45 @@ def ensure_marketplace_source(
     marketplace_name: str,
     git_source: str | None,
     git_ref: str,
-    git_source_explicit: bool,
+    git_request_explicit: bool,
     local_source: str,
     env: dict[str, str],
     dry_run: bool,
-) -> None:
+) -> MarketplaceSourceBinding:
+    if not same_path(local_source, REPO_ROOT):
+        raise SystemExit(
+            "local marketplace source must be the validated canonical checkout: "
+            f"expected {REPO_ROOT}, found {local_source}"
+        )
+    if git_request_explicit and not git_source:
+        raise SystemExit(
+            "explicit Git marketplace request cannot be honored because the canonical "
+            f"checkout remote is unavailable for ref {git_ref!r}"
+        )
     skipped_stale_git_source = False
     if git_source:
-        if not git_source_explicit:
+        canonical_remote = git_remote_source(REPO_ROOT)
+        if canonical_remote is None or not same_marketplace_source(git_source, canonical_remote):
+            message = (
+                "Git marketplace source must be the canonical checkout remote; "
+                f"expected {canonical_remote!r}, found {git_source!r}"
+            )
+            if git_request_explicit:
+                raise SystemExit(message)
+            print(f"{message}; using local source.")
+            git_source = None
+            skipped_stale_git_source = True
+        else:
             current, reason = git_remote_ref_status(REPO_ROOT, git_ref)
             if not current:
-                print(f"Local checkout is ahead of or not aligned with Git marketplace ref `{git_ref}`; using local source.")
+                if git_request_explicit:
+                    raise SystemExit(
+                        f"explicit Git marketplace ref is not the validated checkout: {reason}"
+                    )
+                print(
+                    f"Local checkout is ahead of or not aligned with Git marketplace ref "
+                    f"`{git_ref}`; using local source."
+                )
                 print(f"Reason: {reason}")
                 git_source = None
                 skipped_stale_git_source = True
@@ -1273,20 +1457,32 @@ def ensure_marketplace_source(
                 print(f"Git marketplace freshness check passed: {reason}")
 
     if git_source:
+        pinned_revision = git_head_revision(REPO_ROOT)
         print(f"Trying Git marketplace source first: {git_source}")
+        print(f"Pinning Git marketplace package source to validated revision: {pinned_revision}")
         git_exit = ensure_git_marketplace_source(
             codex,
             codex_home=codex_home,
             marketplace_name=marketplace_name,
             source=git_source,
-            ref=git_ref,
+            ref=pinned_revision,
             env=env,
             dry_run=dry_run,
         )
         if git_exit == 0:
             print("Marketplace source mode: git")
-            return
-        print(f"Git marketplace source failed with exit code {git_exit}; falling back to local source.")
+            return MarketplaceSourceBinding(
+                source_type="git",
+                source=git_source,
+                revision=pinned_revision,
+            )
+        failure = (
+            f"Git marketplace source {git_source!r} at validated revision "
+            f"{pinned_revision} failed with exit code {git_exit}"
+        )
+        if git_request_explicit:
+            raise SystemExit(failure)
+        print(f"{failure}; falling back to local source.")
     elif not skipped_stale_git_source:
         print("Git marketplace source was not found; falling back to local source.")
 
@@ -1299,6 +1495,10 @@ def ensure_marketplace_source(
         dry_run=dry_run,
     )
     print("Marketplace source mode: local")
+    return MarketplaceSourceBinding(
+        source_type="local",
+        source=str(REPO_ROOT),
+    )
 
 
 def main() -> None:
@@ -1329,7 +1529,7 @@ def main() -> None:
         "--git-marketplace-source",
         help="Git marketplace source to try first. Defaults to this checkout's remote.origin.url.",
     )
-    parser.add_argument("--git-ref", default="main", help="Git ref for first-time Git marketplace add.")
+    parser.add_argument("--git-ref", help="Git ref for first-time Git marketplace add. Defaults to main.")
     parser.add_argument(
         "--plugin",
         action="append",
@@ -1373,12 +1573,37 @@ def main() -> None:
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
     codex: str | None = None
+    desired_plugin_names = (
+        default_plugin_names(
+            "install",
+            marketplace_name=args.marketplace_name,
+            manifest_file=catalog.repo_root / ".agents" / "plugins" / "install-manifest.json",
+            marketplace_file=catalog.repo_root / ".agents" / "plugins" / "marketplace.json",
+        )
+        if profile is DiscoveryProfile.PLUGIN
+        else []
+    )
+    prune_plan = (
+        plugin_prune_plan(
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            desired_plugin_names=desired_plugin_names,
+        )
+        if args.prune_plugins
+        else PluginPrunePlan(configured=frozenset(), cached=frozenset())
+    )
     configured_profile_plugins = {
         (marketplace, plugin_name)
         for marketplace, plugin_name in enabled_configured_plugin_selectors(codex_home)
         if plugin_name in set(catalog.plugin_names) or marketplace == args.marketplace_name
     }
     if profile is DiscoveryProfile.PLUGIN:
+        preflight_plugin_distribution(
+            catalog,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            ignored_stale_cache_plugins=prune_plan.cached,
+        )
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
         require_codex_plugin_commands(
             codex,
@@ -1390,6 +1615,13 @@ def main() -> None:
                 catalog,
                 target_root=agents_skills_root,
             ),
+        )
+        _enabled_profile_plugins(
+            catalog,
+            codex=codex,
+            marketplace_name=args.marketplace_name,
+            env=env,
+            ignored_unclassified=set(prune_plan.configured),
         )
     elif configured_profile_plugins:
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
@@ -1407,32 +1639,26 @@ def main() -> None:
 
     if profile is DiscoveryProfile.PLUGIN:
         assert codex is not None
-        ensure_marketplace_source(
+        git_ref = args.git_ref or "main"
+        marketplace_source_binding = ensure_marketplace_source(
             codex,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
             git_source=args.git_marketplace_source or git_remote_source(REPO_ROOT),
-            git_ref=args.git_ref,
-            git_source_explicit=args.git_marketplace_source is not None,
+            git_ref=git_ref,
+            git_request_explicit=(
+                args.git_marketplace_source is not None or args.git_ref is not None
+            ),
             local_source=args.marketplace_source,
             env=env,
             dry_run=args.dry_run,
         )
         if args.prune_plugins:
-            _enabled_profile_plugins(
-                catalog,
-                codex=codex,
-                marketplace_name=args.marketplace_name,
-                env=env,
-            )
             prune_stale_plugins(
                 codex,
                 codex_home=codex_home,
                 marketplace_name=args.marketplace_name,
-                desired_plugin_names=default_plugin_names(
-                    "install",
-                    marketplace_name=args.marketplace_name,
-                ),
+                plan=prune_plan,
                 env=env,
                 dry_run=args.dry_run,
             )
@@ -1443,8 +1669,13 @@ def main() -> None:
             marketplace_name=args.marketplace_name,
             target_root=agents_skills_root,
             requested_plugins=args.plugin,
+            marketplace_source_binding=marketplace_source_binding,
             env=env,
             dry_run=args.dry_run,
+            ignored_stale_cache_plugins=(prune_plan.cached if args.dry_run else None),
+            ignored_stale_enabled_plugins=(
+                prune_plan.configured if args.dry_run else None
+            ),
         )
     else:
         apply_universal_discovery_profile(

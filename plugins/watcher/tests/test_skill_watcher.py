@@ -442,7 +442,8 @@ class SkillWatcherTests(unittest.TestCase):
             manifest.write_text(
                 json.dumps(
                     {
-                        "schemaVersion": 1,
+                        "schemaVersion": 2,
+                        "discoveryProfile": "plugin",
                         "marketplace": "my-codex",
                         "plugins": [
                             {"name": "missing-plugin", "install": True, "check": True},

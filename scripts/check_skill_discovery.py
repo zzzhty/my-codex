@@ -79,7 +79,7 @@ def enabled_plugin_names(
     }
 
 
-def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+def plugin_manifest_payload(manifest: Path, *, label: str) -> dict[str, object]:
     if not manifest.is_file():
         raise ValueError(f"{label} manifest missing: {manifest}")
     try:
@@ -88,6 +88,15 @@ def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
         raise ValueError(f"{label} manifest is not valid readable JSON: {manifest}: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"{label} manifest must be an object: {manifest}")
+    return payload
+
+
+def _plugin_manifest_identity(
+    payload: dict[str, object],
+    manifest: Path,
+    *,
+    label: str,
+) -> tuple[str, str]:
     identity: list[str] = []
     for field in ("name", "version"):
         value = payload.get(field)
@@ -95,6 +104,11 @@ def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
             raise ValueError(f"{label} manifest {field} must be a non-empty string: {manifest}")
         identity.append(value.strip())
     return identity[0], identity[1]
+
+
+def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+    payload = plugin_manifest_payload(manifest, label=label)
+    return _plugin_manifest_identity(payload, manifest, label=label)
 
 
 def _marketplace_payload(marketplace: Path) -> tuple[str, list[object]]:
@@ -184,8 +198,51 @@ def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]
                 f"marketplace/source manifest name mismatch for entry #{index}; "
                 f"catalog has {plugin_name!r}, manifest has {manifest_name!r} at {manifest}"
             )
+        policy = entry.get("policy")
+        if not isinstance(policy, dict):
+            raise ValueError(
+                f"marketplace plugin policy must be an object for {plugin_name!r}: {marketplace}"
+            )
+        if policy.get("installation") != "AVAILABLE":
+            raise ValueError(
+                f"marketplace plugin installation policy must be 'AVAILABLE' for "
+                f"optional package {plugin_name!r}: {marketplace}"
+            )
         sources[plugin_name] = plugin_dir
     return marketplace_name, sources
+
+
+def _source_package_authority_issues(plugin_name: str, package_root: Path) -> list[str]:
+    """Reject unreadable or escaping descendants without following directory symlinks."""
+
+    issues: list[str] = []
+    pending = [package_root]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = sorted(directory.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            issues.append(
+                f"{plugin_name}: source package directory is not readable: {directory}: {exc}"
+            )
+            continue
+        for entry in entries:
+            try:
+                resolved_entry = entry.resolve(strict=True)
+                resolved_entry.relative_to(package_root)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}: source package entry cannot be resolved: {entry}: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}: source package entry escapes package authority: {entry}"
+                )
+                continue
+            if not entry.is_symlink() and resolved_entry.is_dir():
+                pending.append(resolved_entry)
+    return issues
 
 
 def plugin_package_issues(
@@ -219,9 +276,22 @@ def plugin_package_issues(
                 f"expected {expected_resolved}, found {source_resolved}"
             )
             continue
+        issues.extend(_source_package_authority_issues(plugin_name, source_resolved))
+        manifest = source_resolved / ".codex-plugin" / "plugin.json"
         try:
-            manifest_name, _ = plugin_manifest_identity(
-                source_resolved / ".codex-plugin" / "plugin.json",
+            resolved_manifest = manifest.resolve(strict=True)
+            resolved_manifest.relative_to(source_resolved)
+        except OSError as exc:
+            issues.append(f"{plugin_name}: source manifest cannot be resolved: {manifest}: {exc}")
+            continue
+        except ValueError:
+            issues.append(f"{plugin_name}: source manifest escapes package authority: {manifest}")
+            continue
+        try:
+            manifest_payload = plugin_manifest_payload(resolved_manifest, label="source")
+            manifest_name, _ = _plugin_manifest_identity(
+                manifest_payload,
+                resolved_manifest,
                 label="source",
             )
         except ValueError as exc:
@@ -231,16 +301,109 @@ def plugin_package_issues(
             issues.append(
                 f"{plugin_name}: source manifest name mismatch; found {manifest_name!r}"
             )
+        if manifest_payload.get("skills") != "./skills/":
+            issues.append(
+                f"{plugin_name}: source manifest skills must be exactly './skills/'; "
+                f"found {manifest_payload.get('skills')!r}"
+            )
+
+        expected_skills = {
+            source.directory_name: source
+            for source in catalog.sources
+            if source.plugin == plugin_name
+        }
+        skills_root = source_resolved / "skills"
+        try:
+            resolved_skills_root = skills_root.resolve(strict=True)
+            resolved_skills_root.relative_to(source_resolved)
+            entries = sorted(resolved_skills_root.iterdir(), key=lambda path: path.name)
+        except OSError as exc:
+            issues.append(
+                f"{plugin_name}: source package skills tree is not readable: "
+                f"{skills_root}: {exc}"
+            )
+            continue
+        except ValueError:
+            issues.append(
+                f"{plugin_name}: source package skills tree escapes package authority: {skills_root}"
+            )
+            continue
+        actual_directories = {entry.name for entry in entries if entry.is_dir()}
+        malformed_entries = sorted(entry.name for entry in entries if not entry.is_dir())
+        if malformed_entries:
+            issues.append(
+                f"{plugin_name}: source package skills tree has non-directory entries: "
+                + ", ".join(malformed_entries)
+            )
+        missing_skills = sorted(set(expected_skills) - actual_directories)
+        extra_skills = sorted(actual_directories - set(expected_skills))
+        if missing_skills:
+            issues.append(
+                f"{plugin_name}: source package is missing catalog skill directories: "
+                + ", ".join(missing_skills)
+            )
+        if extra_skills:
+            issues.append(
+                f"{plugin_name}: source package has skill directories outside the loaded catalog: "
+                + ", ".join(extra_skills)
+            )
+        for directory_name in sorted(set(expected_skills) & actual_directories):
+            expected_source = expected_skills[directory_name]
+            skill_directory = resolved_skills_root / directory_name
+            try:
+                resolved_directory = skill_directory.resolve(strict=True)
+                resolved_directory.relative_to(resolved_skills_root)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory cannot be resolved: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory escapes package authority"
+                )
+                continue
+            if resolved_directory != expected_source.path:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill directory does not match "
+                    f"loaded catalog source; expected {expected_source.path}, "
+                    f"found {resolved_directory}"
+                )
+                continue
+            skill_file = resolved_directory / "SKILL.md"
+            try:
+                resolved_skill_file = skill_file.resolve(strict=True)
+                resolved_skill_file.relative_to(resolved_directory)
+            except OSError as exc:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill file cannot be resolved: {exc}"
+                )
+                continue
+            except ValueError:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: source skill file escapes package authority"
+                )
+                continue
+            try:
+                actual_identity = skill_frontmatter_name(resolved_skill_file)
+            except SystemExit as exc:
+                issues.append(f"{plugin_name}/{directory_name}: {exc}")
+                continue
+            expected_identity = expected_source.name
+            if actual_identity != expected_identity:
+                issues.append(
+                    f"{plugin_name}/{directory_name}: callable identity changed after catalog load; "
+                    f"expected {expected_identity!r}, found {actual_identity!r}"
+                )
     return issues
 
 
-def plugin_cache_preflight_issues(
-    catalog: SkillCatalog,
+def plugin_cache_shape_issues(
     *,
     codex_home: Path,
     marketplace_name: str,
 ) -> list[str]:
-    """Reject cache shapes that cannot be safely inspected after activation."""
+    """Reject cache shapes that cannot be safely inspected or targeted."""
 
     cache_root = codex_home / "plugins" / "cache" / marketplace_name
     if not cache_root.exists():
@@ -253,7 +416,6 @@ def plugin_cache_preflight_issues(
         return [f"plugin cache marketplace root cannot be resolved: {cache_root}: {exc}"]
 
     issues: list[str] = []
-    expected_plugins = set(catalog.plugin_names)
     for plugin_root in sorted(cache_root.iterdir(), key=lambda path: path.name):
         if not plugin_root.is_dir() or plugin_root.is_symlink():
             issues.append(f"plugin cache package entry is not an inspectable directory: {plugin_root}")
@@ -263,12 +425,6 @@ def plugin_cache_preflight_issues(
             resolved_plugin.relative_to(resolved_cache_root)
         except (OSError, ValueError) as exc:
             issues.append(f"plugin cache package escapes marketplace root: {plugin_root}: {exc}")
-            continue
-        if plugin_root.name not in expected_plugins:
-            issues.append(
-                "cached my-codex plugin has no canonical repository skills: "
-                + plugin_root.name
-            )
             continue
         for version_root in sorted(plugin_root.iterdir(), key=lambda path: path.name):
             if not version_root.is_dir() or version_root.is_symlink():
@@ -280,6 +436,35 @@ def plugin_cache_preflight_issues(
                 version_root.resolve(strict=True).relative_to(resolved_plugin)
             except (OSError, ValueError) as exc:
                 issues.append(f"plugin cache version escapes package root: {version_root}: {exc}")
+    return issues
+
+
+def plugin_cache_profile_issues(
+    catalog: SkillCatalog,
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    ignored_plugin_names: set[str] | None = None,
+) -> list[str]:
+    """Require cache names to match the active profile after structural safety passes."""
+
+    issues = plugin_cache_shape_issues(
+        codex_home=codex_home,
+        marketplace_name=marketplace_name,
+    )
+    if issues:
+        return issues
+    cache_root = codex_home / "plugins" / "cache" / marketplace_name
+    if not cache_root.exists():
+        return []
+    cached_plugins = {path.name for path in cache_root.iterdir() if path.is_dir()}
+    allowed = set(catalog.plugin_names) | set(ignored_plugin_names or ())
+    extra = sorted(cached_plugins - allowed)
+    if extra:
+        issues.append(
+            "cached my-codex plugins have no canonical repository skills: "
+            + ", ".join(extra)
+        )
     return issues
 
 
@@ -334,7 +519,7 @@ def plugin_installation_issues(
 
     issues = [
         *plugin_package_issues(catalog, plugin_sources=plugin_sources),
-        *plugin_cache_preflight_issues(
+        *plugin_cache_profile_issues(
             catalog,
             codex_home=codex_home,
             marketplace_name=marketplace_name,
@@ -366,14 +551,6 @@ def plugin_installation_issues(
         expected_by_plugin.setdefault(source.plugin, set()).add(source.name)
 
     cache_marketplace_root = codex_home / "plugins" / "cache" / marketplace_name
-    if cache_marketplace_root.is_dir():
-        cached_packages = {path.name for path in cache_marketplace_root.iterdir() if path.is_dir()}
-        extra_cached = sorted(cached_packages - set(catalog.plugin_names))
-        if extra_cached:
-            issues.append(
-                "cached my-codex plugins have no canonical repository skills: "
-                + ", ".join(extra_cached)
-            )
 
     for plugin_name in catalog.plugin_names:
         source_root = plugin_sources.get(plugin_name)

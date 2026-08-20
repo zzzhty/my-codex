@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M3 after the explicit 2026-08-20 execution request and the merged M1 and M2 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M4 after the explicit 2026-08-20 execution request and the merged M1 through M3 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M2 are complete and M3 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M3 are complete and M4 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -202,8 +202,8 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
 | M1 Repository-Authoritative Discovery and Profile Integration | Done | Passed | Done |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
-| M3 Physical Layout Verification — No Move | In Progress | Pending | Pending |
-| M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
+| M3 Physical Layout Verification — No Move | Done | Passed | Done |
+| M4 Optional Plugin Distribution Packaging | In Progress | Pending | Pending |
 | M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
 
@@ -501,7 +501,7 @@ Completion criterion: `Watcher core, doctor, reports, and metadata refresh pass 
 
 ## M3 Physical Layout Verification — No Move
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Verify that `plugins/*/skills` remains the canonical physical layout and complete the milestone without moving skill source paths.
 
@@ -553,8 +553,19 @@ Validation evidence:
 - Actual Watcher and Workflow plugin validation, Matt `--validate-only`, owner-venv syntax compilation, Unix shell syntax, goal readiness, active TODO index, managed agent-support check, consumer inventory, and `git diff --check` passed. No command changed live plugins, links, hooks, caches, agent-support files, or Watcher durable state.
 - The first Standards review found that the live directory-link probe skipped every `OSError`, which could hide an I/O, read-only-filesystem, or space failure. Commit `2eb8a6e` limits skips to explicit unsupported-platform, unsupported-filesystem, and Windows symlink-privilege cases; injected `EIO` now produces a test error rather than a skip.
 - Final independent Standards and Contract reviews of `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd...2eb8a6efcd66db2f517198b59deb4e689ac5cd9f` both returned clean on 2026-08-21. Each reviewer reran the focused and root gates; Contract independently reproduced the 34-skill, 119-file, 13-consumer, 38-link, two-placeholder inventory and found no physical-layout blocker. The read-only live check confirmed hooks still point to the repo-owned Watcher CLI but have not yet received M2's explicit `--repo-root`; that expected pre-cutover drift remains an M5 apply item and does not require a source move.
+- [PR #8](https://github.com/zzzhty/my-codex/pull/8) merged the reviewed M3 branch to `main` as `dbf157ccad5c6171dbb24e263986aae12f5e4b72` after GitHub reported it clean and mergeable with no repository CI checks configured. The merged remote and local M3 branches contained no commits absent from `main` and were deleted before M4 started from that merge.
 
-Checkpoint evidence: `M3 no-change decision, validation evidence, and compatibility review.`
+Checkpoint component: Done
+
+Checkpoint type: git merge
+
+Revision: dbf157ccad5c6171dbb24e263986aae12f5e4b72
+
+Changed files: docs/todo/universal-agent-skills-migration.md; scripts/sync_agents_skills.py; tests/test_sync_agents_skills.py
+
+Validation recorded: 10 focused, 73 root, 64 Workflow, and 70 Watcher tests passed; three Watcher platform tests skipped; 34-skill and 119-file projection, directory-link portability, 13-consumer inventory, three package validators, docs, static, and independent Standards and Contract gates passed on 2026-08-21
+
+Out-of-scope dirty changes: none observed before merge or at the M4 branch point
 
 Rollback: `No source path changes occur, so no path rollback is required.`
 
@@ -568,7 +579,7 @@ Completion criterion: `The current physical authority is retained and validated 
 
 ## M4 Optional Plugin Distribution Packaging
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Keep the skills-bearing plugin profile buildable as an optional compatibility and rollback distribution without making it a universal source authority.
 
@@ -599,6 +610,20 @@ Review gate:
 Evidence to record:
 
 - Package manifest and tree inventory, build commands, hook tests, universal discovery inventory, plugin-profile inventory, mutual-exclusion evidence, and rollback commands.
+
+Execution evidence:
+
+- M4 started from merged `main` revision `dbf157ccad5c6171dbb24e263986aae12f5e4b72` on `codex/universal-agent-skills-m4`. The optional install manifest is now schema 2 with explicit `discoveryProfile: plugin`; every marketplace package remains `AVAILABLE`, and universal mode never installs a plugin or a zero-skill adapter.
+- The repository-authoritative catalog validates all three source packages before any Codex marketplace mutation. Each package manifest must expose `./skills/`; the package name, version, callable identities, loaded skill directories, and complete package tree must remain inside and match the validated checkout. Local distribution binds to that exact checkout; Git distribution binds to its canonical remote and exact clean HEAD revision. Explicit Git source or ref failures stop directly, while only automatic Git selection may choose the same validated local checkout.
+- Package inventory at reviewed head `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` is 34 skills across three packages: `mattpocock-skills` version `1.2.3+codex.20260812033502` with 25 skills and 80 tracked files; `watcher` version `0.1.0+codex.20260817071906` with 4 skills and 47 tracked files; and `workflow` version `0.1.0+codex.20260814091823` with 5 skills and 54 tracked files.
+- Profile transition tests prove exactly one active discovery path, rollback after partial plugin activation, universal plugin-free hook installation, package-content closure, and rejection of universal links while the plugin profile is active. Wrapper entry points now pass raw Codex selection to the canonical Python preflight, so an invalid distribution fails before Codex resolution or marketplace mutation on Unix and PowerShell contracts.
+- Explicit pruning uses a structured plan that separates config-proven plugin removals from cache-only deletion targets. Cache structure is validated before targeting; CLI enabled-state closure is checked before marketplace or cache mutation; dry-run and real execution reject an enabled CLI-only/cache-name collision without deleting the cache; and complete profile closure is restored after an actual prune.
+
+Validation evidence:
+
+- All 91 root tests, 64 Workflow tests, and 70 Watcher tests passed; three existing Watcher platform tests were skipped on macOS. Actual Watcher and Workflow plugin validators, Matt `--validate-only`, owner-venv byte compilation, Unix shell syntax, goal readiness, Markdown links, active TODO index, managed agent-support check, and `git diff --check` passed.
+- Independent Standards and Contract review iterated over package-source binding, source-tree containment, policy closure, mutation ordering, wrapper parity, and exact prune planning. Final review of `dbf157ccad5c6171dbb24e263986aae12f5e4b72...2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` returned clean from both reviewers on 2026-08-21 with no P0-P2 or actionable Contract findings.
+- [Draft PR #9](https://github.com/zzzhty/my-codex/pull/9) contains the reviewed M4 source at `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386`; GitHub reports it mergeable, and this repository has no configured PR checks. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
 
 Checkpoint evidence: `M4 commits and PR, built artifact identity, package-content checks, and coexistence or mutual-exclusion evidence.`
 

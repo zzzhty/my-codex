@@ -24,9 +24,11 @@ from refresh_my_codex import (
     build_env,
     cached_plugin_names,
     command_text,
+    configured_marketplace_source_binding,
     configured_plugin_names,
     enabled_configured_plugin_selectors,
     expand_path,
+    marketplace_source_binding_issues,
     resolve_codex_executable,
     selected_plugins,
     stale_plugin_names,
@@ -132,6 +134,25 @@ class CheckRunner:
         marketplace = source_root / ".agents" / "plugins" / "marketplace.json"
         self.ok(f"marketplace file includes exact local plugin identities: {marketplace}")
         return sources
+
+    def check_marketplace_source_binding(
+        self,
+        catalog: SkillCatalog,
+        *,
+        codex_home: Path,
+        marketplace_name: str,
+    ) -> None:
+        try:
+            binding = configured_marketplace_source_binding(codex_home, marketplace_name)
+        except ValueError as exc:
+            self.fail(str(exc))
+            return
+        issues = marketplace_source_binding_issues(catalog, binding)
+        if issues:
+            for issue in issues:
+                self.fail(issue)
+            return
+        self.ok("configured marketplace is bound to the validated repository source")
 
     def check_plugin_packages(
         self,
@@ -499,6 +520,11 @@ def main() -> None:
     runner.check_tooling_python(tooling_python, env=env)
     if profile is DiscoveryProfile.PLUGIN:
         assert codex is not None
+        runner.check_marketplace_source_binding(
+            catalog,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+        )
         desired_plugins = selected_plugins(
             None,
             args.marketplace_name,

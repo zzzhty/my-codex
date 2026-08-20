@@ -42,7 +42,7 @@ class ProfileFixture:
             write_skill(self.repo, plugin, skill)
             write_json(
                 self.repo / "plugins" / plugin / ".codex-plugin" / "plugin.json",
-                {"name": plugin, "version": "1.0.0"},
+                {"name": plugin, "version": "1.0.0", "skills": "./skills/"},
             )
         write_json(
             self.repo / ".agents" / "plugins" / "marketplace.json",
@@ -52,6 +52,10 @@ class ProfileFixture:
                     {
                         "name": plugin,
                         "source": {"source": "local", "path": f"./plugins/{plugin}"},
+                        "policy": {
+                            "installation": "AVAILABLE",
+                            "authentication": "ON_INSTALL",
+                        },
                     }
                     for plugin in ("alpha", "beta")
                 ],
@@ -60,7 +64,8 @@ class ProfileFixture:
         write_json(
             self.repo / ".agents" / "plugins" / "install-manifest.json",
             {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
+                "discoveryProfile": "plugin",
                 "marketplace": "test",
                 "plugins": [
                     {"name": plugin, "install": True, "check": True}
@@ -132,6 +137,118 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             mock.patch.object(refresh, "run", side_effect=self.fixture.run),
         )
 
+    def run_pruning_main(self, *, dry_run: bool = True) -> None:
+        arguments = [
+            "refresh_my_codex.py",
+            "--discovery-profile",
+            "plugin",
+            "--marketplace-name",
+            "test",
+            "--marketplace-source",
+            str(self.fixture.repo),
+            "--codex-home",
+            str(self.fixture.codex_home),
+            "--agents-skills-root",
+            str(self.fixture.target),
+            "--prune-plugins",
+            "--skip-bootstrap",
+            "--skip-agents",
+            "--skip-hooks",
+            "--skip-doctor",
+        ]
+        if dry_run:
+            arguments.append("--dry-run")
+        rows_patch, run_patch = self.patches()
+        with (
+            mock.patch.object(sys, "argv", arguments),
+            mock.patch.object(refresh, "load_repo_skill_catalog", return_value=self.fixture.catalog),
+            mock.patch.object(refresh, "resolve_codex_executable", return_value="codex"),
+            mock.patch.object(refresh, "require_codex_plugin_commands"),
+            mock.patch.object(
+                refresh,
+                "ensure_marketplace_source",
+                return_value=refresh.MarketplaceSourceBinding(
+                    "local",
+                    str(self.fixture.repo),
+                ),
+            ),
+            rows_patch,
+            run_patch,
+        ):
+            refresh.main()
+
+    def test_install_manifest_is_explicitly_owned_by_plugin_profile(self) -> None:
+        manifest = self.fixture.repo / ".agents" / "plugins" / "install-manifest.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload.pop("discoveryProfile")
+        write_json(manifest, payload)
+
+        with self.assertRaisesRegex(SystemExit, "discoveryProfile must be 'plugin'"):
+            refresh.load_install_manifest(manifest)
+
+        payload["schemaVersion"] = 1
+        payload["discoveryProfile"] = "plugin"
+        write_json(manifest, payload)
+        with self.assertRaisesRegex(SystemExit, "schemaVersion must be 2"):
+            refresh.load_install_manifest(manifest)
+
+    def test_plugin_apply_rejects_a_marketplace_source_other_than_the_validated_checkout(self) -> None:
+        with self.assertRaisesRegex(
+            SystemExit,
+            "local marketplace source is not the validated canonical checkout",
+        ):
+            refresh.apply_plugin_discovery_profile(
+                self.fixture.catalog,
+                codex="codex",
+                codex_home=self.fixture.codex_home,
+                marketplace_name="test",
+                target_root=self.fixture.target,
+                requested_plugins=None,
+                marketplace_source_binding=refresh.MarketplaceSourceBinding(
+                    "local",
+                    str(self.fixture.repo.parent / "alternate"),
+                ),
+                env={},
+                dry_run=False,
+            )
+
+    def test_git_marketplace_binding_requires_canonical_remote_and_exact_revision(self) -> None:
+        with (
+            mock.patch.object(refresh, "git_remote_source", return_value="git@example/repo.git"),
+            mock.patch.object(refresh, "git_worktree_clean", return_value=(True, "clean")),
+            mock.patch.object(refresh, "git_head_revision", return_value="abc123"),
+        ):
+            self.assertEqual(
+                refresh.marketplace_source_binding_issues(
+                    self.fixture.catalog,
+                    refresh.MarketplaceSourceBinding(
+                        "git",
+                        "git@example/repo.git",
+                        "abc123",
+                    ),
+                ),
+                [],
+            )
+            wrong_source = refresh.marketplace_source_binding_issues(
+                self.fixture.catalog,
+                refresh.MarketplaceSourceBinding(
+                    "git",
+                    "git@example/other.git",
+                    "abc123",
+                ),
+            )
+            wrong_revision = refresh.marketplace_source_binding_issues(
+                self.fixture.catalog,
+                refresh.MarketplaceSourceBinding(
+                    "git",
+                    "git@example/repo.git",
+                    "different",
+                ),
+            )
+
+        self.assertIn("not the canonical checkout remote", "\n".join(wrong_source))
+        self.assertIn("not pinned to the validated checkout revision", "\n".join(wrong_revision))
+
     def test_round_trip_preserves_exactly_one_active_discovery_profile(self) -> None:
         self.fixture.enabled.update({"alpha", "beta"})
         self.fixture.configure_plugins()
@@ -159,6 +276,10 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
                 marketplace_name="test",
                 target_root=self.fixture.target,
                 requested_plugins=None,
+                marketplace_source_binding=refresh.MarketplaceSourceBinding(
+                    "local",
+                    str(self.fixture.repo),
+                ),
                 env={},
                 dry_run=False,
             )
@@ -188,6 +309,10 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
                     marketplace_name="test",
                     target_root=self.fixture.target,
                     requested_plugins=None,
+                    marketplace_source_binding=refresh.MarketplaceSourceBinding(
+                        "local",
+                        str(self.fixture.repo),
+                    ),
                     env={},
                     dry_run=False,
                 )
@@ -213,9 +338,84 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
                     marketplace_name="test",
                     target_root=self.fixture.target,
                     requested_plugins=["alpha@other"],
+                    marketplace_source_binding=refresh.MarketplaceSourceBinding(
+                        "local",
+                        str(self.fixture.repo),
+                    ),
                     env={},
                     dry_run=False,
                 )
+        self.assertEqual(self.fixture.events, [])
+
+    def test_prune_dry_run_reaches_cache_only_stale_plugin_before_full_closure(self) -> None:
+        stale_cache = (
+            self.fixture.codex_home
+            / "plugins"
+            / "cache"
+            / "test"
+            / "retired"
+            / "0.9.0"
+        )
+        stale_cache.mkdir(parents=True)
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "cached my-codex plugins have no canonical repository skills: retired",
+        ):
+            refresh.preflight_plugin_distribution(
+                self.fixture.catalog,
+                codex_home=self.fixture.codex_home,
+                marketplace_name="test",
+            )
+
+        self.run_pruning_main()
+
+        self.assertTrue(stale_cache.is_dir())
+        self.assertEqual(self.fixture.events, ["add:alpha", "add:beta"])
+
+    def test_prune_dry_run_reaches_enabled_stale_plugin_before_full_closure(self) -> None:
+        self.fixture.enabled.add("retired")
+        self.fixture.configure_plugins()
+
+        self.run_pruning_main()
+
+        self.assertEqual(
+            self.fixture.events,
+            ["remove:retired", "add:alpha", "add:beta"],
+        )
+
+    def test_prune_never_ignores_cli_only_uninventoried_plugin(self) -> None:
+        self.fixture.enabled.add("retired")
+
+        with self.assertRaisesRegex(
+            SystemExit,
+            "unclassified enabled my-codex plugins.*retired",
+        ):
+            self.run_pruning_main()
+
+        self.assertEqual(self.fixture.events, [])
+
+    def test_prune_rejects_cli_enabled_cache_collision_before_real_mutation(self) -> None:
+        stale_cache = (
+            self.fixture.codex_home
+            / "plugins"
+            / "cache"
+            / "test"
+            / "retired"
+            / "0.9.0"
+        )
+        stale_cache.mkdir(parents=True)
+        self.fixture.enabled.add("retired")
+
+        for dry_run in (True, False):
+            with self.subTest(dry_run=dry_run):
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "unclassified enabled my-codex plugins.*retired",
+                ):
+                    self.run_pruning_main(dry_run=dry_run)
+
+        self.assertTrue(stale_cache.is_dir())
         self.assertEqual(self.fixture.events, [])
 
 
