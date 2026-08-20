@@ -176,6 +176,7 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
                 mock.patch.object(refresh, "preflight_plugin_distribution"),
                 mock.patch.object(refresh, "resolve_codex_executable", return_value="/fake/codex"),
                 mock.patch.object(refresh, "require_codex_plugin_commands"),
+                mock.patch.object(refresh, "_enabled_profile_plugins", return_value=set()),
                 mock.patch.object(refresh, "universal_layer_active", return_value=False),
                 mock.patch.object(refresh, "git_remote_source", return_value="git@example/repo.git"),
                 mock.patch.object(

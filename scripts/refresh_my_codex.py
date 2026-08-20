@@ -67,6 +67,16 @@ class MarketplaceSourceBinding:
     revision: str | None = None
 
 
+@dataclass(frozen=True)
+class PluginPrunePlan:
+    configured: frozenset[str]
+    cached: frozenset[str]
+
+    @property
+    def names(self) -> frozenset[str]:
+        return self.configured | self.cached
+
+
 def expand_path(raw: str | Path) -> Path:
     return Path(os.path.expandvars(str(raw))).expanduser()
 
@@ -744,7 +754,7 @@ def preflight_plugin_distribution(
     *,
     codex_home: Path,
     marketplace_name: str,
-    ignored_stale_plugins: set[str] | None = None,
+    ignored_stale_cache_plugins: set[str] | frozenset[str] | None = None,
 ) -> tuple[list[str], dict[str, Path]]:
     """Validate every canonical plugin input before marketplace or profile mutation."""
 
@@ -779,7 +789,7 @@ def preflight_plugin_distribution(
                 catalog,
                 codex_home=codex_home,
                 marketplace_name=marketplace_name,
-                ignored_plugin_names=ignored_stale_plugins,
+                ignored_plugin_names=set(ignored_stale_cache_plugins or ()),
             ),
         ],
     )
@@ -797,7 +807,8 @@ def apply_plugin_discovery_profile(
     marketplace_source_binding: MarketplaceSourceBinding,
     env: dict[str, str],
     dry_run: bool,
-    ignored_stale_plugins: set[str] | None = None,
+    ignored_stale_cache_plugins: set[str] | frozenset[str] | None = None,
+    ignored_stale_enabled_plugins: set[str] | frozenset[str] | None = None,
 ) -> None:
     require_profile_closure(
         "plugin marketplace source binding",
@@ -807,7 +818,7 @@ def apply_plugin_discovery_profile(
         catalog,
         codex_home=codex_home,
         marketplace_name=marketplace_name,
-        ignored_stale_plugins=ignored_stale_plugins,
+        ignored_stale_cache_plugins=ignored_stale_cache_plugins,
     )
 
     selected = selected_plugins(
@@ -835,7 +846,7 @@ def apply_plugin_discovery_profile(
         codex=codex,
         marketplace_name=marketplace_name,
         env=env,
-        ignored_unclassified=ignored_stale_plugins,
+        ignored_unclassified=set(ignored_stale_enabled_plugins or ()),
     )
     universal_active = universal_layer_active(catalog, target_root=target_root)
     if universal_active and enabled_before:
@@ -854,7 +865,7 @@ def apply_plugin_discovery_profile(
     def current_enabled() -> set[str]:
         rows = current_rows()
         enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
-        ignored = set(ignored_stale_plugins or ())
+        ignored = set(ignored_stale_enabled_plugins or ())
         unclassified = sorted(enabled - expected_names - ignored)
         if unclassified:
             raise SystemExit(
@@ -873,7 +884,7 @@ def apply_plugin_discovery_profile(
                     catalog,
                     codex_home=codex_home,
                     marketplace_name=marketplace_name,
-                    ignored_plugin_names=ignored_stale_plugins,
+                    ignored_plugin_names=set(ignored_stale_cache_plugins or ()),
                 ),
             ],
         )
@@ -982,15 +993,34 @@ def plugin_cache_dir(codex_home: Path, marketplace_name: str, plugin_name: str) 
     return codex_home / "plugins" / "cache" / marketplace_name / plugin_name
 
 
+def plugin_prune_plan(
+    *,
+    codex_home: Path,
+    marketplace_name: str,
+    desired_plugin_names: list[str],
+) -> PluginPrunePlan:
+    desired = set(desired_plugin_names)
+    return PluginPrunePlan(
+        configured=frozenset(
+            configured_plugin_names(codex_home, marketplace_name) - desired
+        ),
+        cached=frozenset(cached_plugin_names(codex_home, marketplace_name) - desired),
+    )
+
+
 def stale_plugin_names(
     *,
     codex_home: Path,
     marketplace_name: str,
     desired_plugin_names: list[str],
 ) -> list[str]:
-    discovered = configured_plugin_names(codex_home, marketplace_name) | cached_plugin_names(codex_home, marketplace_name)
-    desired = set(desired_plugin_names)
-    return sorted(discovered - desired)
+    return sorted(
+        plugin_prune_plan(
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            desired_plugin_names=desired_plugin_names,
+        ).names
+    )
 
 
 def remove_cached_plugin_dir(
@@ -1023,34 +1053,31 @@ def prune_stale_plugins(
     *,
     codex_home: Path,
     marketplace_name: str,
-    desired_plugin_names: list[str],
+    plan: PluginPrunePlan,
     env: dict[str, str],
     dry_run: bool,
 ) -> None:
-    stale = stale_plugin_names(
-        codex_home=codex_home,
-        marketplace_name=marketplace_name,
-        desired_plugin_names=desired_plugin_names,
-    )
+    stale = sorted(plan.names)
     if not stale:
         print(f"No stale plugins to prune for marketplace `{marketplace_name}`.")
         return
 
-    configured = configured_plugin_names(codex_home, marketplace_name)
-    cached = cached_plugin_names(codex_home, marketplace_name)
     print("Stale plugins selected for pruning:")
     for name in stale:
         print(f"- {name}@{marketplace_name}")
-    for name in stale:
-        if name in configured:
-            run([codex, "plugin", "remove", f"{name}@{marketplace_name}"], env=env, dry_run=dry_run)
-        if name in cached:
-            remove_cached_plugin_dir(
-                codex_home=codex_home,
-                marketplace_name=marketplace_name,
-                plugin_name=name,
-                dry_run=dry_run,
-            )
+    for name in sorted(plan.configured):
+        run(
+            [codex, "plugin", "remove", f"{name}@{marketplace_name}"],
+            env=env,
+            dry_run=dry_run,
+        )
+    for name in sorted(plan.cached):
+        remove_cached_plugin_dir(
+            codex_home=codex_home,
+            marketplace_name=marketplace_name,
+            plugin_name=name,
+            dry_run=dry_run,
+        )
 
 
 def tooling_python_from_args(args: argparse.Namespace, venv_path: Path) -> Path:
@@ -1556,16 +1583,14 @@ def main() -> None:
         if profile is DiscoveryProfile.PLUGIN
         else []
     )
-    planned_pruned_plugins = (
-        set(
-            stale_plugin_names(
-                codex_home=codex_home,
-                marketplace_name=args.marketplace_name,
-                desired_plugin_names=desired_plugin_names,
-            )
+    prune_plan = (
+        plugin_prune_plan(
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            desired_plugin_names=desired_plugin_names,
         )
         if args.prune_plugins
-        else set()
+        else PluginPrunePlan(configured=frozenset(), cached=frozenset())
     )
     configured_profile_plugins = {
         (marketplace, plugin_name)
@@ -1577,7 +1602,7 @@ def main() -> None:
             catalog,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
-            ignored_stale_plugins=planned_pruned_plugins,
+            ignored_stale_cache_plugins=prune_plan.cached,
         )
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
         require_codex_plugin_commands(
@@ -1590,6 +1615,13 @@ def main() -> None:
                 catalog,
                 target_root=agents_skills_root,
             ),
+        )
+        _enabled_profile_plugins(
+            catalog,
+            codex=codex,
+            marketplace_name=args.marketplace_name,
+            env=env,
+            ignored_unclassified=set(prune_plan.configured),
         )
     elif configured_profile_plugins:
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
@@ -1626,7 +1658,7 @@ def main() -> None:
                 codex,
                 codex_home=codex_home,
                 marketplace_name=args.marketplace_name,
-                desired_plugin_names=desired_plugin_names,
+                plan=prune_plan,
                 env=env,
                 dry_run=args.dry_run,
             )
@@ -1640,7 +1672,10 @@ def main() -> None:
             marketplace_source_binding=marketplace_source_binding,
             env=env,
             dry_run=args.dry_run,
-            ignored_stale_plugins=(planned_pruned_plugins if args.dry_run else None),
+            ignored_stale_cache_plugins=(prune_plan.cached if args.dry_run else None),
+            ignored_stale_enabled_plugins=(
+                prune_plan.configured if args.dry_run else None
+            ),
         )
     else:
         apply_universal_discovery_profile(

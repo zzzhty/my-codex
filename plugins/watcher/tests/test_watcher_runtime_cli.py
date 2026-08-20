@@ -21,7 +21,11 @@ sys.path.insert(0, str(SCRIPTS))
 
 from watcher_runtime import cli as watcher_cli  # noqa: E402
 from watcher_runtime.doc import audit_repo, audit_runtime  # noqa: E402
-from refresh_my_codex import cached_plugin_names, prune_stale_plugins  # noqa: E402
+from refresh_my_codex import (  # noqa: E402
+    cached_plugin_names,
+    plugin_prune_plan,
+    prune_stale_plugins,
+)
 
 
 class WatcherRuntimeCliTests(unittest.TestCase):
@@ -182,7 +186,11 @@ class WatcherRuntimeCliTests(unittest.TestCase):
                     "codex",
                     codex_home=codex_home,
                     marketplace_name="my-codex",
-                    desired_plugin_names=["workflow"],
+                    plan=plugin_prune_plan(
+                        codex_home=codex_home,
+                        marketplace_name="my-codex",
+                        desired_plugin_names=["workflow"],
+                    ),
                     env={},
                     dry_run=False,
                 )

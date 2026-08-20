@@ -137,7 +137,7 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             mock.patch.object(refresh, "run", side_effect=self.fixture.run),
         )
 
-    def run_pruning_main(self) -> None:
+    def run_pruning_main(self, *, dry_run: bool = True) -> None:
         arguments = [
             "refresh_my_codex.py",
             "--discovery-profile",
@@ -150,13 +150,14 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             str(self.fixture.codex_home),
             "--agents-skills-root",
             str(self.fixture.target),
-            "--dry-run",
             "--prune-plugins",
             "--skip-bootstrap",
             "--skip-agents",
             "--skip-hooks",
             "--skip-doctor",
         ]
+        if dry_run:
+            arguments.append("--dry-run")
         rows_patch, run_patch = self.patches()
         with (
             mock.patch.object(sys, "argv", arguments),
@@ -392,6 +393,29 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
         ):
             self.run_pruning_main()
 
+        self.assertEqual(self.fixture.events, [])
+
+    def test_prune_rejects_cli_enabled_cache_collision_before_real_mutation(self) -> None:
+        stale_cache = (
+            self.fixture.codex_home
+            / "plugins"
+            / "cache"
+            / "test"
+            / "retired"
+            / "0.9.0"
+        )
+        stale_cache.mkdir(parents=True)
+        self.fixture.enabled.add("retired")
+
+        for dry_run in (True, False):
+            with self.subTest(dry_run=dry_run):
+                with self.assertRaisesRegex(
+                    SystemExit,
+                    "unclassified enabled my-codex plugins.*retired",
+                ):
+                    self.run_pruning_main(dry_run=dry_run)
+
+        self.assertTrue(stale_cache.is_dir())
         self.assertEqual(self.fixture.events, [])
 
 
