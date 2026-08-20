@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M4 after the explicit 2026-08-20 execution request and the merged M1 through M3 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M5 after the explicit 2026-08-20 execution request and the merged M1 through M4 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M3 are complete and M4 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M4 are complete and M5 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -203,8 +203,8 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M1 Repository-Authoritative Discovery and Profile Integration | Done | Passed | Done |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
 | M3 Physical Layout Verification — No Move | Done | Passed | Done |
-| M4 Optional Plugin Distribution Packaging | In Progress | Pending | Pending |
-| M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
+| M4 Optional Plugin Distribution Packaging | Done | Passed | Done |
+| M5 Controlled Universal Profile Cutover | In Progress | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
 
 ## M0 Contract, Plan, and Baseline Freeze
@@ -579,7 +579,7 @@ Completion criterion: `The current physical authority is retained and validated 
 
 ## M4 Optional Plugin Distribution Packaging
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Keep the skills-bearing plugin profile buildable as an optional compatibility and rollback distribution without making it a universal source authority.
 
@@ -623,9 +623,21 @@ Validation evidence:
 
 - All 91 root tests, 64 Workflow tests, and 70 Watcher tests passed; three existing Watcher platform tests were skipped on macOS. Actual Watcher and Workflow plugin validators, Matt `--validate-only`, owner-venv byte compilation, Unix shell syntax, goal readiness, Markdown links, active TODO index, managed agent-support check, and `git diff --check` passed.
 - Independent Standards and Contract review iterated over package-source binding, source-tree containment, policy closure, mutation ordering, wrapper parity, and exact prune planning. Final review of `dbf157ccad5c6171dbb24e263986aae12f5e4b72...2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` returned clean from both reviewers on 2026-08-21 with no P0-P2 or actionable Contract findings.
-- [Draft PR #9](https://github.com/zzzhty/my-codex/pull/9) contains the reviewed M4 source at `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386`; GitHub reports it mergeable, and this repository has no configured PR checks. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
+- [PR #9](https://github.com/zzzhty/my-codex/pull/9) merged the reviewed M4 branch to `main` as `a06b431cfaf06f1986fe3861fbed53174cad9c15` after GitHub reported it mergeable with no repository CI checks configured. The merged remote and local M4 branches contained no commits absent from `main` and were deleted before M5 started from that merge. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
 
 Checkpoint evidence: `M4 commits and PR, built artifact identity, package-content checks, and coexistence or mutual-exclusion evidence.`
+
+Checkpoint component: Done
+
+Checkpoint type: git merge
+
+Revision: a06b431cfaf06f1986fe3861fbed53174cad9c15
+
+Changed files: .agents/plugins/install-manifest.json; .agents/plugins/marketplace.json; README.md; docs/todo/universal-agent-skills-migration.md; plugins/watcher/tests/test_skill_watcher.py; plugins/watcher/tests/test_watcher_runtime_cli.py; scripts/check_my_codex.py; scripts/check_skill_discovery.py; scripts/refresh_my_codex.py; scripts/upgrade_my_codex.ps1; scripts/upgrade_my_codex.sh; tests/test_check_discovery_profile.py; tests/test_check_my_codex.py; tests/test_refresh_discovery_profile.py; tests/test_refresh_profile_integration.py; tests/test_upgrade_my_codex.py
+
+Validation recorded: 91 root, 64 Workflow, and 70 Watcher tests passed with three existing Watcher platform skips; three package-owner validators, syntax, goal/docs/index, package inventory, source authority, mutual exclusion, wrapper ordering, prune safety, and final independent Standards and Contract gates passed on 2026-08-21
+
+Out-of-scope dirty changes: none observed before merge or at the M5 branch point
 
 Rollback: `Revert the packaging source PR. No real plugin is installed during M4; the current plugin profile remains the M5 rollback baseline.`
 
@@ -639,7 +651,7 @@ Completion criterion: `Optional plugin packaging builds and validates independen
 
 ## M5 Controlled Universal Profile Cutover
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Move one real, rollback-capable environment from the skills-bearing plugin profile to the universal profile and prove exact-once discovery and behavior.
 
