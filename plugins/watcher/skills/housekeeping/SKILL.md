@@ -1,48 +1,28 @@
 ---
 name: housekeeping
-description: Use within Watcher when cleaning temporary files, generated caches, stale runtime artifacts, obsolete active documentation, outdated paths, old plugin cache versions, or post-migration repo clutter; use this for implementation-mode cleanup that should follow doc-alignment semantics while preserving user work, audit history, dependency installs, and source-of-truth evidence.
+description: Use within Watcher to remove inventoried disposable artifacts or repair stale active guidance after migration, validation, or audit work while preserving user work and durable state.
 ---
 
 # Housekeeping
 
-Use this Watcher skill for bounded cleanup after migration, validation, audit, or doc-alignment work. It applies `doc-alignment` semantics to disposable artifacts and stale active guidance.
-
-Do not use it for scheduled Watcher doc audits that must keep targets read-only. Use `doc-alignment` for semantic review without cleanup.
+Use this skill for bounded implementation-mode cleanup. Use `doc-alignment` for semantic review or scheduled audits that must keep target repositories read-only.
 
 ## Core Contract
 
-1. Inspect before deleting. Record each candidate class and why removal is safe or unsafe.
-2. Preserve user work. Never delete tracked changes, untracked non-ignored files, local configs, databases, reports, or runtime state unless the user explicitly asks for that exact path or class.
-3. Separate active docs from history. Fix stale names, paths, commands, or workflow claims in active docs and entry points; leave archives/history intact unless their index or current summary is wrong.
-4. Fix bounded local root causes of recurring cleanup noise, such as hooks writing `__pycache__`.
-5. Verify cleanup with command evidence.
+Delete only artifacts whose ownership and disposability are established by inspection. Preserve everything else unless the user approves the exact path or class.
 
-## Candidate Classes
+Classify candidates into three groups:
 
-Safe after inventory:
+1. **Disposable generated artifacts** — ignored Python/test caches, OS/editor noise, files under known temporary/cache roots, and confirmed superseded local plugin cache versions. These may be removed after inventory.
+2. **Active semantic drift** — current README, AGENTS, runbook, hook, script, skill, TODO, or index content that points at stale names, paths, commands, or workflow claims. Align the active owner instead of deleting history.
+3. **Protected or approval-required state** — tracked or untracked source-looking files, local/private configuration, databases, reports, audit/runtime state, dependency installs, build/deploy output, migrations, and unknown binaries. Preserve and report these unless explicitly authorized.
 
-- Python/test caches: `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`.
-- OS/editor noise: `.DS_Store`, `Thumbs.db`, swap files.
-- Tool temp files clearly under ignored temp/cache directories.
-- Superseded local plugin cache versions after `codex plugin list` or equivalent confirms the active version.
-
-Report first, do not delete by default:
-
-- Dependency installs: `node_modules/`, `.venv/`, package-manager stores, downloaded SDKs.
-- Build/deploy artifacts: `dist/`, `build/`, coverage reports, generated static bundles.
-- Runtime state and audit history: `$CODEX_HOME/watcher/`, logs, reports, snapshots, SQLite files.
-- Untracked source-looking files, local config, private repo config, generated migrations, or unknown binaries.
-
-Align rather than delete:
-
-- Active README, AGENTS, runbook, hook, script, skill, or TODO content pointing at old names, stale commands, removed paths, outdated validation gates, or replaced workflow semantics.
-- Indexes that still navigate to closed work as current.
-- Templates containing concrete task state.
+Archives remain historical unless active navigation or their current summary is wrong.
 
 ## Workflow
 
-1. Read current truth: root `AGENTS.md`, relevant README/plugin README/skill README, target `.gitignore`, current plugin manifests, hook configs, TODO indexes, and validation docs.
-2. Inventory candidates:
+1. Read current truth: root instructions, relevant README/plugin docs, `.gitignore`, manifests, hook configuration, TODO indexes, and validation guidance.
+2. Inventory the target and ignored state:
 
 ```bash
 git status --short
@@ -51,15 +31,11 @@ find <target> ... -name __pycache__ -o -name .pytest_cache ...
 rg --hidden -n "<old-term>|<old-path>|<old-command>" <target> . --glob '!**/.git/**' --glob '!**/node_modules/**'
 ```
 
-3. Decide per candidate: delete only disposable generated artifacts or confirmed superseded cache versions; update active stale docs; leave archives alone unless active navigation or archive summaries are wrong; report anything needing explicit approval.
-4. Clean with exact paths or tightly scoped `find`; exclude `.git`, `node_modules`, `.venv`, package-manager stores, and configured runtime state by default. Do not run broad destructive commands from repo root unless the pattern is fully constrained and inventoried.
-5. Validate by repeating stale-term and cache scans, running `git diff --check -- <changed-paths>`, and running plugin/repo validators when cleanup touched manifests, skills, hooks, scripts, or current documentation contracts. If a cache reappears because a hook or tool recreates it, report that and fix the root cause when in scope.
+3. Record the classification and reason for each candidate class.
+4. Remove disposable artifacts with exact paths or tightly bounded patterns. Repair active semantic drift in its owning file. Keep protected state untouched and identify the approval needed.
+5. Re-run the relevant inventory or stale-term scan. Use `git diff --check -- <changed-paths>` and the owning validator when manifests, skills, hooks, scripts, or current documentation contracts changed.
+6. When a tool or hook recreates an artifact, fix that bounded local root cause when in scope; otherwise report the recreating command and blocker.
 
-## Stop Conditions
+## Completion
 
-Stop and report instead of cleaning when:
-
-1. A candidate is untracked, not ignored, and looks like source, config, data, migration, report, or private state.
-2. Deleting would remove dependency installs, build artifacts, runtime databases, reports, or audit history without explicit approval.
-3. Stale text appears only in archive/history and current navigation is correct.
-4. Validation shows a command, hook, or script still recreates the artifact and the root cause is outside scope.
+Report what was removed or aligned, what was preserved, the evidence supporting each classification, validation results, and unresolved approval-required state. A cleanup is complete only when the targeted noise or active drift is gone without losing user work, durable state, or historical evidence.
