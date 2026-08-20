@@ -465,6 +465,16 @@ Evidence to record:
 
 - Metadata fixture comparison, legacy-name tests, report snapshots or diffs, runtime-locator tests, isolated doctor-test output, and updated Watcher architecture docs.
 
+Execution evidence:
+
+- M2 started from merged `main` revision `9f6e3a739c00e0c780d8c71946600ba578f1f892` on `codex/universal-agent-skills-m2` after the M1 branch and remote ref were safely removed.
+- Watcher now loads the exact M1 `scripts/repo_skill_catalog.py` implementation from an explicit validated repository root and derives its durable namespaced identities from that catalog. Marketplace JSON, plugin manifests, plugin cache, adapter ancestry, and runtime state no longer enumerate callable skills.
+- Repository `.codex-plugin/skill-watcher.json` files remain the sole non-callable attribution overlays. Compatibility assertions preserve the pre-M2 baseline of 34 Watcher identities, 11 legacy mappings, 145 aliases, 11 supporting-skill edges, and the exact role distribution; existing legacy attribution scenarios remain unchanged.
+- Installed hook commands embed `--repo-root`; SessionStart, hook validation, refresh/check callers, and doctor share that contract. A subprocess test produced the same attribution from repository and universal-symlink working directories, and a complete doctor integration used only `TemporaryDirectory` state, hook target, validator, and sample-event paths.
+- A malformed marketplace and malformed plugin manifest were ignored while catalog discovery, SessionStart cache creation, and report rendering still resolved the canonical skill and attribution overlay. The derived runtime cache remained a runtime projection rather than a discovery authority.
+- Post-change validation on 2026-08-21 passed all 65 Watcher tests with three platform skips and all 71 root tests; owner-venv byte compilation, actual Watcher plugin validation, observe/install-hook/doctor help, Watcher Markdown links, and `git diff --check` passed. No command targeted the real `$CODEX_HOME/watcher`, hooks, plugins, cache, or universal links.
+- Independent Standards and Contract re-review remains pending before the M2 gate passes.
+
 Checkpoint evidence: `M2 commits, PR and merge record, metadata comparison evidence, and runtime-locator validation.`
 
 Rollback: `Revert M2 while remaining on a non-cutover environment. Do not rewrite runtime logs during rollout, so source rollback is sufficient.`

@@ -22,14 +22,13 @@ from .runtime_paths import (
     expand_path,
     hook_backup_dir,
 )
+from ..repository_source import resolve_repository_source
 
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_TARGET = DEFAULT_HOOK_TARGET
 HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop")
 STATUS_PREFIX = "Watcher skill:"
 LEGACY_STATUS_PREFIX = "Skill Watcher:"
-ADAPTER_NAME = "watcher"
 LEGACY_ADAPTER_NAME = "codex_hook_adapter.py"
 
 
@@ -43,35 +42,68 @@ def default_python() -> Path:
     return DEFAULT_TOOLING_VENV / "bin" / "python"
 
 
-def adapter_path() -> Path:
-    return PLUGIN_ROOT / "scripts" / ADAPTER_NAME
+def adapter_path(repo_root: str | Path | None = None) -> Path:
+    return resolve_repository_source(repo_root).watcher_cli
 
 
-def skill_watcher_command(python_path: Path | None = None, adapter: Path | None = None) -> str:
+def skill_watcher_command(
+    python_path: Path | None = None,
+    adapter: Path | None = None,
+    *,
+    repo_root: str | Path | None = None,
+) -> str:
+    source = resolve_repository_source(repo_root)
     args = [
         str(python_path or default_python()),
         "-B",
-        str(adapter or adapter_path()),
+        str(adapter or source.watcher_cli),
         "skill",
         "observe",
+        "--repo-root",
+        str(source.root),
     ]
     if os.name == "nt":
         return subprocess.list2cmdline(args)
     return " ".join(shlex.quote(arg) for arg in args)
 
 
-def desired_handler(event: str, *, python_path: Path | None = None, adapter: Path | None = None) -> dict[str, Any]:
+def desired_handler(
+    event: str,
+    *,
+    python_path: Path | None = None,
+    adapter: Path | None = None,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
     return {
         "type": "command",
         "async": False,
-        "command": skill_watcher_command(python_path, adapter),
+        "command": skill_watcher_command(
+            python_path,
+            adapter,
+            repo_root=repo_root,
+        ),
         "timeoutSec": 10,
         "statusMessage": f"{STATUS_PREFIX} observe {event}",
     }
 
 
-def desired_group(event: str, *, python_path: Path | None = None, adapter: Path | None = None) -> dict[str, Any]:
-    return {"hooks": [desired_handler(event, python_path=python_path, adapter=adapter)]}
+def desired_group(
+    event: str,
+    *,
+    python_path: Path | None = None,
+    adapter: Path | None = None,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
+    return {
+        "hooks": [
+            desired_handler(
+                event,
+                python_path=python_path,
+                adapter=adapter,
+                repo_root=repo_root,
+            )
+        ]
+    }
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -165,6 +197,7 @@ def install_skill_watcher_hooks(
     *,
     python_path: Path | None = None,
     adapter: Path | None = None,
+    repo_root: str | Path | None = None,
 ) -> tuple[dict[str, Any], int]:
     updated, removed = remove_skill_watcher_hooks(config)
     hooks = updated.setdefault("hooks", {})
@@ -174,7 +207,14 @@ def install_skill_watcher_hooks(
         groups = hooks.setdefault(event, [])
         if not isinstance(groups, list):
             raise SystemExit(f"hook config event {event!r} must be a list")
-        groups.append(desired_group(event, python_path=python_path, adapter=adapter))
+        groups.append(
+            desired_group(
+                event,
+                python_path=python_path,
+                adapter=adapter,
+                repo_root=repo_root,
+            )
+        )
     return updated, removed
 
 

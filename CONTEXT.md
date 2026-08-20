@@ -72,12 +72,12 @@ _Avoid_: inferred dependency, text-matched dependency
 A skill name or alias observed in runtime text that may provide attribution evidence but does not by itself prove workflow use.
 _Avoid_: supporting skill, effective skill
 
-**Skill Metadata Manifest**:
-A plugin-owned machine-readable declaration at `.codex-plugin/skill-watcher.json` containing canonical names, legacy names, aliases, roles, and skill dependency map entries that Watcher can consume.
-_Avoid_: README inference, directory scan as source of truth
+**Skill Attribution Overlay**:
+A repository-owned, non-callable declaration at `.codex-plugin/skill-watcher.json` that attaches Watcher roles, aliases, legacy names, logical groups, and supporting-skill relationships to identities derived from the canonical callable catalog.
+_Avoid_: callable catalog, plugin manifest authority, marketplace enumeration
 
 **Incremental Metadata Index**:
-A plugin-owned metadata layer added beside upstream skill instructions to improve discovery, attribution, and reporting without changing the skill instructions themselves.
+A repository-owned attribution layer added beside upstream skill instructions to improve attribution and reporting without changing the skill instructions themselves or enumerating callable skills.
 _Avoid_: behavior patch, upstream skill edit
 
 **Typed Alias**:
@@ -89,8 +89,8 @@ A metadata classification that explains how a skill is normally used in a skill 
 _Avoid_: usage count bucket, deletion signal
 
 **Runtime Metadata Cache**:
-A Watcher-generated cache of installed skill metadata manifests used by hooks at runtime.
-_Avoid_: plugin source of truth, hand-maintained allowlist
+A Watcher-generated runtime projection of the canonical repository catalog plus skill attribution overlays, used by hooks and reports after SessionStart.
+_Avoid_: callable source of truth, plugin-cache authority, hand-maintained allowlist
 
 **Skill Attribution**:
 The structured explanation of why a turn is associated with primary, supporting, effective, or mentioned skills.

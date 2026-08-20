@@ -1467,7 +1467,17 @@ def main() -> None:
         if not watcher_cli.is_file():
             raise SystemExit(f"Watcher CLI does not exist: {watcher_cli}")
         run(
-            [str(tooling_python), str(watcher_cli), "skill", "install-hook", "--apply", "--python", str(tooling_python)],
+            [
+                str(tooling_python),
+                str(watcher_cli),
+                "skill",
+                "install-hook",
+                "--apply",
+                "--python",
+                str(tooling_python),
+                "--repo-root",
+                str(REPO_ROOT),
+            ],
             env=env,
             dry_run=args.dry_run,
         )
@@ -1477,7 +1487,18 @@ def main() -> None:
             raise SystemExit(f"tooling Python does not exist: {tooling_python}")
         if not watcher_cli.is_file():
             raise SystemExit(f"Watcher CLI does not exist: {watcher_cli}")
-        run([str(tooling_python), str(watcher_cli), "skill", "doctor"], env=env, dry_run=args.dry_run)
+        run(
+            [
+                str(tooling_python),
+                str(watcher_cli),
+                "skill",
+                "doctor",
+                "--repo-root",
+                str(REPO_ROOT),
+            ],
+            env=env,
+            dry_run=args.dry_run,
+        )
 
     if args.dry_run:
         print(f"dry-run only; no changes written (discovery profile: {profile.value})")

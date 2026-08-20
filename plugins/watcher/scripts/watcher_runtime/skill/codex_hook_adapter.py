@@ -13,8 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .collect_event import append_event, ensure_runtime_dirs, expand_path, normalize_event, state_dir_from_env_or_arg
+from .collect_event import append_event, ensure_runtime_dirs, normalize_event, state_dir_from_env_or_arg
 from .redact_event import redact_event, redact_string
+from ..repository_source import load_repository_skill_catalog, resolve_repository_source
 from .runtime_paths import log_file_path, safe_slug as runtime_safe_slug, turns_dir, utc_now_text
 
 
@@ -22,7 +23,6 @@ SCHEMA_VERSION = 2
 SKILL_METADATA_SCHEMA_VERSION = 1
 SUPPORTED_HOOK_EVENTS = {"SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"}
 SUMMARY_LIMIT = 160
-PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 METADATA_CACHE_FILE = "skill-metadata-cache.json"
 SCHEMA_VERSION_FILE = "schema-version.json"
 DEFAULT_ROLE = "entrypoint"
@@ -127,118 +127,16 @@ def parse_env_list(raw: str | None) -> tuple[str, ...]:
     return tuple(value.strip() for value in values if value.strip())
 
 
-def marketplace_root_from_adapter() -> Path:
-    override = os.environ.get("MY_CODEX_ROOT")
-    if override:
-        return expand_path(override)
-    for parent in Path(__file__).resolve().parents:
-        if (parent / ".agents" / "plugins" / "marketplace.json").is_file():
-            return parent
-    for parent in Path(__file__).resolve().parents:
-        if parent.name == "plugins":
-            return parent.parent
-    return PLUGIN_ROOT
+def watcher_skill_name(source: Any) -> str:
+    return f"{source.plugin}:{source.name}"
 
 
-def plugin_name_from_manifest(plugin_dir: Path) -> str:
-    manifest = plugin_dir / ".codex-plugin" / "plugin.json"
-    if not manifest.is_file():
-        raise SystemExit(f"plugin manifest missing: {manifest}")
-    try:
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"invalid plugin manifest JSON {manifest}: line {exc.lineno}, column {exc.colno}") from exc
-    except OSError as exc:
-        raise SystemExit(f"failed to read plugin manifest {manifest}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise SystemExit(f"plugin manifest must be an object: {manifest}")
-    name = data.get("name")
-    if not isinstance(name, str) or not name.strip():
-        raise SystemExit(f"plugin manifest name missing: {manifest}")
-    return name.strip()
+def discover_watcher_skill_identities(repo_root: str | Path | None = None) -> tuple[str, ...]:
+    """Return durable Watcher identities derived from the canonical callable catalog."""
 
-
-def skill_name_from_frontmatter(skill_file: Path) -> str:
-    try:
-        lines = skill_file.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return skill_file.parent.name
-    if lines and lines[0].strip() == "---":
-        for line in lines[1:]:
-            stripped = line.strip()
-            if stripped == "---":
-                break
-            if stripped.startswith("name:"):
-                name = stripped.split(":", 1)[1].strip().strip("\"'")
-                return name or skill_file.parent.name
-    return skill_file.parent.name
-
-
-def marketplace_plugin_dirs(marketplace_root: Path) -> list[Path]:
-    marketplace = marketplace_root / ".agents" / "plugins" / "marketplace.json"
-    if not marketplace.is_file():
-        raise SystemExit(f"marketplace file missing: {marketplace}")
-    try:
-        data = json.loads(marketplace.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"invalid marketplace JSON {marketplace}: line {exc.lineno}, column {exc.colno}") from exc
-    except OSError as exc:
-        raise SystemExit(f"failed to read marketplace {marketplace}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise SystemExit(f"marketplace must be an object: {marketplace}")
-    plugins = data.get("plugins")
-    if not isinstance(plugins, list):
-        raise SystemExit(f"marketplace plugins must be a list: {marketplace}")
-
-    plugin_dirs: list[Path] = []
-    for index, plugin in enumerate(plugins, start=1):
-        if not isinstance(plugin, dict):
-            raise SystemExit(f"marketplace plugin entry #{index} must be an object: {marketplace}")
-        catalog_name = plugin.get("name")
-        if not isinstance(catalog_name, str) or not catalog_name.strip():
-            raise SystemExit(f"marketplace plugin entry #{index} name missing: {marketplace}")
-        catalog_name = catalog_name.strip()
-        source = plugin.get("source")
-        if not isinstance(source, dict):
-            raise SystemExit(f"marketplace plugin entry #{index} source must be an object: {marketplace}")
-        source_kind = source.get("source")
-        if not isinstance(source_kind, str) or not source_kind.strip():
-            raise SystemExit(f"marketplace plugin entry #{index} source kind missing: {marketplace}")
-        if source_kind != "local":
-            raise SystemExit(
-                f"unsupported marketplace source kind {source_kind!r} "
-                f"for plugin {catalog_name!r}: {marketplace} entry #{index}"
-            )
-        raw_path = source.get("path")
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            raise SystemExit(f"marketplace local plugin entry #{index} path missing: {marketplace}")
-        path = expand_path(raw_path)
-        if not path.is_absolute():
-            path = marketplace_root / path
-        path = path.resolve()
-        if not path.is_dir():
-            raise SystemExit(f"marketplace local plugin path missing: {path} ({marketplace} entry #{index})")
-        manifest_name = plugin_name_from_manifest(path)
-        if manifest_name != catalog_name:
-            raise SystemExit(
-                f"marketplace/plugin manifest name mismatch for entry #{index}: "
-                f"catalog has {catalog_name!r}, manifest has {manifest_name!r} at {path}"
-            )
-        plugin_dirs.append(path)
-    return sorted(plugin_dirs)
-
-
-def discover_packaged_skills(marketplace_root: Path | None = None) -> tuple[str, ...]:
-    root = marketplace_root or marketplace_root_from_adapter()
-    skills: set[str] = set()
-    for plugin_dir in marketplace_plugin_dirs(root):
-        skills_dir = plugin_dir / "skills"
-        if not skills_dir.is_dir():
-            continue
-        plugin_name = plugin_name_from_manifest(plugin_dir)
-        for skill_file in sorted(skills_dir.glob("*/SKILL.md")):
-            skills.add(f"{plugin_name}:{skill_name_from_frontmatter(skill_file)}")
-    return tuple(sorted(skills))
+    source = resolve_repository_source(repo_root)
+    catalog = load_repository_skill_catalog(source)
+    return tuple(sorted(watcher_skill_name(skill) for skill in catalog.sources))
 
 
 def metadata_cache_path(state_dir: Path) -> Path:
@@ -319,15 +217,16 @@ def normalize_manifest_skill(
     return normalized
 
 
-def load_plugin_skill_metadata(plugin_dir: Path) -> tuple[dict[str, Any], dict[str, str]]:
-    plugin_name = plugin_name_from_manifest(plugin_dir)
-    packaged = {
-        f"{plugin_name}:{skill_name_from_frontmatter(skill_file)}"
-        for skill_file in sorted((plugin_dir / "skills").glob("*/SKILL.md"))
-    }
+def load_attribution_overlay(
+    plugin_dir: Path,
+    *,
+    canonical_identities: set[str],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Overlay non-callable Watcher attribution metadata onto catalog identities."""
+
     skills = {
         skill_name: normalize_manifest_skill(None, manifest_path=plugin_dir, skill_name=skill_name)
-        for skill_name in sorted(packaged)
+        for skill_name in sorted(canonical_identities)
     }
     legacy_names: dict[str, str] = {}
     manifest_path = plugin_dir / ".codex-plugin" / "skill-watcher.json"
@@ -353,8 +252,8 @@ def load_plugin_skill_metadata(plugin_dir: Path) -> tuple[dict[str, Any], dict[s
     for skill_name, raw_skill in raw_skills.items():
         if not isinstance(skill_name, str) or not skill_name.strip():
             raise SystemExit(f"invalid skill metadata key in {manifest_path}: {skill_name!r}")
-        if skill_name not in packaged:
-            raise SystemExit(f"skill metadata references unpackaged skill {skill_name} in {manifest_path}")
+        if skill_name not in canonical_identities:
+            raise SystemExit(f"skill metadata references unknown canonical skill {skill_name} in {manifest_path}")
         skills[skill_name] = normalize_manifest_skill(raw_skill, manifest_path=manifest_path, skill_name=skill_name)
     raw_legacy = manifest.get("legacy_names", {})
     if not isinstance(raw_legacy, dict):
@@ -362,20 +261,27 @@ def load_plugin_skill_metadata(plugin_dir: Path) -> tuple[dict[str, Any], dict[s
     for old_name, new_name in raw_legacy.items():
         if not isinstance(old_name, str) or not isinstance(new_name, str):
             raise SystemExit(f"invalid legacy mapping in {manifest_path}: {old_name!r} -> {new_name!r}")
-        if new_name not in packaged:
-            raise SystemExit(f"legacy mapping points to unpackaged skill {new_name} in {manifest_path}")
+        if new_name not in canonical_identities:
+            raise SystemExit(f"legacy mapping points to unknown canonical skill {new_name} in {manifest_path}")
         legacy_names[old_name] = new_name
     return skills, legacy_names
 
 
-def discover_skill_metadata(marketplace_root: Path | None = None) -> dict[str, Any]:
-    root = marketplace_root or marketplace_root_from_adapter()
+def discover_skill_metadata(repo_root: str | Path | None = None) -> dict[str, Any]:
+    source = resolve_repository_source(repo_root)
+    catalog = load_repository_skill_catalog(source)
+    identities_by_plugin: dict[str, set[str]] = {}
+    for catalog_skill in catalog.sources:
+        identities_by_plugin.setdefault(catalog_skill.plugin, set()).add(watcher_skill_name(catalog_skill))
+
     skills: dict[str, Any] = {}
     legacy_names: dict[str, str] = {}
-    for plugin_dir in marketplace_plugin_dirs(root):
-        if not (plugin_dir / "skills").is_dir():
-            continue
-        plugin_skills, plugin_legacy = load_plugin_skill_metadata(plugin_dir)
+    for plugin_name, canonical_identities in sorted(identities_by_plugin.items()):
+        plugin_dir = catalog.plugins_root / plugin_name
+        plugin_skills, plugin_legacy = load_attribution_overlay(
+            plugin_dir,
+            canonical_identities=canonical_identities,
+        )
         overlap = set(skills).intersection(plugin_skills)
         if overlap:
             raise SystemExit(f"duplicate skill metadata entries: {', '.join(sorted(overlap))}")
@@ -396,7 +302,7 @@ def discover_skill_metadata(marketplace_root: Path | None = None) -> dict[str, A
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": utc_now(),
-        "source_root": str(root),
+        "source_root": str(source.root),
         "skills": dict(sorted(skills.items())),
         "legacy_names": dict(sorted(legacy_names.items())),
     }
@@ -426,7 +332,12 @@ def require_runtime_schema(state_dir: Path) -> None:
         raise SystemExit(f"Watcher skill schema mismatch at {path}; run migrate_skill_watcher_schema.py")
 
 
-def load_runtime_metadata(state_dir: Path | None = None, *, allow_discovery: bool = True) -> dict[str, Any]:
+def load_runtime_metadata(
+    state_dir: Path | None = None,
+    *,
+    allow_discovery: bool = True,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
     if state_dir is not None:
         path = metadata_cache_path(state_dir)
         if path.is_file():
@@ -438,13 +349,17 @@ def load_runtime_metadata(state_dir: Path | None = None, *, allow_discovery: boo
                 return data
             raise SystemExit(f"runtime metadata cache schema mismatch at {path}; run migrate_skill_watcher_schema.py")
     if allow_discovery:
-        return discover_skill_metadata()
+        return discover_skill_metadata(repo_root)
     return {"schema_version": SCHEMA_VERSION, "skills": {}, "legacy_names": {}}
 
 
-def load_dynamic_monitored_skills(state_dir: Path | None = None) -> tuple[str, ...]:
+def load_dynamic_monitored_skills(
+    state_dir: Path | None = None,
+    *,
+    repo_root: str | Path | None = None,
+) -> tuple[str, ...]:
     if state_dir is None:
-        return tuple(load_runtime_metadata(None).get("skills", {}).keys())
+        return tuple(load_runtime_metadata(None, repo_root=repo_root).get("skills", {}).keys())
     path = metadata_cache_path(state_dir)
     if not path.is_file():
         return ()
@@ -453,8 +368,12 @@ def load_dynamic_monitored_skills(state_dir: Path | None = None) -> tuple[str, .
     return tuple(sorted(skills)) if isinstance(skills, dict) else ()
 
 
-def refresh_dynamic_monitored_skills(state_dir: Path) -> dict[str, Any]:
-    metadata = discover_skill_metadata()
+def refresh_dynamic_monitored_skills(
+    state_dir: Path,
+    *,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
+    metadata = discover_skill_metadata(repo_root)
     path = metadata_cache_path(state_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -510,11 +429,12 @@ def match_all_monitored_skills(
     *,
     state_dir: Path | None = None,
     metadata: dict[str, Any] | None = None,
+    repo_root: str | Path | None = None,
 ) -> list[dict[str, str]]:
     text = text_for_matching(value)
     if not text:
         return []
-    resolved_metadata = metadata or load_runtime_metadata(state_dir)
+    resolved_metadata = metadata or load_runtime_metadata(state_dir, repo_root=repo_root)
     skills = resolved_metadata.get("skills") if isinstance(resolved_metadata.get("skills"), dict) else {}
     matches: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -544,8 +464,13 @@ def match_all_monitored_skills(
     return matches
 
 
-def match_monitored_skill(value: Any, *, state_dir: Path | None = None) -> dict[str, str] | None:
-    matches = match_all_monitored_skills(value, state_dir=state_dir)
+def match_monitored_skill(
+    value: Any,
+    *,
+    state_dir: Path | None = None,
+    repo_root: str | Path | None = None,
+) -> dict[str, str] | None:
+    matches = match_all_monitored_skills(value, state_dir=state_dir, repo_root=repo_root)
     return matches[0] if matches else None
 
 
@@ -625,8 +550,13 @@ def empty_attribution() -> dict[str, Any]:
     }
 
 
-def infer_skill_attribution(payload: dict[str, Any], *, state_dir: Path | None = None) -> dict[str, Any] | None:
-    metadata = load_runtime_metadata(state_dir)
+def infer_skill_attribution(
+    payload: dict[str, Any],
+    *,
+    state_dir: Path | None = None,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any] | None:
+    metadata = load_runtime_metadata(state_dir, repo_root=repo_root)
     provided = payload.get("skill_name") or payload.get("skill")
     canonical = canonical_skill_name(provided, metadata)
     if canonical:
@@ -805,10 +735,15 @@ def normalize_hook_payload(
     *,
     skill_attribution: dict[str, Any] | None = None,
     state_dir: Path | None = None,
+    repo_root: str | Path | None = None,
 ) -> dict[str, Any]:
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
     event_type = camel_to_snake(hook_event_name)
-    attribution = skill_attribution or infer_skill_attribution(payload, state_dir=state_dir) or empty_attribution()
+    attribution = (
+        skill_attribution
+        or infer_skill_attribution(payload, state_dir=state_dir, repo_root=repo_root)
+        or empty_attribution()
+    )
     tool_name = payload.get("tool_name")
 
     outcome = "unknown"
@@ -922,21 +857,39 @@ def apply_turn_summary(event: dict[str, Any], state: dict[str, Any]) -> dict[str
     return event
 
 
-def process_hook(payload: dict[str, Any], runtime_paths: HookRuntimePaths, *, persist: bool = True) -> HookResult:
+def process_hook(
+    payload: dict[str, Any],
+    runtime_paths: HookRuntimePaths,
+    *,
+    persist: bool = True,
+    repo_root: str | Path | None = None,
+) -> HookResult:
     target_state_dir = runtime_paths.state_dir
     if persist:
         ensure_runtime_dirs(target_state_dir)
     hook_event_name = str(payload.get("hook_event_name") or payload.get("event") or "unknown")
     metadata_update = None
     if persist and hook_event_name == "SessionStart":
-        metadata_update = refresh_dynamic_monitored_skills(target_state_dir)
+        metadata_update = refresh_dynamic_monitored_skills(
+            target_state_dir,
+            repo_root=repo_root,
+        )
     elif persist:
         require_runtime_schema(target_state_dir)
 
-    direct_attribution = infer_skill_attribution(payload, state_dir=target_state_dir)
+    direct_attribution = infer_skill_attribution(
+        payload,
+        state_dir=target_state_dir,
+        repo_root=repo_root,
+    )
     state = load_turn_state(target_state_dir, payload)
     attribution = direct_attribution or state_skill_attribution(state)
-    event = normalize_hook_payload(payload, skill_attribution=attribution, state_dir=target_state_dir)
+    event = normalize_hook_payload(
+        payload,
+        skill_attribution=attribution,
+        state_dir=target_state_dir,
+        repo_root=repo_root,
+    )
     if metadata_update is not None:
         event["codex"]["metadata_update"] = metadata_update
 
@@ -963,10 +916,20 @@ def process_hook(payload: dict[str, Any], runtime_paths: HookRuntimePaths, *, pe
     return HookResult(event=event, persisted=persisted, hook_event_name=hook_event_name)
 
 
-def write_hook_event(payload: dict[str, Any], *, state_dir: Path | None = None, log_file: Path | None = None) -> dict[str, Any]:
+def write_hook_event(
+    payload: dict[str, Any],
+    *,
+    state_dir: Path | None = None,
+    log_file: Path | None = None,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
     target_state_dir = state_dir or state_dir_from_env_or_arg(None)
     target_log_file = log_file or log_file_path(target_state_dir)
-    result = process_hook(payload, HookRuntimePaths(state_dir=target_state_dir, log_file=target_log_file))
+    result = process_hook(
+        payload,
+        HookRuntimePaths(state_dir=target_state_dir, log_file=target_log_file),
+        repo_root=repo_root,
+    )
     return result.event
 
 
@@ -977,6 +940,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--state-dir", help="Runtime state directory. Defaults to $CODEX_HOME/watcher/skill.")
     parser.add_argument("--log-file", help="Explicit JSONL log path. Overrides --state-dir logs/events.jsonl.")
+    parser.add_argument(
+        "--repo-root",
+        help="Canonical my-codex repository root. Defaults to $MY_CODEX_ROOT.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Normalize and print the event without appending.")
     parser.add_argument("--print-event", action="store_true", help="Print the normalized event JSON. Not for hook config use.")
     args = parser.parse_args(argv)
@@ -986,12 +953,17 @@ def main(argv: list[str] | None = None) -> int:
     log_file = log_file_path(state_dir, args.log_file)
     runtime_paths = HookRuntimePaths(state_dir=state_dir, log_file=log_file)
     if args.dry_run:
-        result = process_hook(payload, runtime_paths, persist=False)
+        result = process_hook(
+            payload,
+            runtime_paths,
+            persist=False,
+            repo_root=args.repo_root,
+        )
         json.dump(result.event, sys.stdout, ensure_ascii=False, indent=2, sort_keys=True)
         sys.stdout.write("\n")
         return 0
 
-    result = process_hook(payload, runtime_paths)
+    result = process_hook(payload, runtime_paths, repo_root=args.repo_root)
 
     if args.print_event:
         json.dump(result.event, sys.stdout, ensure_ascii=False, sort_keys=True)

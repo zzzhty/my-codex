@@ -292,7 +292,8 @@ class CheckRunner:
         matched_events, issues = find_managed_hook_issues(
             config,
             python_path=tooling_python,
-            adapter=adapter_path(),
+            adapter=adapter_path(REPO_ROOT),
+            repo_root=REPO_ROOT,
         )
         if issues:
             self.fail(
@@ -349,7 +350,17 @@ class CheckRunner:
 
     def check_doctor(self, tooling_python: Path, *, env: dict[str, str]) -> None:
         watcher = REPO_ROOT / "plugins" / "watcher" / "scripts" / "watcher"
-        result = self.run_command([str(tooling_python), str(watcher), "skill", "doctor"], env=env)
+        result = self.run_command(
+            [
+                str(tooling_python),
+                str(watcher),
+                "skill",
+                "doctor",
+                "--repo-root",
+                str(REPO_ROOT),
+            ],
+            env=env,
+        )
         if result.returncode == 0:
             self.ok("Watcher skill doctor passed")
         else:
