@@ -154,7 +154,7 @@ def sync_layer(
         if not dry_run:
             if target.exists() or target.is_symlink():
                 target.unlink()
-            target.symlink_to(source.path)
+            target.symlink_to(source.path, target_is_directory=True)
 
     if prune and target_root.is_dir():
         for target in sorted(target_root.iterdir()):

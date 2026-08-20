@@ -529,6 +529,30 @@ Evidence to record:
 
 - Portability matrix, path-consumer search, symlink resolution tests on supported platforms, and the no-change decision record.
 
+Execution evidence:
+
+- M3 started from merged `main` revision `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd` on `codex/universal-agent-skills-m3` after the reviewed M2 branch and remote ref were safely removed. No skill source path, skill content, callable identity, plugin manifest, updater lock, or runtime state was moved or changed.
+- The repository-authoritative catalog contains 34 skills across the three existing plugin roots and 119 Git-tracked skill-tree files, with no tracked symlink inside a skill tree. A `TemporaryDirectory` universal projection created all 34 links and proved every tracked `SKILL.md`, reference, template, script, agent manifest, and supporting file resolved through the callable-name link to the same repository-contained source entry. The projected Markdown inventory contained 38 relative links; the only two non-materialized targets are the documented child-name placeholders in the long-running-goal sequence template.
+- The platform audit found one projection bug rather than a layout blocker: `Path.symlink_to()` had relied on its default file-target interpretation. M3 now declares `target_is_directory=True`; local Python documents that Windows requires this for directory targets and POSIX ignores it. A focused cross-platform contract test asserts the directory flag on every generated link, while the live macOS projection test validates the complete current tree.
+- The active repository path-consumer search found 13 current files. They classify as canonical catalog and projection tooling, current docs, Watcher source-audit configuration, tests, the updater-owned Matt mirror contract, and the managed agent-support note; none is an unmanaged or external consumer requiring a top-level skill source. The only matching live non-runtime file is the managed `/Users/max/.codex/agents/operating-principles.md`, and its owner check passes. Live hooks point to the repo-owned Watcher CLI rather than a skill directory, and `/Users/max/.agents/skills` remains absent before M5.
+- All three plugin manifests intentionally use plugin-relative `./skills/`; marketplace entries package the plugin roots; the Matt updater validates and replaces only `plugins/mattpocock-skills/skills`; and Watcher resolves its plugin-local doctor layout plus the explicit repository-root shared runtime. These are compatible with the retained layout and would gain no dependency-direction benefit from a physical move.
+
+Portability matrix:
+
+| Surface | macOS / POSIX evidence | Windows evidence | M3 result |
+| --- | --- | --- | --- |
+| Universal directory links | Actual temporary projection resolved all 34 links and 119 tracked files | `target_is_directory=True` is asserted for every link; Python ignores the flag only on non-Windows | Portable without moving source |
+| Skill-local resources | Complete tracked tree and non-placeholder relative Markdown targets resolve through callable-name links | Directory-link semantics expose the same tree; no platform-specific skill-relative path is generated | No resource blocker |
+| Watcher shared runtime | Repository and universal-link working directories produce identical attribution | Space-bearing root command serialization is covered by the Windows branch | No cache or physical-layout dependency |
+| Plugin package and Matt mirror | Watcher and Workflow plugin validators plus Matt validate-only pass from existing plugin roots | Manifests use portable plugin-relative `./skills/`; PowerShell wrapper contracts pass in the root suite | Existing layout is the packaging-compatible layout |
+
+Validation evidence:
+
+- Focused `tests.test_sync_agents_skills` passed 10 tests, including explicit directory-link generation and every-tracked-resource projection.
+- All 73 root tests, 64 Workflow tests, and 70 Watcher tests passed; three Watcher platform tests were skipped on macOS.
+- Actual Watcher and Workflow plugin validation, Matt `--validate-only`, owner-venv syntax compilation, Unix shell syntax, goal readiness, active TODO index, managed agent-support check, consumer inventory, and `git diff --check` passed. No command changed live plugins, links, hooks, caches, agent-support files, or Watcher durable state.
+- Independent compatibility review remains pending before the frozen no-change decision passes its gate.
+
 Checkpoint evidence: `M3 no-change decision, validation evidence, and compatibility review.`
 
 Rollback: `No source path changes occur, so no path rollback is required.`
