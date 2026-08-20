@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M2 after the explicit 2026-08-20 execution request and the merged M1 checkpoint. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M3 after the explicit 2026-08-20 execution request and the merged M1 and M2 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 and M1 are complete and M2 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M2 are complete and M3 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -201,8 +201,8 @@ Ready activation: The following pre-approvals became active when the planning pr
 | --- | --- | --- | --- |
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
 | M1 Repository-Authoritative Discovery and Profile Integration | Done | Passed | Done |
-| M2 Watcher Metadata and Shared-Runtime Decoupling | In Progress | Pending | Pending |
-| M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
+| M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
+| M3 Physical Layout Verification — No Move | In Progress | Pending | Pending |
 | M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
 | M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
@@ -418,7 +418,7 @@ Completion criterion: `The integrated source PR is merged to main, all callers u
 
 ## M2 Watcher Metadata and Shared-Runtime Decoupling
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Make Watcher core work from canonical repository source and stable runtime locators without marketplace catalog or plugin-cache authority.
 
@@ -474,9 +474,20 @@ Execution evidence:
 - A malformed marketplace and malformed plugin manifest were ignored while catalog discovery, SessionStart cache creation, and report rendering still resolved the canonical skill and attribution overlay. The derived runtime cache remained a runtime projection rather than a discovery authority.
 - The first independent review found three in-scope transition gaps: catalog or overlay symlink escape, unproven quoting for space-bearing repository roots, and `reset-schema` mutating logs before a missing repository root failed. M2 now resolves every executable or readable authority path inside the explicit root, covers POSIX and Windows command serialization with a valid space-bearing root, and completes metadata discovery before any schema-reset mutation; focused escape and failure-ordering regressions pass.
 - Post-fix validation on 2026-08-21 passed all 70 Watcher tests with three platform skips and all 71 root tests; owner-venv syntax compilation, actual Watcher plugin validation, observe/install-hook/doctor/reset-schema help, Watcher Markdown links, goal readiness, active TODO index, and `git diff --check` passed. No command targeted the real `$CODEX_HOME/watcher`, hooks, plugins, cache, or universal links.
-- Independent Standards and Contract re-reviews of `9f6e3a739c00e0c780d8c71946600ba578f1f892...0a8214795ee73ed5bfc9a04041eefcec9e81698d` both returned clean on 2026-08-21. Each reviewer independently reran the 70-test Watcher suite, 71-test root suite, scoped diff and Markdown checks; Standards confirmed authority containment and cross-platform command serialization, while Contract confirmed `reset-schema` prevalidation ordering, marketplace independence, identity stability, and runtime-cache non-authority. The milestone table remains pending until the reviewed branch is merged and its checkpoint is recorded on the next milestone branch.
+- Independent Standards and Contract re-reviews of `9f6e3a739c00e0c780d8c71946600ba578f1f892...0a8214795ee73ed5bfc9a04041eefcec9e81698d` both returned clean on 2026-08-21. Each reviewer independently reran the 70-test Watcher suite, 71-test root suite, scoped diff and Markdown checks; Standards confirmed authority containment and cross-platform command serialization, while Contract confirmed `reset-schema` prevalidation ordering, marketplace independence, identity stability, and runtime-cache non-authority.
+- [PR #7](https://github.com/zzzhty/my-codex/pull/7) merged the reviewed M2 branch to `main` as `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd` after GitHub reported it clean and mergeable with no repository CI checks configured. The merged remote and local M2 branches contained no commits absent from `main` and were deleted before M3 started from that merge.
 
-Checkpoint evidence: `M2 commits, PR and merge record, metadata comparison evidence, and runtime-locator validation.`
+Checkpoint component: Done
+
+Checkpoint type: git merge
+
+Revision: 01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd
+
+Changed files: CONTEXT.md; README.md; docs/todo/universal-agent-skills-migration.md; plugins/watcher/README.md; plugins/watcher/scripts/watcher_runtime/repository_source.py; plugins/watcher/scripts/watcher_runtime/skill/codex_hook_adapter.py; plugins/watcher/scripts/watcher_runtime/skill/codex_hook_config.py; plugins/watcher/scripts/watcher_runtime/skill/doctor.py; plugins/watcher/scripts/watcher_runtime/skill/install_codex_hook.py; plugins/watcher/scripts/watcher_runtime/skill/migrate_skill_watcher_schema.py; plugins/watcher/tests/test_skill_watcher.py; scripts/check_my_codex.py; scripts/refresh_my_codex.py
+
+Validation recorded: 70 Watcher and 71 root tests passed; three Watcher platform tests skipped; catalog and overlay escape, space-bearing command serialization, schema-reset failure ordering, isolated doctor, marketplace independence, runtime locator, docs, static, actual plugin-validator, and independent Standards and Contract gates passed on 2026-08-21
+
+Out-of-scope dirty changes: none observed before merge or at the M3 branch point
 
 Rollback: `Revert M2 while remaining on a non-cutover environment. Do not rewrite runtime logs during rollout, so source rollback is sufficient.`
 
@@ -490,7 +501,7 @@ Completion criterion: `Watcher core, doctor, reports, and metadata refresh pass 
 
 ## M3 Physical Layout Verification — No Move
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Verify that `plugins/*/skills` remains the canonical physical layout and complete the milestone without moving skill source paths.
 
@@ -517,6 +528,31 @@ Review gate:
 Evidence to record:
 
 - Portability matrix, path-consumer search, symlink resolution tests on supported platforms, and the no-change decision record.
+
+Execution evidence:
+
+- M3 started from merged `main` revision `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd` on `codex/universal-agent-skills-m3` after the reviewed M2 branch and remote ref were safely removed. No skill source path, skill content, callable identity, plugin manifest, updater lock, or runtime state was moved or changed.
+- The repository-authoritative catalog contains 34 skills across the three existing plugin roots and 119 Git-tracked skill-tree files, with no tracked symlink inside a skill tree. A `TemporaryDirectory` universal projection created all 34 links and proved every tracked `SKILL.md`, reference, template, script, agent manifest, and supporting file resolved through the callable-name link to the same repository-contained source entry. The projected Markdown inventory contained 38 relative links; the only two non-materialized targets are the documented child-name placeholders in the long-running-goal sequence template.
+- The platform audit found one projection bug rather than a layout blocker: `Path.symlink_to()` had relied on its default file-target interpretation. M3 now declares `target_is_directory=True`; local Python documents that Windows requires this for directory targets and POSIX ignores it. A focused cross-platform contract test asserts the directory flag on every generated link, while the live macOS projection test validates the complete current tree.
+- The active repository path-consumer search found 13 current files. They classify as canonical catalog and projection tooling, current docs, Watcher source-audit configuration, tests, the updater-owned Matt mirror contract, and the managed agent-support note; none is an unmanaged or external consumer requiring a top-level skill source. The only matching live non-runtime file is the managed `/Users/max/.codex/agents/operating-principles.md`, and its owner check passes. Live hooks point to the repo-owned Watcher CLI rather than a skill directory, and `/Users/max/.agents/skills` remains absent before M5.
+- All three plugin manifests intentionally use plugin-relative `./skills/`; marketplace entries package the plugin roots; the Matt updater validates and replaces only `plugins/mattpocock-skills/skills`; and Watcher resolves its plugin-local doctor layout plus the explicit repository-root shared runtime. These are compatible with the retained layout and would gain no dependency-direction benefit from a physical move.
+
+Portability matrix:
+
+| Surface | macOS / POSIX evidence | Windows evidence | M3 result |
+| --- | --- | --- | --- |
+| Universal directory links | Actual temporary projection resolved all 34 links and 119 tracked files | `target_is_directory=True` is asserted for every link; Python ignores the flag only on non-Windows | Portable without moving source |
+| Skill-local resources | Complete tracked tree and non-placeholder relative Markdown targets resolve through callable-name links | Directory-link semantics expose the same tree; no platform-specific skill-relative path is generated | No resource blocker |
+| Watcher shared runtime | Repository and universal-link working directories produce identical attribution | Space-bearing root command serialization is covered by the Windows branch | No cache or physical-layout dependency |
+| Plugin package and Matt mirror | Watcher and Workflow plugin validators plus Matt validate-only pass from existing plugin roots | Manifests use portable plugin-relative `./skills/`; PowerShell wrapper contracts pass in the root suite | Existing layout is the packaging-compatible layout |
+
+Validation evidence:
+
+- Focused `tests.test_sync_agents_skills` passed 10 tests, including explicit directory-link generation and every-tracked-resource projection.
+- All 73 root tests, 64 Workflow tests, and 70 Watcher tests passed; three Watcher platform tests were skipped on macOS.
+- Actual Watcher and Workflow plugin validation, Matt `--validate-only`, owner-venv syntax compilation, Unix shell syntax, goal readiness, active TODO index, managed agent-support check, consumer inventory, and `git diff --check` passed. No command changed live plugins, links, hooks, caches, agent-support files, or Watcher durable state.
+- The first Standards review found that the live directory-link probe skipped every `OSError`, which could hide an I/O, read-only-filesystem, or space failure. Commit `2eb8a6e` limits skips to explicit unsupported-platform, unsupported-filesystem, and Windows symlink-privilege cases; injected `EIO` now produces a test error rather than a skip.
+- Final independent Standards and Contract reviews of `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd...2eb8a6efcd66db2f517198b59deb4e689ac5cd9f` both returned clean on 2026-08-21. Each reviewer reran the focused and root gates; Contract independently reproduced the 34-skill, 119-file, 13-consumer, 38-link, two-placeholder inventory and found no physical-layout blocker. The read-only live check confirmed hooks still point to the repo-owned Watcher CLI but have not yet received M2's explicit `--repo-root`; that expected pre-cutover drift remains an M5 apply item and does not require a source move.
 
 Checkpoint evidence: `M3 no-change decision, validation evidence, and compatibility review.`
 
