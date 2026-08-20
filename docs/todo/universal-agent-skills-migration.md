@@ -611,6 +611,20 @@ Evidence to record:
 
 - Package manifest and tree inventory, build commands, hook tests, universal discovery inventory, plugin-profile inventory, mutual-exclusion evidence, and rollback commands.
 
+Execution evidence:
+
+- M4 started from merged `main` revision `dbf157ccad5c6171dbb24e263986aae12f5e4b72` on `codex/universal-agent-skills-m4`. The optional install manifest is now schema 2 with explicit `discoveryProfile: plugin`; every marketplace package remains `AVAILABLE`, and universal mode never installs a plugin or a zero-skill adapter.
+- The repository-authoritative catalog validates all three source packages before any Codex marketplace mutation. Each package manifest must expose `./skills/`; the package name, version, callable identities, loaded skill directories, and complete package tree must remain inside and match the validated checkout. Local distribution binds to that exact checkout; Git distribution binds to its canonical remote and exact clean HEAD revision. Explicit Git source or ref failures stop directly, while only automatic Git selection may choose the same validated local checkout.
+- Package inventory at reviewed head `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` is 34 skills across three packages: `mattpocock-skills` version `1.2.3+codex.20260812033502` with 25 skills and 80 tracked files; `watcher` version `0.1.0+codex.20260817071906` with 4 skills and 47 tracked files; and `workflow` version `0.1.0+codex.20260814091823` with 5 skills and 54 tracked files.
+- Profile transition tests prove exactly one active discovery path, rollback after partial plugin activation, universal plugin-free hook installation, package-content closure, and rejection of universal links while the plugin profile is active. Wrapper entry points now pass raw Codex selection to the canonical Python preflight, so an invalid distribution fails before Codex resolution or marketplace mutation on Unix and PowerShell contracts.
+- Explicit pruning uses a structured plan that separates config-proven plugin removals from cache-only deletion targets. Cache structure is validated before targeting; CLI enabled-state closure is checked before marketplace or cache mutation; dry-run and real execution reject an enabled CLI-only/cache-name collision without deleting the cache; and complete profile closure is restored after an actual prune.
+
+Validation evidence:
+
+- All 91 root tests, 64 Workflow tests, and 70 Watcher tests passed; three existing Watcher platform tests were skipped on macOS. Actual Watcher and Workflow plugin validators, Matt `--validate-only`, owner-venv byte compilation, Unix shell syntax, goal readiness, Markdown links, active TODO index, managed agent-support check, and `git diff --check` passed.
+- Independent Standards and Contract review iterated over package-source binding, source-tree containment, policy closure, mutation ordering, wrapper parity, and exact prune planning. Final review of `dbf157ccad5c6171dbb24e263986aae12f5e4b72...2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` returned clean from both reviewers on 2026-08-21 with no P0-P2 or actionable Contract findings.
+- [Draft PR #9](https://github.com/zzzhty/my-codex/pull/9) contains the reviewed M4 source at `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386`; GitHub reports it mergeable, and this repository has no configured PR checks. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
+
 Checkpoint evidence: `M4 commits and PR, built artifact identity, package-content checks, and coexistence or mutual-exclusion evidence.`
 
 Rollback: `Revert the packaging source PR. No real plugin is installed during M4; the current plugin profile remains the M5 rollback baseline.`
