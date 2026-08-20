@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import json
 import sys
 import tempfile
 import unittest
@@ -25,40 +24,18 @@ def write_skill(plugin_root: Path, name: str) -> Path:
     return skill_dir
 
 
-def write_marketplace(repo_root: Path, plugins: list[str]) -> Path:
-    marketplace_file = repo_root / ".agents" / "plugins" / "marketplace.json"
-    marketplace_file.parent.mkdir(parents=True, exist_ok=True)
-    marketplace_file.write_text(
-        json.dumps(
-            {
-                "name": "test-marketplace",
-                "plugins": [
-                    {
-                        "name": name,
-                        "source": {"source": "local", "path": f"./plugins/{name}"},
-                    }
-                    for name in plugins
-                ],
-            }
-        ),
-        encoding="utf-8",
-    )
-    return marketplace_file
-
-
 class Sandbox:
-    """A temporary marketplace repo with two plugins and three skills."""
+    """A temporary repository with two plugin directories and three skills."""
 
     def __init__(self, base: Path) -> None:
         self.repo_root = base / "repo"
-        self.marketplace_file = write_marketplace(self.repo_root, ["alpha", "beta"])
         self.alpha_root = self.repo_root / "plugins" / "alpha"
         self.beta_root = self.repo_root / "plugins" / "beta"
         self.foo = write_skill(self.alpha_root, "foo")
         self.bar = write_skill(self.alpha_root, "bar")
         self.baz = write_skill(self.beta_root, "baz")
         self.target_root = base / "agents" / "skills"
-        self.catalog = sync_agents_skills.load_skill_catalog(self.marketplace_file)
+        self.catalog = sync_agents_skills.load_repo_skill_catalog(self.repo_root)
 
 
 class SyncLayerTests(unittest.TestCase):
@@ -70,7 +47,7 @@ class SyncLayerTests(unittest.TestCase):
     def test_sync_creates_links_and_is_idempotent(self) -> None:
         status = sync_agents_skills.sync_layer(
             self.sandbox.catalog, target_root=self.sandbox.target_root,
-            dry_run=False, prune=True, force=False,
+            dry_run=False, prune=True,
         )
         self.assertEqual(status, 0)
         for source in self.sandbox.catalog.sources:
@@ -80,7 +57,7 @@ class SyncLayerTests(unittest.TestCase):
 
         again = sync_agents_skills.sync_layer(
             self.sandbox.catalog, target_root=self.sandbox.target_root,
-            dry_run=False, prune=True, force=False,
+            dry_run=False, prune=True,
         )
         self.assertEqual(again, 0)
         self.assertEqual(
@@ -98,7 +75,7 @@ class SyncLayerTests(unittest.TestCase):
 
         sync_agents_skills.sync_layer(
             self.sandbox.catalog, target_root=self.sandbox.target_root,
-            dry_run=False, prune=False, force=False,
+            dry_run=False, prune=False,
         )
         # Repoint one managed link at another skill: managed drift.
         (self.sandbox.target_root / "foo").unlink()
@@ -118,7 +95,7 @@ class SyncLayerTests(unittest.TestCase):
     def test_check_flags_stale_managed_link_only_with_prune(self) -> None:
         sync_agents_skills.sync_layer(
             self.sandbox.catalog, target_root=self.sandbox.target_root,
-            dry_run=False, prune=False, force=False,
+            dry_run=False, prune=False,
         )
         ghost = self.sandbox.target_root / "ghost"
         ghost.symlink_to(self.sandbox.foo)
@@ -141,13 +118,13 @@ class SyncLayerTests(unittest.TestCase):
         (user_skill / "SKILL.md").write_text("---\nname: user-skill\n---\n", encoding="utf-8")
 
         status = sync_agents_skills.sync_layer(
-            self.sandbox.catalog, target_root=target_root, dry_run=False, prune=True, force=False
+            self.sandbox.catalog, target_root=target_root, dry_run=False, prune=True
         )
         self.assertEqual(status, 0)
         self.assertFalse(ghost.exists() or ghost.is_symlink())
         self.assertTrue(user_skill.is_dir())
 
-    def test_sync_refuses_unmanaged_targets_without_force(self) -> None:
+    def test_sync_never_replaces_unmanaged_targets(self) -> None:
         target_root = self.sandbox.target_root
         target_root.mkdir(parents=True)
         (target_root / "foo").mkdir()
@@ -157,17 +134,18 @@ class SyncLayerTests(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             sync_agents_skills.sync_layer(
-                self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False, force=False
-            )
-
-        with self.assertRaises(SystemExit):
-            sync_agents_skills.sync_layer(
-                self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False, force=True
+                self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False
             )
 
         (target_root / "foo").rmdir()
+        with self.assertRaises(SystemExit):
+            sync_agents_skills.sync_layer(
+                self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False
+            )
+
+        (target_root / "bar").unlink()
         status = sync_agents_skills.sync_layer(
-            self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False, force=True
+            self.sandbox.catalog, target_root=target_root, dry_run=False, prune=False
         )
         self.assertEqual(status, 0)
         self.assertEqual((target_root / "foo").resolve(), self.sandbox.foo.resolve())
@@ -178,18 +156,18 @@ class SyncLayerTests(unittest.TestCase):
     def test_duplicate_skill_names_across_plugins_are_rejected(self) -> None:
         write_skill(self.sandbox.beta_root, "foo")
         with self.assertRaises(SystemExit):
-            sync_agents_skills.load_skill_catalog(self.sandbox.marketplace_file)
+            sync_agents_skills.load_repo_skill_catalog(self.sandbox.repo_root)
 
     def test_skill_directory_without_skill_file_is_rejected(self) -> None:
         malformed = self.sandbox.alpha_root / "skills" / "malformed"
         malformed.mkdir()
         with self.assertRaises(SystemExit):
-            sync_agents_skills.load_skill_catalog(self.sandbox.marketplace_file)
+            sync_agents_skills.load_repo_skill_catalog(self.sandbox.repo_root)
 
 
 class RepositoryCatalogTests(unittest.TestCase):
-    def test_live_marketplace_enumerates_the_three_plugins(self) -> None:
-        catalog = sync_agents_skills.load_skill_catalog()
+    def test_live_repository_enumerates_the_three_skill_plugins(self) -> None:
+        catalog = sync_agents_skills.load_repo_skill_catalog()
         plugins = {source.plugin for source in catalog.sources}
         self.assertEqual(plugins, {"watcher", "workflow", "mattpocock-skills"})
         self.assertGreaterEqual(len(catalog.sources), 30)

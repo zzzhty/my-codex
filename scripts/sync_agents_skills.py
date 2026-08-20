@@ -1,123 +1,71 @@
 #!/usr/bin/env python3
-"""Expose my-codex plugin skills as user-level agent skills under ~/.agents/skills.
-
-Harnesses that natively scan ``~/.agents/skills`` (for example ZCode) pick the
-skills up from there, while Codex keeps serving the same source directories
-through the my-codex marketplace. Each skill is exposed as a symlink so the
-repository stays the single source of truth.
-"""
+"""Manage the universal user-level projection of repository-authoritative skills."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
+from repo_skill_catalog import REPO_ROOT, SkillCatalog, SkillSource, load_repo_skill_catalog
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-MARKETPLACE_FILE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 DEFAULT_TARGET_ROOT = Path.home() / ".agents" / "skills"
-
-
-@dataclass(frozen=True)
-class SkillSource:
-    plugin: str
-    name: str
-    path: Path
-
-
-@dataclass(frozen=True)
-class SkillCatalog:
-    sources: list[SkillSource]
-    plugins_root: Path
 
 
 def expand_path(raw: str | Path) -> Path:
     return Path(os.path.expandvars(str(raw))).expanduser()
 
 
-def load_marketplace_plugins(marketplace_file: Path, *, repo_root: Path) -> list[tuple[str, Path]]:
-    if not marketplace_file.is_file():
-        raise SystemExit(f"marketplace file does not exist: {marketplace_file}")
-    try:
-        payload = json.loads(marketplace_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SystemExit(f"cannot read marketplace file: {marketplace_file}: {exc}") from exc
-    if not isinstance(payload, dict) or not isinstance(payload.get("plugins"), list):
-        raise SystemExit(f"marketplace file must contain a plugins list: {marketplace_file}")
-
-    plugins: list[tuple[str, Path]] = []
-    for record in payload["plugins"]:
-        if not isinstance(record, dict):
-            raise SystemExit(f"malformed marketplace plugin entry: {record!r}")
-        name = record.get("name")
-        source = record.get("source")
-        if not isinstance(name, str) or not name:
-            raise SystemExit(f"marketplace plugin entry without a name: {record!r}")
-        if not isinstance(source, dict) or source.get("source") != "local":
-            continue
-        raw_path = source.get("path")
-        if not isinstance(raw_path, str) or not raw_path:
-            raise SystemExit(f"local marketplace plugin without a path: {name}")
-        plugin_root = expand_path(raw_path)
-        if not plugin_root.is_absolute():
-            plugin_root = repo_root / plugin_root
-        plugin_root = plugin_root.resolve()
-        if plugin_root != repo_root and not plugin_root.is_relative_to(repo_root):
-            raise SystemExit(f"marketplace plugin path escapes the repository: {name}: {plugin_root}")
-        plugins.append((name, plugin_root))
-    if not plugins:
-        raise SystemExit(f"marketplace file declares no local plugins: {marketplace_file}")
-    return plugins
-
-
-def marketplace_repo_root(marketplace_file: Path) -> Path:
-    return marketplace_file.resolve().parents[2]
-
-
-def load_skill_catalog(marketplace_file: Path = MARKETPLACE_FILE) -> SkillCatalog:
-    repo_root = marketplace_repo_root(marketplace_file)
-    sources: list[SkillSource] = []
-    for plugin_name, plugin_root in load_marketplace_plugins(marketplace_file, repo_root=repo_root):
-        skills_root = plugin_root / "skills"
-        if not skills_root.is_dir():
-            continue
-        for skill_dir in sorted(skills_root.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            if not (skill_dir / "SKILL.md").is_file():
-                raise SystemExit(
-                    f"malformed plugin skill directory (SKILL.md missing): {skill_dir}"
-                )
-            sources.append(SkillSource(plugin=plugin_name, name=skill_dir.name, path=skill_dir))
-
-    by_name: dict[str, list[SkillSource]] = {}
-    for source in sources:
-        by_name.setdefault(source.name, []).append(source)
-    collisions = {name: owners for name, owners in by_name.items() if len(owners) > 1}
-    if collisions:
-        details = "; ".join(
-            f"{name}: {', '.join(owner.plugin for owner in owners)}"
-            for name, owners in sorted(collisions.items())
-        )
-        raise SystemExit(f"skill name collisions across plugins: {details}")
-
-    if not sources:
-        raise SystemExit("no plugin skills found to expose")
-    return SkillCatalog(sources=sources, plugins_root=repo_root / "plugins")
-
-
-def managed_destination(link: Path, plugins_root: Path) -> Path | None:
-    """Return the repository plugins path a managed symlink points at, if any."""
+def managed_destination(link: Path, catalog: SkillCatalog) -> Path | None:
+    """Return a direct repository skill path targeted by an owned projection link."""
 
     if not link.is_symlink():
         return None
-    destination = link.resolve()
-    if destination.is_relative_to(plugins_root):
-        return destination
-    return None
+    destination = link.resolve(strict=False)
+    try:
+        relative = destination.relative_to(catalog.plugins_root)
+    except ValueError:
+        return None
+    if len(relative.parts) != 3 or relative.parts[1] != "skills":
+        return None
+    return destination
+
+
+def preflight_layer(catalog: SkillCatalog, *, target_root: Path) -> None:
+    """Fail before mutation when a canonical destination is owned by another source."""
+
+    for source in catalog.sources:
+        target = target_root / source.name
+        if target.is_symlink():
+            destination = managed_destination(target, catalog)
+            if destination is None:
+                raise SystemExit(f"refusing unmanaged universal skill symlink: {target}")
+        elif target.exists():
+            raise SystemExit(f"refusing unmanaged universal skill entry: {target}")
+
+
+def remove_managed_layer(
+    catalog: SkillCatalog,
+    *,
+    target_root: Path,
+    dry_run: bool,
+) -> int:
+    """Remove only repository-owned universal links and preserve every other entry."""
+
+    preflight_layer(catalog, target_root=target_root)
+    if not target_root.is_dir():
+        print("universal skills layer already inactive")
+        return 0
+    for target in sorted(target_root.iterdir()):
+        if not target.is_symlink():
+            continue
+        destination = managed_destination(target, catalog)
+        if destination is None:
+            continue
+        print_plan("would unlink" if dry_run else "unlink", target, destination)
+        if not dry_run:
+            target.unlink()
+    return 0
 
 
 def print_plan(action: str, target: Path, source: Path | None = None) -> None:
@@ -138,7 +86,7 @@ def check_layer(
     for source in sources:
         target = target_root / source.name
         if target.is_symlink():
-            destination = managed_destination(target, catalog.plugins_root)
+            destination = managed_destination(target, catalog)
             if destination is None:
                 print_plan("unmanaged-link", target)
                 failures += 1
@@ -161,7 +109,7 @@ def check_layer(
         for target in sorted(target_root.iterdir()):
             if target.name in expected or not target.is_symlink():
                 continue
-            destination = managed_destination(target, catalog.plugins_root)
+            destination = managed_destination(target, catalog)
             if destination is not None:
                 print_plan("extra-managed", target, destination)
                 failures += 1
@@ -179,10 +127,11 @@ def sync_layer(
     target_root: Path,
     dry_run: bool,
     prune: bool,
-    force: bool,
 ) -> int:
     sources = catalog.sources
     expected = {source.name: source for source in sources}
+
+    preflight_layer(catalog, target_root=target_root)
 
     if not dry_run:
         target_root.mkdir(parents=True, exist_ok=True)
@@ -190,28 +139,15 @@ def sync_layer(
     for source in sources:
         target = target_root / source.name
         if target.is_symlink():
-            destination = managed_destination(target, catalog.plugins_root)
+            destination = managed_destination(target, catalog)
             if destination == source.path:
                 print_plan("up-to-date", target, destination)
                 continue
-            if destination is None and not force:
-                raise SystemExit(
-                    f"refusing to replace unmanaged symlink: {target}; "
-                    "use --force only after reviewing the link"
-                )
+            if destination is None:
+                raise SystemExit(f"refusing to replace unmanaged symlink: {target}")
             print_plan("would relink" if dry_run else "relink", target, source.path)
         elif target.exists():
-            if target.is_dir():
-                raise SystemExit(
-                    f"refusing to replace real directory: {target}; "
-                    "resolve the conflict manually and rerun"
-                )
-            if not force:
-                raise SystemExit(
-                    f"refusing to overwrite unmanaged target file: {target}; "
-                    "use --force only after reviewing the file"
-                )
-            print_plan("would replace" if dry_run else "replace", target, source.path)
+            raise SystemExit(f"refusing to replace unmanaged target: {target}")
         else:
             print_plan("would link" if dry_run else "link", target, source.path)
 
@@ -224,7 +160,7 @@ def sync_layer(
         for target in sorted(target_root.iterdir()):
             if target.name in expected or not target.is_symlink():
                 continue
-            destination = managed_destination(target, catalog.plugins_root)
+            destination = managed_destination(target, catalog)
             if destination is None:
                 print_plan("keep unmanaged", target)
                 continue
@@ -241,12 +177,12 @@ def sync_layer(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Expose my-codex plugin skills as symlinks under ~/.agents/skills."
+        description="Manage repository-authoritative skill symlinks under ~/.agents/skills."
     )
     parser.add_argument(
-        "--marketplace-file",
-        default=str(MARKETPLACE_FILE),
-        help="Marketplace file listing the plugins whose skills are exposed.",
+        "--repo-root",
+        default=str(REPO_ROOT),
+        help="Repository root containing plugins/*/skills source.",
     )
     parser.add_argument(
         "--target-root",
@@ -256,12 +192,11 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Print planned links without modifying the target.")
     parser.add_argument("--check", action="store_true", help="Fail if exposed skills are missing or out of sync.")
     parser.add_argument("--prune", action="store_true", help="Remove managed links for skills that no longer exist.")
-    parser.add_argument("--force", action="store_true", help="Allow replacing unmanaged symlinks and files.")
     args = parser.parse_args()
 
-    marketplace_file = expand_path(args.marketplace_file)
+    repo_root = expand_path(args.repo_root)
     target_root = expand_path(args.target_root)
-    catalog = load_skill_catalog(marketplace_file)
+    catalog = load_repo_skill_catalog(repo_root)
 
     if args.check:
         return check_layer(catalog, target_root=target_root, prune=args.prune)
@@ -270,7 +205,6 @@ def main() -> int:
         target_root=target_root,
         dry_run=args.dry_run,
         prune=args.prune,
-        force=args.force,
     )
 
 

@@ -1,10 +1,10 @@
 # Universal Agent Skills Migration Long-Running Goal
 
-Overall status: `Ready`
+Overall status: `In Progress`
 
 Updated: 2026-08-20
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `Ready`, but implementation starts only after an explicit execution request. Future work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M1 after the explicit 2026-08-20 execution request. Work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive skills-bearing plugin distribution profile for compatibility and rollback.
 3. Decouple Watcher metadata and shared runtime from marketplace authority and perform a controlled universal cutover on the current macOS environment without adding a zero-skill adapter.
 
-Goal Status: `Ready`
+Goal Status: `In Progress`
 
 Goal Owner: `my-codex repository maintainer`
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `Ready` milestone, but do not begin it without an explicit execution request. Once execution is requested, resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -44,13 +44,13 @@ Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universa
 
 ## Preflight Time Assessment
 
-Assessment target: `Ready-to-Closed`
+Assessment target: `current-milestone-to-Closed`
 
 Assessment mode: `Rough range`
 
 Rough elapsed-time estimate: `1-3 weeks`
 
-Basis or blocker: `2026-08-20 estimate based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
+Basis or blocker: `2026-08-20 initial-execution rebaseline remains 1-3 weeks from M1 to Closed, based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -200,7 +200,7 @@ Ready activation: The following pre-approvals are active because the planning pr
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
-| M1 Repository-Authoritative Discovery and Profile Integration | Ready | Pending | Pending |
+| M1 Repository-Authoritative Discovery and Profile Integration | In Progress | Pending | Pending |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Not Started | Pending | Pending |
 | M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
 | M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
@@ -274,7 +274,7 @@ Completion criterion: `The preflight and housekeeping decisions are truthfully r
 
 ## M1 Repository-Authoritative Discovery and Profile Integration
 
-Status: `Ready`
+Status: `In Progress`
 
 Objective: Land the repository-derived catalog and managed projection together with all refresh, check, and wrapper callers so the source batch is internally consistent before merge.
 
@@ -383,6 +383,11 @@ Review gate:
 Evidence to record:
 
 - Scoped diff, focused and full test logs, CLI help output, Unix and PowerShell wrapper tests, failure-injection ordering evidence, and a real-environment read-only discovery inventory.
+
+Execution evidence:
+
+- Execution started on 2026-08-20 from clean `main` revision `3da1d41a1044218e39a0394ea827f105ed268710` on goal-owned branch `codex/universal-agent-skills-m1`; `origin/main` matched and no open PR existed.
+- Initial read-only caller inventory covered the five required entry points, root README, current tests, marketplace and install metadata references, and legacy skip/prune flags. No memory entry supplied an alternate implementation source.
 
 Checkpoint evidence: `M1 commits, PR URL, merge authorization and result, focused and full validation logs, independent review, and remaining runtime blockers.`
 

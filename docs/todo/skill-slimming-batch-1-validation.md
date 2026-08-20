@@ -118,13 +118,6 @@ MY_CODEX_PYTHON="${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python"
 "$MY_CODEX_PYTHON" -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
 "$MY_CODEX_PYTHON" -m unittest discover -s tests -p 'test_*.py' -v
 
-"$MY_CODEX_PYTHON" scripts/check_my_codex.py \
-  --skip-plugins --skip-hooks --skip-agents --skip-agents-skills --skip-doctor \
-  --plugin workflow
-"$MY_CODEX_PYTHON" scripts/check_my_codex.py \
-  --skip-plugins --skip-hooks --skip-agents --skip-agents-skills --skip-doctor \
-  --plugin watcher
-
 "$MY_CODEX_PYTHON" plugins/workflow/skills/long-running-goal/scripts/check_md_links.py plugins/workflow/skills
 "$MY_CODEX_PYTHON" plugins/workflow/skills/long-running-goal/scripts/check_md_links.py plugins/watcher/skills
 

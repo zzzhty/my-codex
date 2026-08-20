@@ -3,9 +3,10 @@ set -eu
 
 usage() {
     cat <<'EOF'
-Usage: scripts/upgrade_my_codex.sh [options]
+Usage: scripts/upgrade_my_codex.sh --discovery-profile universal|plugin [options]
 
 Options:
+  --discovery-profile PROFILE  Required skill discovery profile: universal or plugin.
   --bootstrap-python PATH       Python used to run the helper scripts.
   --codex PATH                  Explicit Codex CLI executable. Otherwise uses CODEX_BIN, PATH, then managed installs.
   --codex-home PATH             Codex home directory. Defaults to CODEX_HOME or ~/.codex.
@@ -55,7 +56,7 @@ codex_extension_platform_dir() {
             system=linux
             ;;
         Darwin)
-            system=darwin
+            system=macos
             ;;
         *)
             return 1
@@ -273,6 +274,7 @@ codex_path_explicit=0
 codex_home=${CODEX_HOME:-"$HOME/.codex"}
 tooling_python=${MY_CODEX_PYTHON:-}
 marketplace_name=my-codex
+discovery_profile=
 git_marketplace_source=
 git_ref=main
 dry_run=0
@@ -329,6 +331,16 @@ while [ "$#" -gt 0 ]; do
             marketplace_name=${1#*=}
             shift
             ;;
+        --discovery-profile)
+            require_value "$1" "${2-}"
+            discovery_profile=$2
+            shift 2
+            ;;
+        --discovery-profile=*)
+            discovery_profile=${1#*=}
+            require_value "--discovery-profile" "$discovery_profile"
+            shift
+            ;;
         --git-marketplace-source)
             require_value "$1" "${2-}"
             git_marketplace_source=$2
@@ -371,18 +383,38 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+case "$discovery_profile" in
+    universal|plugin)
+        ;;
+    "")
+        echo "missing required --discovery-profile universal|plugin" >&2
+        exit 2
+        ;;
+    *)
+        echo "invalid --discovery-profile: $discovery_profile (expected universal or plugin)" >&2
+        exit 2
+        ;;
+esac
+
+if [ "$discovery_profile" = universal ] && [ "$prune_plugins" -eq 1 ]; then
+    echo "--prune-plugins is incompatible with --discovery-profile universal" >&2
+    exit 2
+fi
+
 if [ -z "$bootstrap_python" ]; then
     bootstrap_python=$(find_bootstrap_python)
 else
     bootstrap_python=$(resolve_command "Bootstrap Python" "$bootstrap_python")
 fi
 
-if [ "$codex_path_explicit" -eq 1 ]; then
-    codex_path=$(resolve_command "Codex CLI" "$codex_path")
-elif [ -n "${CODEX_BIN:-}" ]; then
-    codex_path=$(resolve_command "Codex CLI from CODEX_BIN" "$CODEX_BIN")
-else
-    codex_path=$(find_default_codex)
+if [ "$discovery_profile" = plugin ]; then
+    if [ "$codex_path_explicit" -eq 1 ]; then
+        codex_path=$(resolve_command "Codex CLI" "$codex_path")
+    elif [ -n "${CODEX_BIN:-}" ]; then
+        codex_path=$(resolve_command "Codex CLI from CODEX_BIN" "$CODEX_BIN")
+    else
+        codex_path=$(find_default_codex)
+    fi
 fi
 
 if [ -z "$tooling_python" ]; then
@@ -402,8 +434,9 @@ echo "MY_CODEX_PYTHON=$MY_CODEX_PYTHON"
 echo "MY_CODEX_TOOLING_PYTHON=$MY_CODEX_TOOLING_PYTHON"
 echo "PLUGIN_VALIDATOR=$PLUGIN_VALIDATOR"
 echo "BootstrapPython=$bootstrap_python"
-echo "CodexPath=$codex_path"
+echo "CodexPath=${codex_path:-auto-if-plugin-removal-is-required}"
 echo "MarketplaceName=$marketplace_name"
+echo "DiscoveryProfile=$discovery_profile"
 if [ "$prune_plugins" -eq 1 ]; then
     echo "PrunePlugins=enabled"
 else
@@ -421,13 +454,17 @@ if [ "$prune_plugins" -eq 1 ] && [ "$dry_run" -eq 0 ]; then
 fi
 
 set -- "$repo_root/scripts/refresh_my_codex.py" \
-    --codex "$codex_path" \
+    --discovery-profile "$discovery_profile" \
     --codex-home "$CODEX_HOME" \
     --venv "$venv_path" \
     --python "$MY_CODEX_PYTHON" \
     --marketplace-name "$marketplace_name" \
     --marketplace-source "$repo_root" \
     --git-ref "$git_ref"
+
+if [ -n "$codex_path" ]; then
+    set -- "$@" --codex "$codex_path"
+fi
 
 if [ -n "$git_marketplace_source" ]; then
     set -- "$@" --git-marketplace-source "$git_marketplace_source"
@@ -446,11 +483,14 @@ if [ "$dry_run" -eq 1 ] && [ "$skip_check" -eq 0 ]; then
     echo "Dry run: skipping closure check because no local state was changed."
 elif [ "$skip_check" -eq 0 ]; then
     set -- "$repo_root/scripts/check_my_codex.py" \
-        --codex "$codex_path" \
+        --discovery-profile "$discovery_profile" \
         --codex-home "$CODEX_HOME" \
         --venv "$venv_path" \
         --python "$MY_CODEX_PYTHON" \
         --marketplace-name "$marketplace_name"
+    if [ -n "$codex_path" ]; then
+        set -- "$@" --codex "$codex_path"
+    fi
     echo "+ $bootstrap_python $*"
     "$bootstrap_python" "$@"
 fi

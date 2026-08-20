@@ -5,13 +5,21 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 
+from check_skill_discovery import (
+    PluginListRow,
+    codex_plugin_rows,
+    enabled_plugin_names,
+    plugin_installation_issues,
+    plugin_package_issues,
+    universal_profile_issues,
+)
 from refresh_my_codex import (
     CODEX_HOME,
+    DEFAULT_AGENTS_SKILLS_ROOT,
     DEFAULT_VENV,
     INSTALL_MANIFEST_FILE,
     MARKETPLACE_FILE,
@@ -25,6 +33,14 @@ from refresh_my_codex import (
     selected_plugins,
     stale_plugin_names,
     tooling_python_from_args,
+)
+from repo_skill_catalog import SkillCatalog, load_repo_skill_catalog
+from skill_discovery_profiles import (
+    DISCOVERY_PROFILE_CHOICES,
+    CheckProfileOptions,
+    DiscoveryProfile,
+    parse_discovery_profile,
+    validate_check_profile,
 )
 
 
@@ -164,25 +180,6 @@ def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]
     return marketplace_name.strip(), sources
 
 
-def codex_plugin_rows(output: str) -> dict[tuple[str, str], tuple[str, str]]:
-    rows: dict[tuple[str, str], tuple[str, str]] = {}
-    marketplace_name: str | None = None
-    for raw_line in output.splitlines():
-        line = raw_line.strip()
-        marketplace_match = re.fullmatch(r"Marketplace `([^`]+)`", line)
-        if marketplace_match:
-            marketplace_name = marketplace_match.group(1)
-            continue
-        if not line or line.startswith("PLUGIN") or marketplace_name is None:
-            continue
-        columns = re.split(r"\s{2,}", line, maxsplit=3)
-        if len(columns) >= 3:
-            plugin_name, separator, listed_marketplace = columns[0].rpartition("@")
-            if separator and plugin_name and listed_marketplace == marketplace_name:
-                rows[(marketplace_name, plugin_name)] = (columns[1], columns[2])
-    return rows
-
-
 class CheckRunner:
     def __init__(self) -> None:
         self.failures = 0
@@ -242,6 +239,19 @@ class CheckRunner:
         self.ok(f"marketplace file includes exact local plugin identities: {marketplace}")
         return sources
 
+    def check_plugin_packages(
+        self,
+        catalog: SkillCatalog,
+        *,
+        plugin_sources: dict[str, Path],
+    ) -> None:
+        issues = plugin_package_issues(catalog, plugin_sources=plugin_sources)
+        if issues:
+            for issue in issues:
+                self.fail(issue)
+            return
+        self.ok("marketplace package sources match the repository callable catalog")
+
     def check_tooling_python(self, tooling_python: Path, *, env: dict[str, str]) -> None:
         if not tooling_python.is_file():
             self.fail(f"tooling Python missing: {tooling_python}")
@@ -253,6 +263,19 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"tooling Python cannot import PyYAML: {tooling_python}: {output}")
 
+    def read_plugin_rows(
+        self,
+        codex: str,
+        *,
+        env: dict[str, str],
+    ) -> dict[tuple[str, str], PluginListRow] | None:
+        result = self.run_command([codex, "plugin", "list"], env=env)
+        if result.returncode != 0:
+            output = (result.stderr or result.stdout).strip()
+            self.fail(f"`codex plugin list` failed: {output}")
+            return None
+        return codex_plugin_rows(result.stdout)
+
     def check_codex_plugin_list(
         self,
         codex: str,
@@ -260,14 +283,10 @@ class CheckRunner:
         *,
         env: dict[str, str],
         plugin_sources: dict[str, Path],
-    ) -> None:
-        result = self.run_command([codex, "plugin", "list"], env=env)
-        if result.returncode != 0:
-            output = (result.stderr or result.stdout).strip()
-            self.fail(f"`codex plugin list` failed: {output}")
-            return
-        output = result.stdout
-        rows = codex_plugin_rows(output)
+    ) -> dict[tuple[str, str], PluginListRow] | None:
+        rows = self.read_plugin_rows(codex, env=env)
+        if rows is None:
+            return None
         failures: list[str] = []
         for selector in plugins:
             plugin_name, separator, marketplace_name = selector.partition("@")
@@ -294,18 +313,70 @@ class CheckRunner:
             if installed is None:
                 failures.append(f"{selector}: missing from `codex plugin list`")
                 continue
-            status, installed_version = installed
-            if status != "installed, enabled":
-                failures.append(f"{selector}: expected status 'installed, enabled', found {status!r}")
-            if installed_version != source_version:
+            if installed.status != "installed, enabled":
+                failures.append(
+                    f"{selector}: expected status 'installed, enabled', found {installed.status!r}"
+                )
+            if installed.version != source_version:
                 failures.append(
                     f"{selector}: installed version mismatch; expected source version {source_version!r}, "
-                    f"found {installed_version!r}"
+                    f"found {installed.version!r}"
                 )
         if failures:
             self.fail("plugin source/installed identity check failed: " + "; ".join(failures))
-            return
+            return rows
         self.ok("codex plugin list matches source plugin name/version identities and enabled status")
+        return rows
+
+    def check_universal_discovery_profile(
+        self,
+        catalog: SkillCatalog,
+        *,
+        target_root: Path,
+        marketplace_name: str,
+        rows: dict[tuple[str, str], PluginListRow],
+    ) -> None:
+        enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
+        unclassified = sorted(enabled - set(catalog.plugin_names))
+        issues = universal_profile_issues(
+            catalog,
+            target_root=target_root,
+            enabled_plugin_names=enabled,
+        )
+        if unclassified:
+            issues.append(
+                "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
+                + ", ".join(unclassified)
+            )
+        if issues:
+            for issue in issues:
+                self.fail(issue)
+            return
+        self.ok(f"universal discovery profile is closed under {target_root}")
+
+    def check_plugin_discovery_profile(
+        self,
+        catalog: SkillCatalog,
+        *,
+        target_root: Path,
+        codex_home: Path,
+        marketplace_name: str,
+        rows: dict[tuple[str, str], PluginListRow],
+        plugin_sources: dict[str, Path],
+    ) -> None:
+        issues = plugin_installation_issues(
+            catalog,
+            marketplace_name=marketplace_name,
+            target_root=target_root,
+            codex_home=codex_home,
+            rows=rows,
+            plugin_sources=plugin_sources,
+        )
+        if issues:
+            for issue in issues:
+                self.fail(issue)
+            return
+        self.ok("plugin discovery profile matches repository, CLI, cache, and inactive universal layer")
 
     def check_plugin_cache(
         self,
@@ -338,19 +409,26 @@ class CheckRunner:
                 )
                 continue
             plugin_root = cache_root / marketplace_name / plugin_name
-            cache_manifest = plugin_root / source_version / ".codex-plugin" / "plugin.json"
-            if not cache_manifest.is_file():
-                found_versions = (
-                    sorted(path.name for path in plugin_root.iterdir() if path.is_dir())
-                    if plugin_root.is_dir()
-                    else []
-                )
-                found_text = ", ".join(found_versions) if found_versions else "none"
+            version_roots = (
+                sorted(path for path in plugin_root.iterdir() if path.is_dir())
+                if plugin_root.is_dir()
+                else []
+            )
+            if len(version_roots) != 1:
+                found_text = ", ".join(path.name for path in version_roots) or "none"
                 failures.append(
-                    f"{selector}: exact cache manifest missing for source version {source_version!r}; "
-                    f"expected {cache_manifest}; found versions: {found_text}"
+                    f"{selector}: expected exactly one cache version {source_version!r}; "
+                    f"found versions: {found_text}"
                 )
                 continue
+            version_root = version_roots[0]
+            if version_root.is_symlink() or version_root.name != source_version:
+                failures.append(
+                    f"{selector}: exact cache version mismatch; expected {source_version!r}, "
+                    f"found {version_root.name!r}"
+                )
+                continue
+            cache_manifest = version_root / ".codex-plugin" / "plugin.json"
             try:
                 cache_name, cache_version = plugin_manifest_identity(cache_manifest, label="cache")
             except ValueError as exc:
@@ -397,7 +475,7 @@ class CheckRunner:
                 details.append(f"{name} ({'+'.join(locations) or 'unknown'})")
             self.fail(
                 "stale my-codex plugins remain. "
-                "Run scripts/refresh_my_codex.py --prune-plugins. "
+                "Run scripts/refresh_my_codex.py --discovery-profile plugin --prune-plugins. "
                 f"Stale={', '.join(details)}"
             )
             return
@@ -420,7 +498,8 @@ class CheckRunner:
         if issues:
             self.fail(
                 "Watcher skill hook config has stale managed handlers. "
-                f"Run scripts/refresh_my_codex.py. Issues: {issues}"
+                "Run scripts/refresh_my_codex.py with the same explicit discovery profile. "
+                f"Issues: {issues}"
             )
             return
         expected = set(HOOK_EVENTS)
@@ -493,13 +572,28 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"subagent support file is not synced: {output}")
 
-    def check_agents_skills_layer(self, *, env: dict[str, str]) -> None:
+    def check_agents_skills_layer(
+        self,
+        tooling_python: Path,
+        *,
+        target_root: Path,
+        env: dict[str, str],
+    ) -> None:
         sync_script = REPO_ROOT / "scripts" / "sync_agents_skills.py"
         if not sync_script.is_file():
             self.fail(f"agents skills sync script missing: {sync_script}")
             return
         result = self.run_command(
-            [sys.executable, str(sync_script), "--check", "--prune"],
+            [
+                str(tooling_python),
+                str(sync_script),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--target-root",
+                str(target_root),
+                "--check",
+                "--prune",
+            ],
             env=env,
         )
         if result.returncode == 0:
@@ -533,6 +627,12 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Final checks for my-codex plugin and hook state.")
     parser.add_argument(
+        "--discovery-profile",
+        required=True,
+        choices=DISCOVERY_PROFILE_CHOICES,
+        help="Required skill discovery profile: universal or plugin.",
+    )
+    parser.add_argument(
         "--codex",
         help="Explicit Codex CLI executable. Defaults to CODEX_BIN, PATH, then managed install fallbacks.",
     )
@@ -541,50 +641,103 @@ def main() -> None:
     parser.add_argument("--python", help="Explicit tooling Python expected in hooks and diagnostics.")
     parser.add_argument("--marketplace-name", default="my-codex", help="Configured marketplace name.")
     parser.add_argument("--plugin", action="append", help="Plugin name or selector to check. May be repeated.")
-    parser.add_argument("--skip-plugins", action="store_true", help="Skip `codex plugin list` and plugin cache checks.")
+    parser.add_argument("--skip-plugins", action="store_true", help="Deprecated profile bypass; rejected.")
     parser.add_argument("--skip-hooks", action="store_true", help="Skip Watcher skill hook config checks.")
     parser.add_argument("--skip-agents", action="store_true", help="Skip subagent support-file sync checks.")
-    parser.add_argument("--skip-agents-skills", action="store_true", help="Skip the ~/.agents/skills exposure layer check.")
+    parser.add_argument("--skip-agents-skills", action="store_true", help="Deprecated profile bypass; rejected.")
+    parser.add_argument(
+        "--agents-skills-root",
+        default=str(DEFAULT_AGENTS_SKILLS_ROOT),
+        help="Universal skill projection root (default: ~/.agents/skills).",
+    )
     parser.add_argument("--skip-plugin-validation", action="store_true", help="Skip plugin validator checks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Skip Watcher skill doctor.")
     parser.add_argument("--strict-warnings", action="store_true", help="Treat warnings as failures.")
     args = parser.parse_args()
 
+    profile = parse_discovery_profile(args.discovery_profile)
+    validate_check_profile(
+        CheckProfileOptions(
+            profile=profile,
+            skip_plugins=args.skip_plugins,
+            skip_agents_skills=args.skip_agents_skills,
+            selected_plugins=tuple(args.plugin or ()),
+        )
+    )
+    catalog = load_repo_skill_catalog()
     codex_home = expand_path(args.codex_home)
+    agents_skills_root = expand_path(args.agents_skills_root)
     venv_path = expand_path(args.venv)
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
-    codex = resolve_codex_executable(args.codex, codex_home=codex_home)
-    plugins_to_check, desired_plugins = plugin_check_scopes(
-        args.plugin, args.marketplace_name
-    )
+    codex: str | None = None
+    if profile is DiscoveryProfile.PLUGIN or configured_plugin_names(
+        codex_home,
+        args.marketplace_name,
+    ):
+        codex = resolve_codex_executable(args.codex, codex_home=codex_home)
+
+    source_plugins = [
+        f"{plugin_name}@{args.marketplace_name}"
+        for plugin_name in catalog.plugin_names
+    ]
     validator = Path(env["PLUGIN_VALIDATOR"])
 
     runner = CheckRunner()
-    plugin_sources = runner.check_marketplace_file(plugins_to_check)
     runner.check_tooling_python(tooling_python, env=env)
-    if not args.skip_plugins and plugin_sources is not None:
-        runner.check_codex_plugin_list(
-            codex, plugins_to_check, env=env, plugin_sources=plugin_sources
+    if profile is DiscoveryProfile.PLUGIN:
+        assert codex is not None
+        plugins_to_check, desired_plugins = plugin_check_scopes(
+            None,
+            args.marketplace_name,
         )
-        runner.check_plugin_cache(
-            plugins_to_check, codex_home=codex_home, plugin_sources=plugin_sources
-        )
+        plugin_sources = runner.check_marketplace_file(plugins_to_check)
+        rows = runner.read_plugin_rows(codex, env=env)
+        if plugin_sources is not None:
+            runner.check_plugin_packages(catalog, plugin_sources=plugin_sources)
+        if plugin_sources is not None and rows is not None:
+            runner.check_plugin_discovery_profile(
+                catalog,
+                target_root=agents_skills_root,
+                codex_home=codex_home,
+                marketplace_name=args.marketplace_name,
+                rows=rows,
+                plugin_sources=plugin_sources,
+            )
         runner.check_no_stale_my_codex_plugins(
             desired_plugins,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
+        )
+    else:
+        rows: dict[tuple[str, str], PluginListRow] = {}
+        if codex is not None:
+            inspected = runner.read_plugin_rows(codex, env=env)
+            if inspected is not None:
+                rows = inspected
+        runner.check_universal_discovery_profile(
+            catalog,
+            target_root=agents_skills_root,
+            marketplace_name=args.marketplace_name,
+            rows=rows,
         )
     if not args.skip_hooks:
         runner.check_hook_config(tooling_python, hook_config=codex_home / "hooks.json")
     runner.check_watcher_runtime_cutover(codex_home=codex_home)
     if not args.skip_agents:
         runner.check_agent_sync(codex_home=codex_home, env=env)
-    if not args.skip_agents_skills:
-        runner.check_agents_skills_layer(env=env)
+    if profile is DiscoveryProfile.UNIVERSAL:
+        runner.check_agents_skills_layer(
+            tooling_python,
+            target_root=agents_skills_root,
+            env=env,
+        )
     if not args.skip_plugin_validation:
         runner.check_plugin_validation(
-            tooling_python, plugins_to_check, env=env, validator=validator
+            tooling_python,
+            source_plugins,
+            env=env,
+            validator=validator,
         )
     if not args.skip_doctor:
         runner.check_doctor(tooling_python, env=env)

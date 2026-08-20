@@ -256,7 +256,7 @@ class PluginSelectionScopeTests(unittest.TestCase):
 
 
 class PluginCacheIdentityTests(unittest.TestCase):
-    def test_exact_source_cache_identity_allows_stale_sibling_versions(self) -> None:
+    def test_exact_source_cache_identity_rejects_stale_sibling_versions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             plugin_dir = root / "catalog-sources" / "demo-package"
@@ -294,8 +294,9 @@ class PluginCacheIdentityTests(unittest.TestCase):
                 plugin_sources={"demo": plugin_dir},
             )
 
-        self.assertEqual(runner.failures, 0)
-        self.assertTrue(any("source/cache manifest identity" in message for message in runner.messages))
+        self.assertEqual(runner.failures, 1)
+        self.assertIn("expected exactly one cache version", "\n".join(runner.messages))
+        self.assertIn("1.2.2+codex.old", "\n".join(runner.messages))
 
     def test_old_cache_versions_do_not_satisfy_current_source_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -331,7 +332,7 @@ class PluginCacheIdentityTests(unittest.TestCase):
 
         self.assertEqual(runner.failures, 1)
         self.assertIn(current, "\n".join(runner.messages))
-        self.assertIn("exact cache manifest missing", "\n".join(runner.messages))
+        self.assertIn("expected exactly one cache version", "\n".join(runner.messages))
 
     def test_source_and_cache_manifest_errors_fail_with_exact_evidence(self) -> None:
         cases = (

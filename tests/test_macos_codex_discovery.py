@@ -29,7 +29,7 @@ class MacOSCodexDiscoveryTests(unittest.TestCase):
                 / "extensions"
                 / "openai.chatgpt-1.2.3"
                 / "bin"
-                / "darwin-arm64"
+                / "macos-aarch64"
                 / "codex"
             )
             for candidate in (app_cli, extension_cli):
