@@ -1,10 +1,10 @@
 # Universal Agent Skills Migration Long-Running Goal
 
-Overall status: `Ready`
+Overall status: `In Progress`
 
-Updated: 2026-08-20
+Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `Ready`, but implementation starts only after an explicit execution request. Future work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M1 after the explicit 2026-08-20 execution request. Work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive skills-bearing plugin distribution profile for compatibility and rollback.
 3. Decouple Watcher metadata and shared runtime from marketplace authority and perform a controlled universal cutover on the current macOS environment without adding a zero-skill adapter.
 
-Goal Status: `Ready`
+Goal Status: `In Progress`
 
 Goal Owner: `my-codex repository maintainer`
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `Ready` milestone, but do not begin it without an explicit execution request. Once execution is requested, resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -44,13 +44,13 @@ Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universa
 
 ## Preflight Time Assessment
 
-Assessment target: `Ready-to-Closed`
+Assessment target: `current-milestone-to-Closed`
 
 Assessment mode: `Rough range`
 
 Rough elapsed-time estimate: `1-3 weeks`
 
-Basis or blocker: `2026-08-20 estimate based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
+Basis or blocker: `2026-08-20 initial-execution rebaseline remains 1-3 weeks from M1 to Closed, based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -200,7 +200,7 @@ Ready activation: The following pre-approvals are active because the planning pr
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
-| M1 Repository-Authoritative Discovery and Profile Integration | Ready | Pending | Pending |
+| M1 Repository-Authoritative Discovery and Profile Integration | In Progress | Pending | Pending |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Not Started | Pending | Pending |
 | M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
 | M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
@@ -274,7 +274,7 @@ Completion criterion: `The preflight and housekeeping decisions are truthfully r
 
 ## M1 Repository-Authoritative Discovery and Profile Integration
 
-Status: `Ready`
+Status: `In Progress`
 
 Objective: Land the repository-derived catalog and managed projection together with all refresh, check, and wrapper callers so the source batch is internally consistent before merge.
 
@@ -383,6 +383,16 @@ Review gate:
 Evidence to record:
 
 - Scoped diff, focused and full test logs, CLI help output, Unix and PowerShell wrapper tests, failure-injection ordering evidence, and a real-environment read-only discovery inventory.
+
+Execution evidence:
+
+- Execution started on 2026-08-20 from clean `main` revision `3da1d41a1044218e39a0394ea827f105ed268710` on goal-owned branch `codex/universal-agent-skills-m1`; `origin/main` matched and no open PR existed.
+- Initial read-only caller inventory covered the five required entry points, root README, current tests, marketplace and install metadata references, and legacy skip/prune flags. No memory entry supplied an alternate implementation source.
+- Initial integrated implementation commit `80e8a8a` added the repository catalog, owned universal projection, explicit profile policy, rollback-capable transitions, complete closure checks, wrapper propagation, current documentation, and focused tests without changing skill content or callable identities.
+- The independent Standards and Spec reviews found strict-parser, duplicate-authority, transition-interface, alternate-marketplace, selector-scope, universal-link-removal rollback, shared-manifest behavior-coverage, dead-helper, and wrapper-bootstrap gaps. The branch now fails closed on malformed CLI rows and config disagreement, centralizes plugin and marketplace identity parsing, rejects or precisely removes alternate-marketplace copies, limits selectors to the canonical catalog and chosen marketplace, uses direction-specific transition runtimes, rolls back partial universal-link removal, exercises manifest schema and identity failures through the shared closure, removes superseded helper surfaces, and uses the bootstrap Python only to establish the tooling venv before running profile helpers with its PyYAML-capable Python. Final independent re-review of `3da1d41...d78eccb` passed both Standards and Spec with no actionable findings; each reviewer independently reran all 52 focused tests.
+- Post-fix validation on 2026-08-21 passed the required 52 focused tests, all 71 root tests, all 64 Workflow tests, and all 62 Watcher tests with three platform skips; owner-venv byte compilation, shell syntax, CLI help, Markdown links, goal readiness, and `git diff --check` also passed. The bare system `python3` correctly remained unsuitable because it lacks PyYAML, so all supported checks used `/Users/max/.codex/venvs/my-codex/bin/python` as frozen.
+- A real-environment read-only inventory parsed all current `codex plugin list` rows, confirmed the canonical three `my-codex` packages enabled at one exact cache version each with 34 callable identities and plugin-profile closure, and confirmed `/Users/max/.agents/skills` is absent. No refresh, check, link, plugin, hook, cache, or durable-state mutation was run against the live installation during M1.
+- Draft [PR #6](https://github.com/zzzhty/my-codex/pull/6) was created from `codex/universal-agent-skills-m1`; GitHub reported it mergeable with no repository CI checks configured. The PR remains pending final checkpoint and merge recording.
 
 Checkpoint evidence: `M1 commits, PR URL, merge authorization and result, focused and full validation logs, independent review, and remaining runtime blockers.`
 

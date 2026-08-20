@@ -14,18 +14,23 @@ This repository is the development mainline for the plugins and personal Codex c
 
 The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees were removed after the Watcher migration. Git history remains the recovery path for those retired plugin sources.
 
-## Multi-Harness Skill Exposure
+## Skill Discovery Profiles
 
-Every skill packaged by the marketplace plugins is also exposed as a user-level agent skill under `~/.agents/skills/<skill>` through per-skill symlinks into this checkout. Harnesses that natively scan `~/.agents/skills` (ZCode does, ahead of workspace `.agents/skills` roots) pick the skills up with no extra configuration, while Codex keeps serving the same source directories through the marketplace plugin cache. The repository stays the single source of truth; nothing is copied or forked.
+`plugins/*/skills/*/SKILL.md` is the canonical callable-skill catalog. The frontmatter `name` is the callable identity even when a physical directory has a different name; marketplace metadata and plugin caches are projections, not catalog authority.
 
-The exposure layer is managed by `scripts/sync_agents_skills.py`:
+Every refresh and closure check requires one explicit, mutually exclusive discovery profile:
+
+- `universal` exposes repository skill directories as `~/.agents/skills/<callable-name>` symlinks and requires all skills-bearing `my-codex` plugins to be disabled.
+- `plugin` installs and enables every skills-bearing package selected by `.agents/plugins/install-manifest.json` and requires the repository-owned universal links to be absent.
+
+Profile transitions preflight the replacement before removing the old active path and roll back when activation or closure fails. The universal projection manages only symlinks proven to target direct skill directories in this checkout, prunes only repository-owned stale links, preserves unrelated user skills, and fails instead of overwriting an unmanaged same-name entry. The unchanged `plugins/mattpocock-skills/skills/` mirror remains source-identical because projection links never rewrite its content.
+
+`scripts/sync_agents_skills.py` is the low-level universal projection tool. Use its `--check --prune` mode to inspect an already selected universal profile; use the profile-aware refresh helper for activation so plugins are deactivated in the required order:
 
 ```bash
-"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/sync_agents_skills.py
 "${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/sync_agents_skills.py --check --prune
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/refresh_my_codex.py --discovery-profile universal
 ```
-
-`scripts/refresh_my_codex.py` refreshes the layer after plugin installs (`--skip-agents-skills` skips it) and `scripts/check_my_codex.py` fails when a link is missing, dangling, or drifting. Links for removed skills are pruned like other stale plugin state. Entries under `~/.agents/skills` that are not managed symlinks into this checkout are never touched; a name conflict with an unmanaged directory is reported instead of overwritten. `plugins/mattpocock-skills/skills/` is exposed unchanged: symlinks do not modify content, so its upstream mirror hash contract is unaffected.
 
 ## Matt Pocock Upstream Sync
 
@@ -43,7 +48,7 @@ Never edit `plugins/mattpocock-skills/skills/` directly. Its updater-owned upstr
 After reviewing the source diff, refresh only the updated package when needed:
 
 ```bash
-python scripts/refresh_my_codex.py --plugin mattpocock-skills
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/refresh_my_codex.py --discovery-profile plugin --plugin mattpocock-skills
 ```
 
 ## Orchestration Workflow
@@ -187,42 +192,48 @@ Refresh the marketplace plugin cache and Watcher skill hooks with the platform w
 Unix:
 
 ```bash
-scripts/upgrade_my_codex.sh
+scripts/upgrade_my_codex.sh --discovery-profile universal
+# or: scripts/upgrade_my_codex.sh --discovery-profile plugin
 ```
 
 Windows PowerShell:
 
 ```powershell
-.\scripts\upgrade_my_codex.ps1
+.\scripts\upgrade_my_codex.ps1 -DiscoveryProfile universal
+# or: .\scripts\upgrade_my_codex.ps1 -DiscoveryProfile plugin
 ```
 
-The wrappers only resolve platform-specific Python/Codex paths, set the shared environment, call `scripts/refresh_my_codex.py`, run `scripts/check_my_codex.py`, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. Codex CLI resolution uses one cross-platform precedence: an explicit `--codex`/`-CodexPath`, then `CODEX_BIN`, then `codex` from `PATH`, then the visible standalone install under `CODEX_INSTALL_DIR` (defaulting to `~/.local/bin` on Unix and `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` on Windows), then `$CODEX_HOME/packages/standalone/current`, and finally platform-managed fallbacks. On Windows those final fallbacks are the Desktop-managed CLI under `%LOCALAPPDATA%\OpenAI\Codex\bin` followed by VS Code or VS Code Insiders' bundled CLI; on Unix they are VS Code Server, VS Code Server Insiders, local VS Code, and local VS Code Insiders. Explicit paths and `CODEX_BIN` are strict: an invalid configured value fails instead of selecting another installation. Once `PATH` resolves `codex`, capability validation applies to that executable and does not silently switch to a fallback. The Python helper fails before refresh when the Codex CLI does not expose `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; pruning also requires `codex plugin remove`. Non-interactive plugin installs require Codex CLI 0.131.0 or newer. The Python helper is the reusable cross-platform marketplace source of truth.
+The wrappers require and propagate the same profile to `scripts/refresh_my_codex.py` and `scripts/check_my_codex.py`, set the shared environment, and sync root `AGENTS.md` into `$CODEX_HOME/AGENTS.md` as the final step. They use the bootstrap Python only to create or refresh the shared tooling venv, then run refresh and check with that tooling Python so the catalog's PyYAML dependency is available. In the `plugin` profile, Codex CLI resolution uses one cross-platform precedence: an explicit `--codex`/`-CodexPath`, then `CODEX_BIN`, then `codex` from `PATH`, then the visible standalone install under `CODEX_INSTALL_DIR` (defaulting to `~/.local/bin` on Unix and `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` on Windows), then `$CODEX_HOME/packages/standalone/current`, and finally platform-managed fallbacks. On Windows those final fallbacks are the Desktop-managed CLI under `%LOCALAPPDATA%\OpenAI\Codex\bin` followed by VS Code or VS Code Insiders' bundled CLI; on Unix they are VS Code Server, VS Code Server Insiders, local VS Code, and local VS Code Insiders. Explicit paths and `CODEX_BIN` are strict when the CLI is needed. The universal profile does not resolve Codex when no configured skills-bearing plugin needs inspection or removal. Plugin activation requires `codex plugin marketplace add`, `codex plugin add`, and `codex plugin list`; a universal transition from active plugins and pruning also require `codex plugin remove`, while rollback requires `codex plugin add`.
 
-`scripts/refresh_my_codex.py` runs the shared tooling bootstrap, uses the checkout's `remote.origin.url` as the Git marketplace source only when local `HEAD` matches the requested `origin/git-ref` and the worktree is clean, falls back to the current checkout as a local marketplace source when the Git source is stale, dirty, unavailable, or fails, runs `codex plugin add` for every plugin selected by the install manifest, syncs the subagent support file into `$CODEX_HOME/agents/`, syncs the `~/.agents/skills` exposure layer, refreshes `$CODEX_HOME/hooks.json`, and runs Watcher skill doctor. Use `--dry-run` to print commands and the support-file sync plan without changing local Codex state. Use `--skip-agents` to skip support-file sync and `--skip-agents-skills` to skip the exposure layer sync.
+`scripts/refresh_my_codex.py` runs the shared tooling bootstrap and applies the selected discovery profile. The `plugin` profile refreshes the marketplace source and exact manifest-selected packages; the `universal` profile never reads marketplace metadata or plugin cache and manages the repository-owned projection links. Both profiles then sync the subagent support file into `$CODEX_HOME/agents/`, refresh `$CODEX_HOME/hooks.json`, and run Watcher skill doctor. Use `--dry-run` to print commands without changing local state. `--skip-marketplace`, `--skip-plugins`, and `--skip-agents-skills` are rejected because they can weaken profile closure; `--skip-agents` remains available for the unrelated support-file sync.
 
-Stale plugin pruning is off by default. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
+Stale plugin pruning is off by default and valid only with the `plugin` profile. Pass `--prune-plugins` to `scripts/upgrade_my_codex.sh` or `-PrunePlugins` to `.\scripts\upgrade_my_codex.ps1` when you want the wrapper to ask for confirmation before removing installed or cached `my-codex` plugins that are no longer selected by `.agents/plugins/install-manifest.json`.
 
-Default plugin install and final-check selection lives in `.agents/plugins/install-manifest.json`. Edit that manifest to choose which `my-codex` plugins are installed and checked by default; use repeated `--plugin` arguments only for a one-off narrower run.
+Plugin-profile install selection lives in `.agents/plugins/install-manifest.json` and must cover every package that owns canonical skills. Repeated `--plugin` arguments may refresh a narrower package set only when the complete plugin profile is already active; closure checks always validate the full selected profile.
 
 Migrate legacy Watcher runtime roots explicitly before final checks:
 
 ```bash
-python3 plugins/watcher/scripts/watcher migrate-state --dry-run
-python3 plugins/watcher/scripts/watcher migrate-state --apply
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" plugins/watcher/scripts/watcher migrate-state --dry-run
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" plugins/watcher/scripts/watcher migrate-state --apply
 ```
 
 This moves `$CODEX_HOME/skill-watcher/` to `$CODEX_HOME/watcher/skill/` and `$CODEX_HOME/doc-watcher/` to `$CODEX_HOME/watcher/doc/`. It refuses to merge when a target directory already exists.
 
-Direct helper usage remains supported:
+Direct helper usage remains supported after `scripts/bootstrap_tooling_env.py` has created the shared tooling venv:
 
 ```bash
-python3 scripts/refresh_my_codex.py
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/refresh_my_codex.py --discovery-profile universal
+# or: "${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/refresh_my_codex.py --discovery-profile plugin
 ```
 
 Windows PowerShell:
 
 ```powershell
-py scripts\refresh_my_codex.py
+$CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
+$ToolingPython = Join-Path $CodexHome "venvs\my-codex\Scripts\python.exe"
+& $ToolingPython scripts\refresh_my_codex.py --discovery-profile universal
+# or: & $ToolingPython scripts\refresh_my_codex.py --discovery-profile plugin
 ```
 
 Run the final closure check after refresh:
@@ -230,16 +241,20 @@ Run the final closure check after refresh:
 Unix:
 
 ```bash
-python3 scripts/check_my_codex.py
+"${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/check_my_codex.py --discovery-profile universal
+# or: "${CODEX_HOME:-$HOME/.codex}/venvs/my-codex/bin/python" scripts/check_my_codex.py --discovery-profile plugin
 ```
 
 Windows PowerShell:
 
 ```powershell
-py scripts\check_my_codex.py
+$CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
+$ToolingPython = Join-Path $CodexHome "venvs\my-codex\Scripts\python.exe"
+& $ToolingPython scripts\check_my_codex.py --discovery-profile universal
+# or: & $ToolingPython scripts\check_my_codex.py --discovery-profile plugin
 ```
 
-The check script verifies the local marketplace file, shared tooling Python, exact source/installed/cache plugin name and version identity, Watcher skill hook schema, subagent support-file sync state, plugin validation, and Watcher skill doctor. A stale cache version cannot satisfy the check when the source's current version is missing. The script does not modify plugin installs, `$CODEX_HOME/hooks.json`, or `$CODEX_HOME/agents/`. Use `--skip-agents` to skip support-file sync checks.
+The check script verifies the shared tooling Python, selected discovery closure, Watcher skill hook schema, subagent support-file sync state, source plugin validation, and Watcher skill doctor. Universal closure verifies every frontmatter-derived link and the absence of enabled skills-bearing plugins without reading marketplace or cache state. Plugin closure verifies the exact marketplace/source package set, enabled CLI status and source version, exactly one cache version per package, cached callable identities, and the absence of universal links. The script is read-only for plugin installs, hooks, and support files. Use `--skip-agents` to skip the unrelated support-file sync check.
 
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 

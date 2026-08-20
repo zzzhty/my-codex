@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [ValidateSet("universal", "plugin")]
+    [string]$DiscoveryProfile,
     [string]$BootstrapPython,
     [string]$CodexPath,
     [string]$CodexHome,
@@ -15,6 +17,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $CodexPathWasProvided = $PSBoundParameters.ContainsKey("CodexPath")
+
+if (-not $DiscoveryProfile) {
+    throw "missing required -DiscoveryProfile universal|plugin"
+}
+if ($DiscoveryProfile -eq "universal" -and $PrunePlugins) {
+    throw "-PrunePlugins is incompatible with -DiscoveryProfile universal"
+}
 
 function Resolve-ExecutableCandidate {
     param(
@@ -330,10 +339,15 @@ else {
     $BootstrapPython = Resolve-BootstrapPython -ExplicitPath $BootstrapPython
 }
 
-$CodexPath = Resolve-CodexCli `
-    -ExplicitPath $CodexPath `
-    -CodexHome $env:CODEX_HOME `
-    -ExplicitPathProvided $CodexPathWasProvided
+if ($DiscoveryProfile -eq "plugin") {
+    $CodexPath = Resolve-CodexCli `
+        -ExplicitPath $CodexPath `
+        -CodexHome $env:CODEX_HOME `
+        -ExplicitPathProvided $CodexPathWasProvided
+}
+elseif (-not $CodexPathWasProvided) {
+    $CodexPath = $null
+}
 
 if (-not $ToolingPython) {
     $ToolingPython = Join-Path $env:CODEX_HOME "venvs\my-codex\Scripts\python.exe"
@@ -350,8 +364,14 @@ Write-Host "MY_CODEX_PYTHON=$env:MY_CODEX_PYTHON"
 Write-Host "MY_CODEX_TOOLING_PYTHON=$env:MY_CODEX_TOOLING_PYTHON"
 Write-Host "PLUGIN_VALIDATOR=$env:PLUGIN_VALIDATOR"
 Write-Host "BootstrapPython=$BootstrapPython"
-Write-Host "CodexPath=$CodexPath"
+if ($CodexPath) {
+    Write-Host "CodexPath=$CodexPath"
+}
+else {
+    Write-Host "CodexPath=auto-if-plugin-removal-is-required"
+}
 Write-Host "MarketplaceName=$MarketplaceName"
+Write-Host "DiscoveryProfile=$DiscoveryProfile"
 if ($PrunePlugins) {
     Write-Host "PrunePlugins=enabled"
 }
@@ -366,16 +386,39 @@ if ($PrunePlugins -and -not $DryRun) {
     }
 }
 
+$bootstrapArgs = @(
+    "scripts\bootstrap_tooling_env.py",
+    "--venv", $venvPath
+)
+if ($DryRun) {
+    $bootstrapArgs += "--dry-run"
+}
+Invoke-Checked `
+    -Exe $BootstrapPython `
+    -Arguments $bootstrapArgs `
+    -Label "my-codex tooling bootstrap"
+
+if (-not (Test-Path -LiteralPath $env:MY_CODEX_PYTHON -PathType Leaf)) {
+    if ($DryRun) {
+        throw "tooling Python is unavailable after dry-run bootstrap: $env:MY_CODEX_PYTHON. Run the wrapper without -DryRun once to create the tooling environment."
+    }
+    throw "tooling Python is unavailable after bootstrap: $env:MY_CODEX_PYTHON"
+}
+
 $refreshArgs = @(
     "scripts\refresh_my_codex.py",
-    "--codex", $CodexPath,
+    "--discovery-profile", $DiscoveryProfile,
     "--codex-home", $env:CODEX_HOME,
     "--venv", $venvPath,
     "--python", $env:MY_CODEX_PYTHON,
     "--marketplace-name", $MarketplaceName,
     "--marketplace-source", $repoRoot,
-    "--git-ref", $GitRef
+    "--git-ref", $GitRef,
+    "--skip-bootstrap"
 )
+if ($CodexPath) {
+    $refreshArgs += @("--codex", $CodexPath)
+}
 if ($GitMarketplaceSource) {
     $refreshArgs += @("--git-marketplace-source", $GitMarketplaceSource)
 }
@@ -387,7 +430,7 @@ if ($PrunePlugins) {
 }
 
 Invoke-Checked `
-    -Exe $BootstrapPython `
+    -Exe $env:MY_CODEX_PYTHON `
     -Arguments $refreshArgs `
     -Label "my-codex refresh"
 
@@ -395,16 +438,20 @@ if ($DryRun -and -not $SkipCheck) {
     Write-Host "Dry run: skipping closure check because no local state was changed."
 }
 elseif (-not $SkipCheck) {
+    $checkArgs = @(
+        "scripts\check_my_codex.py",
+        "--discovery-profile", $DiscoveryProfile,
+        "--codex-home", $env:CODEX_HOME,
+        "--venv", $venvPath,
+        "--python", $env:MY_CODEX_PYTHON,
+        "--marketplace-name", $MarketplaceName
+    )
+    if ($CodexPath) {
+        $checkArgs += @("--codex", $CodexPath)
+    }
     Invoke-Checked `
-        -Exe $BootstrapPython `
-        -Arguments @(
-            "scripts\check_my_codex.py",
-            "--codex", $CodexPath,
-            "--codex-home", $env:CODEX_HOME,
-            "--venv", $venvPath,
-            "--python", $env:MY_CODEX_PYTHON,
-            "--marketplace-name", $MarketplaceName
-        ) `
+        -Exe $env:MY_CODEX_PYTHON `
+        -Arguments $checkArgs `
         -Label "my-codex closure check"
 }
 

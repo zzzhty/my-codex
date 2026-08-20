@@ -7,13 +7,47 @@ import argparse
 import json
 import os
 import platform
-import re
 import shlex
 import shutil
 import stat
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
+
+from check_skill_discovery import (
+    PluginListRow,
+    codex_plugin_rows,
+    enabled_plugin_names,
+    marketplace_plugin_names,
+    marketplace_plugin_sources,
+    plugin_cache_preflight_issues,
+    plugin_installation_issues,
+    plugin_package_issues,
+    require_profile_closure,
+    universal_profile_issues,
+)
+from discovery_profile_runtime import (
+    PluginToUniversalRuntime,
+    UniversalToPluginRuntime,
+    transition_plugin_to_universal,
+    transition_universal_to_plugin,
+)
+from repo_skill_catalog import SkillCatalog, load_repo_skill_catalog
+from skill_discovery_profiles import (
+    DISCOVERY_PROFILE_CHOICES,
+    DiscoveryProfile,
+    RefreshProfileOptions,
+    ensure_plugin_profile_covers_catalog,
+    parse_discovery_profile,
+    validate_refresh_profile,
+)
+from sync_agents_skills import (
+    managed_destination,
+    preflight_layer,
+    remove_managed_layer,
+    sync_layer,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +55,7 @@ MARKETPLACE_FILE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 INSTALL_MANIFEST_FILE = REPO_ROOT / ".agents" / "plugins" / "install-manifest.json"
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 DEFAULT_VENV = CODEX_HOME / "venvs" / "my-codex"
+DEFAULT_AGENTS_SKILLS_ROOT = Path.home() / ".agents" / "skills"
 MACOS_APPLICATION_DIRS = (Path("/Applications"), Path.home() / "Applications")
 
 
@@ -71,7 +106,7 @@ def codex_extension_platform_dir() -> str | None:
     if sys.platform == "win32":
         system = "windows"
     elif sys.platform == "darwin":
-        system = "darwin"
+        system = "macos"
     elif sys.platform.startswith("linux"):
         system = "linux"
     else:
@@ -235,6 +270,29 @@ def codex_version(codex: str, *, env: dict[str, str]) -> str:
     return (result.stdout or result.stderr).strip() or "unknown"
 
 
+def read_codex_plugin_rows(
+    codex: str,
+    *,
+    env: dict[str, str],
+) -> dict[tuple[str, str], PluginListRow]:
+    command = [codex, "plugin", "list"]
+    try:
+        result = subprocess.run(command, env=env, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise SystemExit(f"command not found: {command[0]}") from exc
+    except PermissionError as exc:
+        raise SystemExit(f"command not executable: {command[0]}: {exc}") from exc
+    if result.returncode != 0:
+        output = (result.stderr or result.stdout).strip()
+        raise SystemExit(
+            f"failed to inspect active discovery state with `{command_text(command)}`: {output}"
+        )
+    try:
+        return codex_plugin_rows(result.stdout)
+    except ValueError as exc:
+        raise SystemExit(f"failed to parse `{command_text(command)}` output: {exc}") from exc
+
+
 def require_codex_subcommand(codex: str, label: str, args: list[str], *, env: dict[str, str]) -> None:
     command = [codex, *args, "--help"]
     try:
@@ -260,10 +318,21 @@ def require_codex_subcommand(codex: str, label: str, args: list[str], *, env: di
     )
 
 
-def require_codex_plugin_commands(codex: str, *, env: dict[str, str], require_remove: bool = False) -> None:
-    require_codex_subcommand(codex, "plugin marketplace add", ["plugin", "marketplace", "add"], env=env)
-    require_codex_subcommand(codex, "plugin add", ["plugin", "add"], env=env)
-    require_codex_subcommand(codex, "plugin list", ["plugin", "list"], env=env)
+def require_codex_plugin_commands(
+    codex: str,
+    *,
+    env: dict[str, str],
+    require_marketplace: bool = True,
+    require_add: bool = True,
+    require_list: bool = True,
+    require_remove: bool = False,
+) -> None:
+    if require_marketplace:
+        require_codex_subcommand(codex, "plugin marketplace add", ["plugin", "marketplace", "add"], env=env)
+    if require_add:
+        require_codex_subcommand(codex, "plugin add", ["plugin", "add"], env=env)
+    if require_list:
+        require_codex_subcommand(codex, "plugin list", ["plugin", "list"], env=env)
     if require_remove:
         require_codex_subcommand(codex, "plugin remove", ["plugin", "remove"], env=env)
 
@@ -273,16 +342,6 @@ def run_agent_sync(*, codex_home: Path, env: dict[str, str], dry_run: bool) -> N
     if not sync_script.is_file():
         raise SystemExit(f"agent sync script does not exist: {sync_script}")
     command = [sys.executable, str(sync_script), "--codex-home", str(codex_home), "--prune"]
-    if dry_run:
-        command.append("--dry-run")
-    run(command, env=env, dry_run=False)
-
-
-def run_agents_skills_sync(*, env: dict[str, str], dry_run: bool) -> None:
-    sync_script = REPO_ROOT / "scripts" / "sync_agents_skills.py"
-    if not sync_script.is_file():
-        raise SystemExit(f"agents skills sync script does not exist: {sync_script}")
-    command = [sys.executable, str(sync_script), "--prune"]
     if dry_run:
         command.append("--dry-run")
     run(command, env=env, dry_run=False)
@@ -308,23 +367,6 @@ def load_json_object(path: Path, *, label: str) -> dict:
     if not isinstance(data, dict):
         raise SystemExit(f"{label} file must contain a JSON object: {path}")
     return data
-
-
-def marketplace_plugin_names(marketplace_file: Path = MARKETPLACE_FILE) -> set[str]:
-    data = load_json_object(marketplace_file, label="marketplace")
-    plugins = data.get("plugins")
-    if not isinstance(plugins, list):
-        raise SystemExit(f"marketplace plugins field is not a list: {marketplace_file}")
-
-    names: set[str] = set()
-    for index, plugin in enumerate(plugins):
-        if not isinstance(plugin, dict):
-            raise SystemExit(f"marketplace plugin entry #{index + 1} is not an object: {marketplace_file}")
-        name = plugin.get("name")
-        if not isinstance(name, str) or not name.strip():
-            raise SystemExit(f"marketplace plugin entry #{index + 1} has no valid name: {marketplace_file}")
-        names.add(name)
-    return names
 
 
 def load_install_manifest(manifest_file: Path = INSTALL_MANIFEST_FILE) -> dict:
@@ -353,7 +395,10 @@ def load_install_manifest(manifest_file: Path = INSTALL_MANIFEST_FILE) -> dict:
 
 
 def ensure_plugins_in_marketplace(plugin_names: list[str], *, marketplace_file: Path = MARKETPLACE_FILE) -> None:
-    present = marketplace_plugin_names(marketplace_file)
+    try:
+        present = marketplace_plugin_names(marketplace_file)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     missing = sorted(set(plugin_names) - present)
     if missing:
         raise SystemExit(
@@ -427,18 +472,456 @@ def selected_plugins(
     return selectors
 
 
-def configured_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
+def configured_plugin_settings(
+    codex_home: Path,
+) -> dict[tuple[str, str], dict[str, object]]:
     config_path = codex_home / "config.toml"
     if not config_path.is_file():
-        return set()
+        return {}
+    try:
+        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise SystemExit(f"Codex config is not valid readable TOML: {config_path}: {exc}") from exc
+    plugins = payload.get("plugins", {})
+    if not isinstance(plugins, dict):
+        raise SystemExit(f"Codex config plugins table must be a mapping: {config_path}")
+    selectors: dict[tuple[str, str], dict[str, object]] = {}
+    for raw_selector, settings in plugins.items():
+        if not isinstance(raw_selector, str) or not isinstance(settings, dict):
+            raise SystemExit(f"Codex config plugin entry is malformed: {raw_selector!r}: {config_path}")
+        plugin_name, separator, marketplace = raw_selector.rpartition("@")
+        if not separator or not plugin_name or not marketplace:
+            raise SystemExit(f"Codex config plugin selector is malformed: {raw_selector!r}: {config_path}")
+        selectors[(marketplace, plugin_name)] = settings
+    return selectors
 
-    pattern = re.compile(r'^\[plugins\."([^"]+)@([^"]+)"\]\s*$')
-    names: set[str] = set()
-    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        match = pattern.match(line.strip())
-        if match and match.group(2) == marketplace_name:
-            names.add(match.group(1))
-    return names
+
+def configured_plugin_selectors(codex_home: Path) -> set[tuple[str, str]]:
+    return set(configured_plugin_settings(codex_home))
+
+
+def enabled_configured_plugin_selectors(codex_home: Path) -> set[tuple[str, str]]:
+    """Return plugin selectors explicitly enabled in Codex config."""
+
+    selectors: set[tuple[str, str]] = set()
+    for selector, settings in configured_plugin_settings(codex_home).items():
+        enabled = settings.get("enabled", False)
+        if not isinstance(enabled, bool):
+            marketplace, plugin_name = selector
+            raise SystemExit(
+                "Codex config plugin enabled field must be boolean: "
+                f"{plugin_name}@{marketplace}"
+            )
+        if enabled:
+            selectors.add(selector)
+    return selectors
+
+
+def configured_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
+    return {
+        plugin_name
+        for marketplace, plugin_name in configured_plugin_selectors(codex_home)
+        if marketplace == marketplace_name
+    }
+
+
+def universal_layer_active(catalog: SkillCatalog, *, target_root: Path) -> bool:
+    if not target_root.is_dir():
+        return False
+    return any(
+        target.is_symlink() and managed_destination(target, catalog) is not None
+        for target in target_root.iterdir()
+    )
+
+
+def _enabled_profile_plugins(
+    catalog: SkillCatalog,
+    *,
+    codex: str,
+    marketplace_name: str,
+    env: dict[str, str],
+) -> set[str]:
+    selectors = _enabled_skill_plugin_selectors(
+        catalog,
+        codex=codex,
+        marketplace_name=marketplace_name,
+        env=env,
+    )
+    alternate = sorted(
+        f"{plugin_name}@{marketplace}"
+        for marketplace, plugin_name in selectors
+        if marketplace != marketplace_name
+    )
+    if alternate:
+        raise SystemExit(
+            "canonical skill plugins are enabled through another marketplace: "
+            + ", ".join(alternate)
+        )
+    return {
+        plugin_name
+        for marketplace, plugin_name in selectors
+        if marketplace == marketplace_name
+    }
+
+
+def _enabled_skill_plugin_selectors(
+    catalog: SkillCatalog,
+    *,
+    codex: str,
+    marketplace_name: str,
+    env: dict[str, str],
+) -> set[tuple[str, str]]:
+    rows = read_codex_plugin_rows(codex, env=env)
+    expected = set(catalog.plugin_names)
+    enabled = {
+        (marketplace, plugin_name)
+        for (marketplace, plugin_name), row in rows.items()
+        if row.status == "installed, enabled"
+    }
+    unclassified = sorted(
+        plugin_name
+        for marketplace, plugin_name in enabled
+        if marketplace == marketplace_name and plugin_name not in expected
+    )
+    if unclassified:
+        raise SystemExit(
+            "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
+            + ", ".join(unclassified)
+        )
+    return {
+        (marketplace, plugin_name)
+        for marketplace, plugin_name in enabled
+        if plugin_name in expected
+    }
+
+
+def apply_universal_discovery_profile(
+    catalog: SkillCatalog,
+    *,
+    codex: str | None,
+    codex_home: Path,
+    marketplace_name: str,
+    target_root: Path,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    expected = set(catalog.plugin_names)
+    configured = enabled_configured_plugin_selectors(codex_home)
+    discovery_configured = {
+        (marketplace, plugin_name)
+        for marketplace, plugin_name in configured
+        if plugin_name in expected or marketplace == marketplace_name
+    }
+    enabled_before: set[tuple[str, str]]
+    if discovery_configured:
+        if codex is None:
+            raise SystemExit("Codex CLI is required to inspect configured skills-bearing plugins")
+        enabled_before = _enabled_skill_plugin_selectors(
+            catalog,
+            codex=codex,
+            marketplace_name=marketplace_name,
+            env=env,
+        )
+        missing_from_cli = sorted(discovery_configured - enabled_before)
+        if missing_from_cli:
+            raise SystemExit(
+                "Codex config and `codex plugin list` disagree about enabled discovery plugins: "
+                + ", ".join(
+                    f"{plugin_name}@{marketplace}"
+                    for marketplace, plugin_name in missing_from_cli
+                )
+            )
+    else:
+        enabled_before = set()
+    selectors = [
+        f"{plugin_name}@{marketplace}"
+        for marketplace, plugin_name in sorted(enabled_before)
+    ]
+    if selectors and codex is None:  # defensive; configured state above already resolves this
+        raise SystemExit("Codex CLI is required to deactivate configured skills-bearing plugins")
+
+    def current_enabled() -> set[tuple[str, str]]:
+        if codex is None:
+            return set()
+        return _enabled_skill_plugin_selectors(
+            catalog,
+            codex=codex,
+            marketplace_name=marketplace_name,
+            env=env,
+        )
+
+    def verify_plugins_inactive() -> None:
+        if dry_run:
+            return
+        remaining = current_enabled()
+        if remaining:
+            raise SystemExit(
+                "skills-bearing plugin path remains enabled after deactivation: "
+                + ", ".join(
+                    f"{plugin_name}@{marketplace}"
+                    for marketplace, plugin_name in sorted(remaining)
+                )
+            )
+
+    def verify_universal() -> None:
+        if dry_run:
+            return
+        require_profile_closure(
+            "universal",
+            universal_profile_issues(
+                catalog,
+                target_root=target_root,
+                enabled_plugin_names={name for _, name in current_enabled()},
+            ),
+        )
+
+    def verify_plugin() -> None:
+        if dry_run:
+            return
+        restored = current_enabled()
+        if restored != enabled_before or universal_layer_active(catalog, target_root=target_root):
+            raise SystemExit(
+                "plugin rollback did not restore the prior active path: "
+                f"expected enabled {sorted(enabled_before)}, found {sorted(restored)}"
+            )
+
+    def restore_plugin(selector: str) -> None:
+        plugin_name, _, marketplace = selector.partition("@")
+        if not dry_run and (marketplace, plugin_name) in current_enabled():
+            return
+        run(
+            [str(codex), "plugin", "add", selector],
+            env=env,
+            dry_run=dry_run,
+        )
+
+    runtime = PluginToUniversalRuntime(
+        preflight_universal=lambda: preflight_layer(catalog, target_root=target_root),
+        activate_universal=lambda: sync_layer(
+            catalog,
+            target_root=target_root,
+            dry_run=dry_run,
+            prune=True,
+        ),
+        deactivate_universal=lambda: remove_managed_layer(
+            catalog,
+            target_root=target_root,
+            dry_run=dry_run,
+        ),
+        verify_universal=verify_universal,
+        activate_plugin=restore_plugin,
+        deactivate_plugin=lambda selector: run(
+            [str(codex), "plugin", "remove", selector],
+            env=env,
+            dry_run=dry_run,
+        ),
+        verify_plugin=verify_plugin,
+        verify_plugins_inactive=verify_plugins_inactive,
+    )
+    transition_plugin_to_universal(runtime, selectors)
+
+
+def apply_plugin_discovery_profile(
+    catalog: SkillCatalog,
+    *,
+    codex: str,
+    codex_home: Path,
+    marketplace_name: str,
+    target_root: Path,
+    requested_plugins: list[str] | None,
+    env: dict[str, str],
+    dry_run: bool,
+) -> None:
+    marketplace_file = catalog.repo_root / ".agents" / "plugins" / "marketplace.json"
+    manifest_file = catalog.repo_root / ".agents" / "plugins" / "install-manifest.json"
+    all_selectors = selected_plugins(
+        None,
+        marketplace_name,
+        action="install",
+        manifest_file=manifest_file,
+        marketplace_file=marketplace_file,
+    )
+    ensure_plugin_profile_covers_catalog(
+        catalog,
+        all_selectors,
+        marketplace_name=marketplace_name,
+    )
+    try:
+        marketplace_identity, plugin_sources = marketplace_plugin_sources(catalog.repo_root)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    if marketplace_identity != marketplace_name:
+        raise SystemExit(
+            f"marketplace identity mismatch: expected {marketplace_name!r}, found {marketplace_identity!r}"
+        )
+    require_profile_closure(
+        "plugin package preflight",
+        [
+            *plugin_package_issues(catalog, plugin_sources=plugin_sources),
+            *plugin_cache_preflight_issues(
+                catalog,
+                codex_home=codex_home,
+                marketplace_name=marketplace_name,
+            ),
+        ],
+    )
+
+    selected = selected_plugins(
+        requested_plugins,
+        marketplace_name,
+        action="install",
+        manifest_file=manifest_file,
+        marketplace_file=marketplace_file,
+    )
+    expected_names = set(catalog.plugin_names)
+    invalid_selected = sorted(
+        selector
+        for selector in selected
+        if selector.partition("@")[2] != marketplace_name
+        or selector.partition("@")[0] not in expected_names
+    )
+    if invalid_selected:
+        raise SystemExit(
+            "--plugin selectors must name canonical skills-bearing packages in the selected marketplace: "
+            + ", ".join(invalid_selected)
+        )
+    preflight_layer(catalog, target_root=target_root)
+    enabled_before = _enabled_profile_plugins(
+        catalog,
+        codex=codex,
+        marketplace_name=marketplace_name,
+        env=env,
+    )
+    universal_active = universal_layer_active(catalog, target_root=target_root)
+    if universal_active and enabled_before:
+        raise SystemExit("universal and plugin discovery are already active together; refusing transition")
+    if universal_active and requested_plugins is not None:
+        raise SystemExit("--plugin cannot narrow a universal-to-plugin profile transition")
+    if not universal_active and requested_plugins is not None and enabled_before != expected_names:
+        raise SystemExit(
+            "--plugin cannot repair an incomplete plugin profile; rerun without package narrowing"
+        )
+    transition_selectors = all_selectors if universal_active else selected
+
+    def current_rows() -> dict[tuple[str, str], PluginListRow]:
+        return read_codex_plugin_rows(codex, env=env)
+
+    def current_enabled() -> set[str]:
+        rows = current_rows()
+        enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
+        unclassified = sorted(enabled - expected_names)
+        if unclassified:
+            raise SystemExit(
+                "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
+                + ", ".join(unclassified)
+            )
+        return enabled
+
+    def preflight_plugin() -> None:
+        preflight_layer(catalog, target_root=target_root)
+        require_profile_closure(
+            "plugin package preflight",
+            [
+                *plugin_package_issues(catalog, plugin_sources=plugin_sources),
+                *plugin_cache_preflight_issues(
+                    catalog,
+                    codex_home=codex_home,
+                    marketplace_name=marketplace_name,
+                ),
+            ],
+        )
+
+    def verify_plugin() -> None:
+        if dry_run:
+            return
+        require_profile_closure(
+            "plugin",
+            plugin_installation_issues(
+                catalog,
+                marketplace_name=marketplace_name,
+                target_root=target_root,
+                codex_home=codex_home,
+                rows=current_rows(),
+                plugin_sources=plugin_sources,
+            ),
+        )
+
+    def verify_universal() -> None:
+        if dry_run:
+            return
+        require_profile_closure(
+            "universal rollback",
+            universal_profile_issues(
+                catalog,
+                target_root=target_root,
+                enabled_plugin_names=current_enabled(),
+            ),
+        )
+
+    def deactivate_plugin(selector: str) -> None:
+        plugin_name, _, selector_marketplace = selector.partition("@")
+        if not dry_run:
+            row = current_rows().get((selector_marketplace, plugin_name))
+            configured = (
+                selector_marketplace,
+                plugin_name,
+            ) in configured_plugin_selectors(codex_home)
+            if (row is None or row.status == "not installed") and not configured:
+                return
+        run(
+            [codex, "plugin", "remove", selector],
+            env=env,
+            dry_run=dry_run,
+        )
+
+    runtime = UniversalToPluginRuntime(
+        activate_universal=lambda: sync_layer(
+            catalog,
+            target_root=target_root,
+            dry_run=dry_run,
+            prune=True,
+        ),
+        deactivate_universal=lambda: remove_managed_layer(
+            catalog,
+            target_root=target_root,
+            dry_run=dry_run,
+        ),
+        verify_universal=verify_universal,
+        preflight_plugin=preflight_plugin,
+        activate_plugin=lambda selector: run(
+            [codex, "plugin", "add", selector],
+            env=env,
+            dry_run=dry_run,
+        ),
+        deactivate_plugin=deactivate_plugin,
+        verify_plugin=verify_plugin,
+    )
+    if universal_active:
+        transition_universal_to_plugin(runtime, transition_selectors)
+        return
+
+    attempted_new: list[str] = []
+    try:
+        for selector in transition_selectors:
+            if selector.partition("@")[0] not in enabled_before:
+                attempted_new.append(selector)
+            runtime.activate_plugin(selector)
+        verify_plugin()
+    except (Exception, SystemExit) as exc:
+        try:
+            for selector in reversed(attempted_new):
+                deactivate_plugin(selector)
+            restored = current_enabled()
+            if restored != enabled_before:
+                raise SystemExit(
+                    "plugin refresh rollback did not restore the prior enabled set: "
+                    f"expected {sorted(enabled_before)}, found {sorted(restored)}"
+                )
+        except (Exception, SystemExit) as rollback_exc:
+            raise SystemExit(
+                f"plugin profile activation failed: {exc}; rollback failed: {rollback_exc}"
+            ) from exc
+        raise
 
 
 def cached_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]:
@@ -824,6 +1307,12 @@ def main() -> None:
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
     parser.add_argument(
+        "--discovery-profile",
+        required=True,
+        choices=DISCOVERY_PROFILE_CHOICES,
+        help="Required skill discovery profile: universal or plugin.",
+    )
+    parser.add_argument(
         "--codex",
         help="Explicit Codex CLI executable. Defaults to CODEX_BIN, PATH, then managed install fallbacks.",
     )
@@ -847,33 +1336,77 @@ def main() -> None:
         help="Plugin name or PLUGIN@MARKETPLACE selector to refresh. May be repeated.",
     )
     parser.add_argument("--skip-bootstrap", action="store_true", help="Do not refresh the shared tooling venv.")
-    parser.add_argument("--skip-marketplace", action="store_true", help="Do not refresh marketplace config/snapshot.")
-    parser.add_argument("--skip-plugins", action="store_true", help="Do not run `codex plugin add`.")
+    parser.add_argument("--skip-marketplace", action="store_true", help="Deprecated profile bypass; rejected.")
+    parser.add_argument("--skip-plugins", action="store_true", help="Deprecated profile bypass; rejected.")
     parser.add_argument(
         "--prune-plugins",
         action="store_true",
         help="Remove installed or cached marketplace plugins that are not selected for install by the manifest.",
     )
     parser.add_argument("--skip-agents", action="store_true", help="Do not sync the subagent support file into $CODEX_HOME/agents.")
-    parser.add_argument("--skip-agents-skills", action="store_true", help="Do not sync the ~/.agents/skills exposure layer.")
+    parser.add_argument("--skip-agents-skills", action="store_true", help="Deprecated profile bypass; rejected.")
+    parser.add_argument(
+        "--agents-skills-root",
+        default=str(DEFAULT_AGENTS_SKILLS_ROOT),
+        help="Universal skill projection root (default: ~/.agents/skills).",
+    )
     parser.add_argument("--skip-hooks", action="store_true", help="Do not refresh Watcher skill hooks.")
     parser.add_argument("--skip-doctor", action="store_true", help="Do not run Watcher skill doctor after refresh.")
     args = parser.parse_args()
 
-    if not MARKETPLACE_FILE.is_file():
-        raise SystemExit(f"marketplace file does not exist: {MARKETPLACE_FILE}")
+    profile = parse_discovery_profile(args.discovery_profile)
+    validate_refresh_profile(
+        RefreshProfileOptions(
+            profile=profile,
+            skip_marketplace=args.skip_marketplace,
+            skip_plugins=args.skip_plugins,
+            skip_agents_skills=args.skip_agents_skills,
+            prune_plugins=args.prune_plugins,
+            selected_plugins=tuple(args.plugin or ()),
+        )
+    )
+    catalog = load_repo_skill_catalog()
 
     codex_home = expand_path(args.codex_home)
+    agents_skills_root = expand_path(args.agents_skills_root)
     venv_path = expand_path(args.venv)
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
-    codex = resolve_codex_executable(args.codex, codex_home=codex_home)
-    require_codex_plugin_commands(codex, env=env, require_remove=args.prune_plugins)
+    codex: str | None = None
+    configured_profile_plugins = {
+        (marketplace, plugin_name)
+        for marketplace, plugin_name in enabled_configured_plugin_selectors(codex_home)
+        if plugin_name in set(catalog.plugin_names) or marketplace == args.marketplace_name
+    }
+    if profile is DiscoveryProfile.PLUGIN:
+        codex = resolve_codex_executable(args.codex, codex_home=codex_home)
+        require_codex_plugin_commands(
+            codex,
+            env=env,
+            require_marketplace=True,
+            require_add=True,
+            require_list=True,
+            require_remove=args.prune_plugins or universal_layer_active(
+                catalog,
+                target_root=agents_skills_root,
+            ),
+        )
+    elif configured_profile_plugins:
+        codex = resolve_codex_executable(args.codex, codex_home=codex_home)
+        require_codex_plugin_commands(
+            codex,
+            env=env,
+            require_marketplace=False,
+            require_add=True,
+            require_list=True,
+            require_remove=True,
+        )
 
     if not args.skip_bootstrap:
         run_tooling_bootstrap(venv_path=venv_path, env=env, dry_run=args.dry_run)
 
-    if not args.skip_marketplace:
+    if profile is DiscoveryProfile.PLUGIN:
+        assert codex is not None
         ensure_marketplace_source(
             codex,
             codex_home=codex_home,
@@ -885,26 +1418,47 @@ def main() -> None:
             env=env,
             dry_run=args.dry_run,
         )
-
-    if not args.skip_plugins:
-        for plugin in selected_plugins(args.plugin, args.marketplace_name, action="install"):
-            run([codex, "plugin", "add", plugin], env=env, dry_run=args.dry_run)
-
-    if args.prune_plugins:
-        prune_stale_plugins(
-            codex,
+        if args.prune_plugins:
+            _enabled_profile_plugins(
+                catalog,
+                codex=codex,
+                marketplace_name=args.marketplace_name,
+                env=env,
+            )
+            prune_stale_plugins(
+                codex,
+                codex_home=codex_home,
+                marketplace_name=args.marketplace_name,
+                desired_plugin_names=default_plugin_names(
+                    "install",
+                    marketplace_name=args.marketplace_name,
+                ),
+                env=env,
+                dry_run=args.dry_run,
+            )
+        apply_plugin_discovery_profile(
+            catalog,
+            codex=codex,
             codex_home=codex_home,
             marketplace_name=args.marketplace_name,
-            desired_plugin_names=default_plugin_names("install", marketplace_name=args.marketplace_name),
+            target_root=agents_skills_root,
+            requested_plugins=args.plugin,
+            env=env,
+            dry_run=args.dry_run,
+        )
+    else:
+        apply_universal_discovery_profile(
+            catalog,
+            codex=codex,
+            codex_home=codex_home,
+            marketplace_name=args.marketplace_name,
+            target_root=agents_skills_root,
             env=env,
             dry_run=args.dry_run,
         )
 
     if not args.skip_agents:
         run_agent_sync(codex_home=codex_home, env=env, dry_run=args.dry_run)
-
-    if not args.skip_agents_skills:
-        run_agents_skills_sync(env=env, dry_run=args.dry_run)
 
     watcher_cli = REPO_ROOT / "plugins" / "watcher" / "scripts" / "watcher"
     if not args.skip_hooks:
@@ -926,9 +1480,9 @@ def main() -> None:
         run([str(tooling_python), str(watcher_cli), "skill", "doctor"], env=env, dry_run=args.dry_run)
 
     if args.dry_run:
-        print("dry-run only; no changes written")
+        print(f"dry-run only; no changes written (discovery profile: {profile.value})")
     else:
-        print("refresh complete")
+        print(f"refresh complete (discovery profile: {profile.value})")
         if not args.skip_hooks:
             print("open /hooks in Codex to review and trust refreshed Watcher skill command hooks")
 
