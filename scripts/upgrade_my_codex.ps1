@@ -386,6 +386,25 @@ if ($PrunePlugins -and -not $DryRun) {
     }
 }
 
+$bootstrapArgs = @(
+    "scripts\bootstrap_tooling_env.py",
+    "--venv", $venvPath
+)
+if ($DryRun) {
+    $bootstrapArgs += "--dry-run"
+}
+Invoke-Checked `
+    -Exe $BootstrapPython `
+    -Arguments $bootstrapArgs `
+    -Label "my-codex tooling bootstrap"
+
+if (-not (Test-Path -LiteralPath $env:MY_CODEX_PYTHON -PathType Leaf)) {
+    if ($DryRun) {
+        throw "tooling Python is unavailable after dry-run bootstrap: $env:MY_CODEX_PYTHON. Run the wrapper without -DryRun once to create the tooling environment."
+    }
+    throw "tooling Python is unavailable after bootstrap: $env:MY_CODEX_PYTHON"
+}
+
 $refreshArgs = @(
     "scripts\refresh_my_codex.py",
     "--discovery-profile", $DiscoveryProfile,
@@ -394,7 +413,8 @@ $refreshArgs = @(
     "--python", $env:MY_CODEX_PYTHON,
     "--marketplace-name", $MarketplaceName,
     "--marketplace-source", $repoRoot,
-    "--git-ref", $GitRef
+    "--git-ref", $GitRef,
+    "--skip-bootstrap"
 )
 if ($CodexPath) {
     $refreshArgs += @("--codex", $CodexPath)
@@ -410,7 +430,7 @@ if ($PrunePlugins) {
 }
 
 Invoke-Checked `
-    -Exe $BootstrapPython `
+    -Exe $env:MY_CODEX_PYTHON `
     -Arguments $refreshArgs `
     -Label "my-codex refresh"
 
@@ -430,7 +450,7 @@ elseif (-not $SkipCheck) {
         $checkArgs += @("--codex", $CodexPath)
     }
     Invoke-Checked `
-        -Exe $BootstrapPython `
+        -Exe $env:MY_CODEX_PYTHON `
         -Arguments $checkArgs `
         -Label "my-codex closure check"
 }

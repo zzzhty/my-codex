@@ -192,53 +192,5 @@ class MarketplaceCatalogIdentityTests(unittest.TestCase):
             self.assertIn(expected, "\n".join(runner.messages))
 
 
-class PluginSelectionScopeTests(unittest.TestCase):
-    def test_filtered_checks_keep_full_manifest_scope_for_stale_detection(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            install_manifest = root / "install-manifest.json"
-            marketplace = root / "marketplace.json"
-            plugin_names = ("watcher", "workflow", "mattpocock-skills")
-            install_manifest.write_text(
-                json.dumps(
-                    {
-                        "schemaVersion": 1,
-                        "marketplace": "my-codex",
-                        "plugins": [
-                            {"name": name, "install": True, "check": True}
-                            for name in plugin_names
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            marketplace.write_text(
-                json.dumps(
-                    {
-                        "name": "my-codex",
-                        "plugins": [{"name": name} for name in plugin_names],
-                    }
-                ),
-                encoding="utf-8",
-            )
-
-            plugins_to_check, desired_plugins = check_my_codex.plugin_check_scopes(
-                ["watcher"],
-                "my-codex",
-                manifest_file=install_manifest,
-                marketplace_file=marketplace,
-            )
-
-        self.assertEqual(plugins_to_check, ["watcher@my-codex"])
-        self.assertEqual(
-            desired_plugins,
-            [
-                "watcher@my-codex",
-                "workflow@my-codex",
-                "mattpocock-skills@my-codex",
-            ],
-        )
-
-
 if __name__ == "__main__":
     unittest.main()

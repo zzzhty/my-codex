@@ -7,10 +7,10 @@ Usage: scripts/upgrade_my_codex.sh --discovery-profile universal|plugin [options
 
 Options:
   --discovery-profile PROFILE  Required skill discovery profile: universal or plugin.
-  --bootstrap-python PATH       Python used to run the helper scripts.
+  --bootstrap-python PATH       Base Python used to create or refresh the tooling venv.
   --codex PATH                  Explicit Codex CLI executable. Otherwise uses CODEX_BIN, PATH, then managed installs.
   --codex-home PATH             Codex home directory. Defaults to CODEX_HOME or ~/.codex.
-  --tooling-python PATH         Python installed into Codex hooks.
+  --tooling-python PATH         Tooling Python used for profile helpers and Codex hooks.
   --marketplace-name NAME       Marketplace name. Defaults to my-codex.
   --git-marketplace-source URL  Git marketplace source. Defaults to remote.origin.url.
   --git-ref REF                 Git ref for first-time Git marketplace add. Defaults to main.
@@ -453,6 +453,21 @@ if [ "$prune_plugins" -eq 1 ] && [ "$dry_run" -eq 0 ]; then
     fi
 fi
 
+set -- "$repo_root/scripts/bootstrap_tooling_env.py" --venv "$venv_path"
+if [ "$dry_run" -eq 1 ]; then
+    set -- "$@" --dry-run
+fi
+echo "+ $bootstrap_python $*"
+"$bootstrap_python" "$@"
+
+if [ ! -f "$MY_CODEX_PYTHON" ]; then
+    echo "tooling Python is unavailable after bootstrap: $MY_CODEX_PYTHON" >&2
+    if [ "$dry_run" -eq 1 ]; then
+        echo "Run the wrapper without --dry-run once to create the tooling environment." >&2
+    fi
+    exit 1
+fi
+
 set -- "$repo_root/scripts/refresh_my_codex.py" \
     --discovery-profile "$discovery_profile" \
     --codex-home "$CODEX_HOME" \
@@ -460,7 +475,8 @@ set -- "$repo_root/scripts/refresh_my_codex.py" \
     --python "$MY_CODEX_PYTHON" \
     --marketplace-name "$marketplace_name" \
     --marketplace-source "$repo_root" \
-    --git-ref "$git_ref"
+    --git-ref "$git_ref" \
+    --skip-bootstrap
 
 if [ -n "$codex_path" ]; then
     set -- "$@" --codex "$codex_path"
@@ -476,8 +492,8 @@ if [ "$prune_plugins" -eq 1 ]; then
     set -- "$@" --prune-plugins
 fi
 
-echo "+ $bootstrap_python $*"
-"$bootstrap_python" "$@"
+echo "+ $MY_CODEX_PYTHON $*"
+"$MY_CODEX_PYTHON" "$@"
 
 if [ "$dry_run" -eq 1 ] && [ "$skip_check" -eq 0 ]; then
     echo "Dry run: skipping closure check because no local state was changed."
@@ -491,8 +507,8 @@ elif [ "$skip_check" -eq 0 ]; then
     if [ -n "$codex_path" ]; then
         set -- "$@" --codex "$codex_path"
     fi
-    echo "+ $bootstrap_python $*"
-    "$bootstrap_python" "$@"
+    echo "+ $MY_CODEX_PYTHON $*"
+    "$MY_CODEX_PYTHON" "$@"
 fi
 
 sync_agents_instructions

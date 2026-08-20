@@ -525,14 +525,6 @@ def configured_plugin_names(codex_home: Path, marketplace_name: str) -> set[str]
     }
 
 
-def canonical_plugin_selectors(
-    catalog: SkillCatalog,
-    *,
-    marketplace_name: str,
-) -> list[str]:
-    return [f"{name}@{marketplace_name}" for name in catalog.plugin_names]
-
-
 def universal_layer_active(catalog: SkillCatalog, *, target_root: Path) -> bool:
     if not target_root.is_dir():
         return False

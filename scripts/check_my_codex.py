@@ -20,8 +20,6 @@ from refresh_my_codex import (
     CODEX_HOME,
     DEFAULT_AGENTS_SKILLS_ROOT,
     DEFAULT_VENV,
-    INSTALL_MANIFEST_FILE,
-    MARKETPLACE_FILE,
     REPO_ROOT,
     build_env,
     cached_plugin_names,
@@ -39,6 +37,7 @@ from skill_discovery_profiles import (
     DISCOVERY_PROFILE_CHOICES,
     CheckProfileOptions,
     DiscoveryProfile,
+    ensure_plugin_profile_covers_catalog,
     parse_discovery_profile,
     validate_check_profile,
 )
@@ -56,30 +55,6 @@ def configure_output_streams() -> None:
         reconfigure = getattr(stream, "reconfigure", None)
         if callable(reconfigure):
             reconfigure(encoding="utf-8", errors="backslashreplace")
-
-
-def plugin_check_scopes(
-    raw_plugins: list[str] | None,
-    marketplace_name: str,
-    *,
-    manifest_file: Path = INSTALL_MANIFEST_FILE,
-    marketplace_file: Path = MARKETPLACE_FILE,
-) -> tuple[list[str], list[str]]:
-    plugins_to_check = selected_plugins(
-        raw_plugins,
-        marketplace_name,
-        action="check",
-        manifest_file=manifest_file,
-        marketplace_file=marketplace_file,
-    )
-    desired_plugins = selected_plugins(
-        None,
-        marketplace_name,
-        action="check",
-        manifest_file=manifest_file,
-        marketplace_file=marketplace_file,
-    )
-    return plugins_to_check, desired_plugins
 
 
 def decode_subprocess_output(raw: bytes | str | None) -> str:
@@ -513,11 +488,17 @@ def main() -> None:
     runner.check_tooling_python(tooling_python, env=env)
     if profile is DiscoveryProfile.PLUGIN:
         assert codex is not None
-        plugins_to_check, desired_plugins = plugin_check_scopes(
+        desired_plugins = selected_plugins(
             None,
             args.marketplace_name,
+            action="check",
         )
-        plugin_sources = runner.check_marketplace_file(plugins_to_check)
+        ensure_plugin_profile_covers_catalog(
+            catalog,
+            desired_plugins,
+            marketplace_name=args.marketplace_name,
+        )
+        plugin_sources = runner.check_marketplace_file(desired_plugins)
         rows = runner.read_plugin_rows(codex, env=env)
         if plugin_sources is not None:
             runner.check_plugin_packages(catalog, plugin_sources=plugin_sources)

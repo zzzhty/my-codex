@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -160,6 +161,94 @@ class PluginInstallationClosureTests(unittest.TestCase):
         report = "\n".join(issues)
         self.assertIn("installed version mismatch", report)
         self.assertIn("expected exactly one inspectable cache version", report)
+
+    def test_manifest_schema_and_identity_failures_are_reported_by_shared_closure(self) -> None:
+        cases = (
+            (
+                "source-json",
+                {"source_text": "{not-json\n"},
+                "source manifest is not valid readable JSON",
+            ),
+            (
+                "source-name",
+                {"source_name": "other"},
+                "source manifest name mismatch",
+            ),
+            (
+                "cache-json",
+                {"cache_text": "{not-json\n"},
+                "cache manifest is not valid readable JSON",
+            ),
+            (
+                "cache-name",
+                {"cache_name": "other"},
+                "found ('other', '2.0.0')",
+            ),
+            (
+                "cache-version",
+                {"cache_version": "9.9.9"},
+                "found ('alpha', '9.9.9')",
+            ),
+        )
+        for label, overrides, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                repo = root / "repo"
+                source = write_skill(repo, "alpha", "one")
+                source_manifest = source.parents[1] / ".codex-plugin" / "plugin.json"
+                source_manifest.parent.mkdir(parents=True, exist_ok=True)
+                source_manifest.write_text(
+                    str(overrides.get("source_text"))
+                    if "source_text" in overrides
+                    else json.dumps(
+                        {
+                            "name": overrides.get("source_name", "alpha"),
+                            "version": "2.0.0",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                catalog = load_repo_skill_catalog(repo)
+                version_root = (
+                    root / "codex" / "plugins" / "cache" / "test" / "alpha" / "2.0.0"
+                )
+                cache_manifest = version_root / ".codex-plugin" / "plugin.json"
+                cache_manifest.parent.mkdir(parents=True, exist_ok=True)
+                cache_manifest.write_text(
+                    str(overrides.get("cache_text"))
+                    if "cache_text" in overrides
+                    else json.dumps(
+                        {
+                            "name": overrides.get("cache_name", "alpha"),
+                            "version": overrides.get("cache_version", "2.0.0"),
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                cached_skill = version_root / "skills" / "one"
+                cached_skill.mkdir(parents=True)
+                cached_skill.joinpath("SKILL.md").write_text(
+                    "---\nname: one\ndescription: fixture\n---\n",
+                    encoding="utf-8",
+                )
+
+                issues = plugin_installation_issues(
+                    catalog,
+                    marketplace_name="test",
+                    target_root=root / "agents" / "skills",
+                    codex_home=root / "codex",
+                    rows={
+                        ("test", "alpha"): PluginListRow(
+                            "installed, enabled",
+                            "2.0.0",
+                        )
+                    },
+                    plugin_sources={"alpha": source.parents[1]},
+                )
+
+            self.assertIn(expected, "\n".join(issues))
 
 
 class CheckDiscoveryProfileCliTests(unittest.TestCase):
