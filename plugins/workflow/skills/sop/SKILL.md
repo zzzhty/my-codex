@@ -1,42 +1,25 @@
 ---
 name: sop
-description: Use when creating, updating, executing, validating, or reusing a Standard Operating Procedure for a repeatable manual, agent-executed, or automated workflow whose trigger, inputs, execution harness, permissions, ordered steps, outputs, validation, stop conditions, escalation, failure handling, and durable writeback are already known or can be made explicit.
+description: Create, run, or revise a reusable Standard Operating Procedure for a stable workflow with explicit inputs, ordered actions, outputs, validation, and stop or escalation boundaries.
 ---
 
 # SOP
 
-Use this skill when a repeated workflow should become a reusable standard operating procedure.
+Use this skill when a repeated workflow is stable enough to execute the same way again.
 
-Do not use it for exploratory planning, unresolved design, or long-running milestone execution. Use `prompt-strategy-loop` when prompt/rubric/agent-strategy behavior is not stable. Use `long-running-goal` when work needs ordered milestones, review gates, checkpoint evidence, and close/archive hygiene.
+Route unresolved design or prompt behavior to `prompt-strategy-loop`. Use `long-running-goal` when the work needs staged milestones, checkpoint evidence, or close/archive lifecycle.
 
-## Boundary
+## Suitability
 
-An SOP is appropriate only when these can be explicit:
+An SOP is ready to author when its trigger, inputs, ordered actions, outputs, validation, failure handling, stop conditions, and durable owner can be explicit. For agent-executed or automated procedures, also freeze the execution mode, orchestration, isolation, connector permissions, independent verification, escalation, and writeback. A manual SOP may mark those fields `Not applicable` with a reason.
 
-1. Stable trigger and required inputs.
-2. Ordered steps and expected outputs.
-3. Validation evidence.
-4. Stop conditions plus failure handling/escalation.
-5. Execution harness for agent-executed or automated procedures.
-6. Known owner or durable home.
+## Create Or Update
 
-If not, first produce a report, run planning, use `prompt-strategy-loop`, or create a long-running goal.
-
-Any prompt, rubric, evaluator instruction, or agent strategy that affects behavior must be named as an input, step asset, or validation artifact. For agent-executed or automated SOPs, explicitly state execution mode, orchestration, isolation, connector permissions, independent verification, human escalation, and durable writeback. For simple manual SOPs, write `Not applicable` with a reason.
-
-## Template And Location
-
-Use `templates/sop_template.md`. Copy it into the existing SOP/runbook/operations/workflow/plugin-doc area, replace all placeholders, then mark the SOP `Ready`. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
-
-Prefer locations in this order: user-specified path; existing `docs/sop/`, `docs/runbooks/`, `runbooks/`, `docs/workflows/`, or `docs/operations/`; plugin README or skill README when the SOP belongs to a plugin; otherwise `docs/sop/<sop-slug>.md`. Do not create a new SOP tree when an equivalent runbook/workflow directory exists.
-
-## Create
-
-1. Read current truth: `AGENTS.md`, README, relevant plugin README, runbook, script, automation memory, report, or prior failure evidence.
-2. Classify the SOP: manual, agent-executed, automated, report-only, validation, release/maintenance, or incident/failure.
-3. Copy the template, replace placeholders, and leave unverified commands marked as expected.
-4. Fill the execution harness; use `Not applicable` only with a reason.
-5. Add a reuse prompt naming SOP path, trigger, harness, expected output, mutation permission, and stop conditions.
+1. Read the current source of truth: instructions, README, runbook, script, automation state, prior SOP, and relevant failure evidence.
+2. Classify the procedure as manual, agent-executed, automated, report-only, validation, maintenance/release, or incident/failure.
+3. Copy `templates/sop_template.md` into the existing owning runbook, operations, workflow, plugin-doc, or SOP directory. Use `docs/sop/<sop-slug>.md` only when no owner already exists.
+4. Replace placeholders, keep unverified commands visibly marked as expected, and include a reuse prompt naming the SOP path, trigger, execution mode, mutation boundary, expected output, and stop conditions.
+5. When behavior changes, update the affected trigger, inputs, steps, validation, failure/stop, and harness fields as one contract. Use evidence-backed review through `prompt-strategy-loop` for prompts, rubrics, permissions, automation triggers, or verification rules.
 6. Validate:
 
 ```bash
@@ -46,25 +29,11 @@ python <skill-folder>/scripts/check_sop_links.py <sop-root-or-file>
 
 ## Execute
 
-When the user asks to run an SOP:
+1. Re-read the SOP and newest request; classify the requested mode as execute, update, explain, or dry-run.
+2. Follow the declared steps and permissions in order, using only available inputs. Keep report-only procedures non-mutating and treat a missing required input as a stop.
+3. Stop at the first declared stop condition or failed required validation. Record the evidence the SOP requires.
+4. Report outputs, commands, changed files or artifacts, validation, blockers, and residual risk.
 
-1. Re-read the SOP and newest user request.
-2. Classify the request as execute, update, explain, or dry-run.
-3. Follow steps in order.
-4. Stop at the first failed required validation or stop condition.
-5. Record requested evidence.
-6. Report outputs, commands, validation result, changed files, generated artifacts, unresolved risks, and blockers.
+## Completion
 
-Do not skip required steps, invent missing inputs, or convert report-only SOPs into mutation.
-
-## Update
-
-1. Re-read the SOP and source-of-truth files.
-2. Preserve verified commands unless new evidence replaces them.
-3. Update trigger, inputs, steps, validation, stop conditions, failure handling, and execution harness together when affected.
-4. Use evidence-backed review, usually via `prompt-strategy-loop`, before changing prompts, rubrics, agent strategies, connector permissions, automation triggers, or independent verification rules.
-5. Re-run ready/link checks and report what changed, why, and what evidence validates the new procedure.
-
-## Quality Bar
-
-A useful SOP must answer: trigger, inputs, working location, prompt/rubric/strategy inputs, harness boundaries, exact steps, allowed and forbidden actions, success validation, evidence to report, stop conditions, escalation path, and reuse prompt.
+A reusable SOP identifies its trigger, inputs, working location, execution harness, allowed actions, ordered steps, outputs, validation evidence, stop and escalation boundary, durable writeback, and reuse prompt. The template and readiness checker are authoritative for the field-level contract.
