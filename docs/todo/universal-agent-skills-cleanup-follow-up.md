@@ -6,7 +6,7 @@ This design note preserves the cleanup boundary removed from the active Universa
 
 ## Activation Trigger
 
-Create a separate cleanup long-running goal only after the migration goal's M5 cutover is `Done` and the universal profile has completed at least five successful sessions across at least three working days, including bare callable invocation, implicit routing, Watcher core, and repo-owned hook checks.
+Create a separate cleanup long-running goal only after the migration goal's M5 cutover is `Done` and the universal profile has completed at least five successful sessions across at least three working days, including exact qualified Codex invocation identities, bare catalog-name mapping and request resolution, implicit routing, Watcher core, and repo-owned hook checks.
 
 ## Required Starting Evidence
 

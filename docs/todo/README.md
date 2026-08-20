@@ -13,7 +13,7 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-- [Universal Agent Skills Migration](universal-agent-skills-migration.md): Blocked long-running goal; candidate universal loading found all canonical skills exactly once but retained plugin-qualified invocation identities, so the current Mac was safely rolled back to the healthy plugin profile pending formal goal evolution.
+- [Universal Agent Skills Migration](universal-agent-skills-migration.md): In-progress long-running goal; M5 now accepts Codex-native plugin-qualified invocation identities while preserving bare catalog-name mapping, universal source locators, exact routing, and the healthy plugin rollback profile. Live retry remains paused until the evolved cutover contract is reviewed and explicitly resumed.
 
 No closed long-running goal index is currently tracked.
 

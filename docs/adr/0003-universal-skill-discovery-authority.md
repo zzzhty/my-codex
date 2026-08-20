@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0004
+---
+
 # Make Git the universal skill discovery authority
 
 Repository `SKILL.md` content is the only canonical skill source. Each runtime must explicitly select one mutually exclusive discovery profile: `universal` exposes bare frontmatter callable identities through repository-owned user-level links and hooks without an adapter, while `plugin` packages the same source as an optional compatibility and rollback distribution.

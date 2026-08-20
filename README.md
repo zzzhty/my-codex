@@ -16,16 +16,16 @@ The old `plugins/doc-watcher` and `plugins/skill-watcher` source trees were remo
 
 ## Skill Discovery Profiles
 
-`plugins/*/skills/*/SKILL.md` is the canonical callable-skill catalog. The frontmatter `name` is the callable identity even when a physical directory has a different name; marketplace metadata and plugin caches are projections, not catalog authority.
+`plugins/*/skills/*/SKILL.md` is the canonical skill catalog. The frontmatter `name` is the bare catalog name even when a physical directory has a different name; marketplace metadata and plugin caches are projections, not catalog authority. Current Codex exposes these plugin-owned skills through native qualified invocation identities such as `workflow:long-running-goal` in both supported profiles. A bare name may still be used as a prompt-level request reference when Codex resolves it to that qualified identity.
 
 Every refresh and closure check requires one explicit, mutually exclusive discovery profile:
 
-- `universal` exposes repository skill directories as `~/.agents/skills/<callable-name>` symlinks and requires all skills-bearing `my-codex` plugins to be disabled.
+- `universal` exposes repository skill directories as `~/.agents/skills/<catalog-name>` symlinks and requires all skills-bearing `my-codex` plugins to be disabled.
 - `plugin` installs and enables every skills-bearing package selected by `.agents/plugins/install-manifest.json` and requires the repository-owned universal links to be absent.
 
 Profile transitions preflight the replacement before removing the old active path and roll back when activation or closure fails. The universal projection manages only symlinks proven to target direct skill directories in this checkout, prunes only repository-owned stale links, preserves unrelated user skills, and fails instead of overwriting an unmanaged same-name entry. The unchanged `plugins/mattpocock-skills/skills/` mirror remains source-identical because projection links never rewrite its content.
 
-The optional plugin distribution has no copied build tree or separate skill catalog: each canonical `plugins/<name>` directory is the package input and build artifact. `.agents/plugins/install-manifest.json` schema v2 declares `discoveryProfile: "plugin"`; each source manifest must expose exactly `./skills/`, and its name, version, skill directories, and callable frontmatter identities are checked against the repository catalog before install. Marketplace packages remain `AVAILABLE`, not installed by default. Source-package validation is independent of the active runtime profile:
+The optional plugin distribution has no copied build tree or separate skill catalog: each canonical `plugins/<name>` directory is the package input and build artifact. `.agents/plugins/install-manifest.json` schema v2 declares `discoveryProfile: "plugin"`; each source manifest must expose exactly `./skills/`, and its name, version, skill directories, catalog names, and qualified Codex invocation identities are checked against the repository catalog before install. Marketplace packages remain `AVAILABLE`, not installed by default. Source-package validation is independent of the active runtime profile:
 
 ```bash
 PLUGIN_VALIDATOR="${PLUGIN_VALIDATOR:-${CODEX_HOME:-$HOME/.codex}/skills/.system/plugin-creator/scripts/validate_plugin.py}"
@@ -265,7 +265,7 @@ $ToolingPython = Join-Path $CodexHome "venvs\my-codex\Scripts\python.exe"
 # or: & $ToolingPython scripts\check_my_codex.py --discovery-profile plugin
 ```
 
-The check script verifies the shared tooling Python, selected discovery closure, Watcher skill hook schema, subagent support-file sync state, source plugin validation, and Watcher skill doctor. Universal closure verifies every frontmatter-derived link and the absence of enabled skills-bearing plugins without reading marketplace or cache state. Plugin closure verifies the exact marketplace/source package set, manifest `./skills/` projection, source package tree and identities, enabled CLI status and source version, exactly one cache version per package, cached callable identities, and the absence of universal links. The script is read-only for plugin installs, hooks, and support files. Use `--skip-agents` to skip the unrelated support-file sync check.
+The check script verifies the shared tooling Python, selected discovery closure, Watcher skill hook schema, subagent support-file sync state, source plugin validation, and Watcher skill doctor. Universal closure verifies every frontmatter-derived link and the absence of enabled skills-bearing plugins without reading marketplace or cache state. Plugin closure verifies the exact marketplace/source package set, manifest `./skills/` projection, source package tree and identities, enabled CLI status and source version, exactly one cache version per package, cached catalog names, and the absence of universal links. The script is read-only for plugin installs, hooks, and support files. Use `--skip-agents` to skip the unrelated support-file sync check.
 
 After the helper refreshes hooks, open `/hooks` in Codex and trust the refreshed Watcher skill command hook definitions. Codex skips non-managed command hooks until the exact hook definition is trusted.
 
@@ -295,7 +295,7 @@ The generated hook handlers observe:
 - `PostToolUse`
 - `Stop`
 
-`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default. The callable inventory comes only from the repository catalog under the explicit `--repo-root`; marketplace metadata, plugin manifests, plugin cache, and the runtime cache are not callable authorities. Repository `.codex-plugin/skill-watcher.json` files are non-callable attribution overlays for namespaced identities, roles, aliases, supporting relationships, logical groups, and legacy mappings. Missing repository source, catalog failures, unknown overlay schemas, and invalid references fail visibly.
+`SessionStart` refreshes `$CODEX_HOME/watcher/skill/skill-metadata-cache.json` and is not persisted by default. The skill inventory comes only from the repository catalog under the explicit `--repo-root`; marketplace metadata, plugin manifests, plugin cache, and the runtime cache are not catalog authorities. Repository `.codex-plugin/skill-watcher.json` files are non-callable attribution overlays for namespaced Watcher identities, roles, aliases, supporting relationships, logical groups, and legacy mappings. Missing repository source, catalog failures, unknown overlay schemas, and invalid references fail visibly.
 
 Expected command-hook schema:
 

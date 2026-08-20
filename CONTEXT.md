@@ -10,13 +10,25 @@ This context describes the language used for canonical skill source, discovery a
 The version-controlled repository content from which every discovery or distribution projection is derived.
 _Avoid_: plugin cache authority, marketplace authority, installed source
 
-**Callable Skill Identity**:
-The bare name declared by a skill's `SKILL.md` frontmatter and used consistently across discovery profiles.
-_Avoid_: plugin-qualified selector, Watcher identity, directory identity
+**Catalog Skill Name**:
+The bare name declared by a skill's `SKILL.md` frontmatter and used as the repository catalog key and universal projection basename.
+_Avoid_: callable identity, plugin-qualified identity, directory identity
+
+**Codex Invocation Identity**:
+The qualified identity that Codex exposes for an invocable skill and resolves consistently across supported discovery profiles.
+_Avoid_: catalog skill name, request reference, distribution package identity
+
+**Skill Request Reference**:
+A prompt-level name or explicit token used to request a skill; it may be bare and resolve to a qualified Codex invocation identity.
+_Avoid_: canonical runtime identity, distribution identity
 
 **Watcher Skill Identity**:
-A namespaced durable identifier used for Watcher attribution and historical interpretation, separate from callable and distribution identities.
-_Avoid_: callable skill identity, invocation alias
+A namespaced durable identifier used for Watcher attribution and historical interpretation; it may share spelling with a Codex invocation identity while remaining a separate persisted concept.
+_Avoid_: catalog skill name, request reference
+
+**Distribution Package Identity**:
+The installable plugin coordinate used to package and select a group of skills, separate from skill names and invocation identities.
+_Avoid_: Codex invocation identity, Watcher skill identity
 
 **Universal Discovery Projection**:
 A managed user-level exposure of canonical skills for harness-native discovery; it is neither source nor cache.
@@ -73,7 +85,7 @@ A skill name or alias observed in runtime text that may provide attribution evid
 _Avoid_: supporting skill, effective skill
 
 **Skill Attribution Overlay**:
-A repository-owned, non-callable declaration at `.codex-plugin/skill-watcher.json` that attaches Watcher roles, aliases, legacy names, logical groups, and supporting-skill relationships to identities derived from the canonical callable catalog.
+A repository-owned, non-callable declaration at `.codex-plugin/skill-watcher.json` that attaches Watcher roles, aliases, legacy names, logical groups, and supporting-skill relationships to identities derived from the canonical skill catalog.
 _Avoid_: callable catalog, plugin manifest authority, marketplace enumeration
 
 **Incremental Metadata Index**:
