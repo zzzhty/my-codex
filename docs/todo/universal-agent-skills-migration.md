@@ -1,10 +1,10 @@
 # Universal Agent Skills Migration Long-Running Goal
 
-Overall status: `Draft`
+Overall status: `Ready`
 
 Updated: 2026-08-20
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M0 through M5. While it is `Draft`, continuation work is limited to completing the M0 planning preflight and readiness gates; implementation starts only after the goal becomes `Ready`. Future work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `Ready`, but implementation starts only after an explicit execution request. Future work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive skills-bearing plugin distribution profile for compatibility and rollback.
 3. Decouple Watcher metadata and shared runtime from marketplace authority and perform a controlled universal cutover on the current macOS environment without adding a zero-skill adapter.
 
-Goal Status: `Draft`
+Goal Status: `Ready`
 
 Goal Owner: `my-codex repository maintainer`
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. While the goal is `Draft`, resume M0 contract work only and do not execute M1-M5. After promotion to `Ready`, resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `Ready` milestone, but do not begin it without an explicit execution request. Once execution is requested, resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -70,7 +70,7 @@ Housekeeping boundary: `No task temporary cache roots are created or used. Close
 
 M0 design-freeze baseline:
 
-1. Current `main` contains the merged low-risk skill slimming baseline; the working tree contains this draft long-running-goal correction pending the M0 revision checkpoint.
+1. Current `main` contains the merged low-risk skill slimming baseline and the M0 planning-only contract recorded by revision `26934904c7e1bb586725f9dd4faec3677d5aabc0`; no universalization implementation source was admitted by the planning milestone.
 2. No universalization runtime or source implementation has been accepted merely because an earlier prototype existed. M1 must implement and validate an internally complete batch from current `main`.
 3. The one-off Phase 1b execution prompt and temporary prototype refs are not dependencies. Their durable requirements are integrated into M1 below.
 4. The current physical authority remains `plugins/*/skills/*/SKILL.md`; no top-level skill relocation is approved.
@@ -157,7 +157,7 @@ Harness applicability: `Not applicable: manual staged execution. The work is seq
 
 ## Pre-Approval / YOLO
 
-Draft boundary: The following operations are proposed boundaries only. They do not become active pre-approval until the planning preflight is complete, every approval-sensitive surface is settled, and the goal status is `Ready`.
+Ready activation: The following pre-approvals are active because the planning preflight is complete, every approval-sensitive surface is settled, and the goal status is `Ready`.
 
 1. Pre-approved YOLO local operations:
    - Non-destructive local repository code, docs, and test edits for M1-M4; branch creation; local dependency restore; focused and full tests; lint, formatting, and static checks; read-only inventories; generated test fixtures; Git commits and pushes; Draft PR updates; and fixes inside the current milestone.
@@ -172,8 +172,8 @@ Draft boundary: The following operations are proposed boundaries only. They do n
 
 ## Goal Execution Contract
 
-1. While overall status is `Draft`, perform M0 planning and read-only evidence work only; do not execute M1-M5 implementation or activate proposed YOLO permissions.
-2. After promotion to `Ready`, execute strictly `M1 -> M2 -> M3 -> M4 -> M5 -> Close`.
+1. M0 planning is complete; do not begin M1 implementation until the newest user request explicitly asks to execute, resume, continue, or advance this goal.
+2. Once execution is requested, execute strictly `M1 -> M2 -> M3 -> M4 -> M5 -> Close`.
 3. Update the status table and current milestone evidence before and after work.
 4. A milestone reaches `Done` only when its review gate passes, checkpoint evidence is recorded, and required current docs are synchronized.
 5. Use the smallest falsifying validation first, then broader suites required by the milestone.
@@ -199,8 +199,8 @@ Draft boundary: The following operations are proposed boundaries only. They do n
 
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
-| M0 Contract, Plan, and Baseline Freeze | In Progress | Failed | Pending |
-| M1 Repository-Authoritative Discovery and Profile Integration | Not Started | Pending | Pending |
+| M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
+| M1 Repository-Authoritative Discovery and Profile Integration | Ready | Pending | Pending |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Not Started | Pending | Pending |
 | M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
 | M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
@@ -209,7 +209,7 @@ Draft boundary: The following operations are proposed boundaries only. They do n
 
 ## M0 Contract, Plan, and Baseline Freeze
 
-Status: `In Progress`
+Status: `Done`
 
 Scope:
 
@@ -221,7 +221,7 @@ Scope:
 
 Review gate:
 
-- `main` contains only the long-running goal, active TODO pointer, and frozen existing source baseline.
+- `main` contains only M0 planning and domain documents plus the frozen existing source baseline; no universalization implementation source is present.
 - No `SKILL.md`, runtime script, manifest, hook, config, or cache changed during M0 cleanup.
 - No open PR remains from the planning or prototype work.
 - No continuation step requires a deleted prompt or temporary branch.
@@ -248,20 +248,21 @@ Evidence:
 - The merged skill slimming baseline remains unchanged.
 - The active goal is `docs/todo/universal-agent-skills-migration.md`.
 - `docs/todo/README.md` contains the single active long-running-goal pointer.
-- The M0 cleanup commit and GitHub history preserve the source-baseline evidence.
+- M0 contract revision `26934904c7e1bb586725f9dd4faec3677d5aabc0` and [PR #5](https://github.com/zzzhty/my-codex/pull/5) preserve the source-baseline and review evidence.
 - The 2026-08-20 readiness audit failed on preflight, lifecycle, housekeeping, heading, timing, and checkpoint-format requirements, so M0 was reopened rather than leaving a false `Ready` state.
+- Three grill-with-docs rounds, final shared-understanding confirmation, the corrected contract scan, and the default readiness gate resolved every M0 review finding.
 
 Checkpoint evidence:
 
-Checkpoint component: Pending
+Checkpoint component: Done
 
 Checkpoint type: git commit
 
-Revision: Pending until the M0 review and Ready-promotion validation pass
+Revision: 26934904c7e1bb586725f9dd4faec3677d5aabc0
 
-Changed files: docs/todo/universal-agent-skills-migration.md; docs/todo/README.md
+Changed files: CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md; docs/todo/README.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/universal-agent-skills-migration.md
 
-Validation recorded: Draft-format readiness, Markdown-link, active-index, and diff checks passed on 2026-08-20; Ready-promotion validation remains pending preflight and authorization decisions
+Validation recorded: Draft-format readiness passed before the checkpoint; default readiness, Markdown-link, active-index, and diff checks passed after lifecycle promotion on 2026-08-20
 
 Out-of-scope dirty changes: none observed before this format correction
 
@@ -273,7 +274,7 @@ Completion criterion: `The preflight and housekeeping decisions are truthfully r
 
 ## M1 Repository-Authoritative Discovery and Profile Integration
 
-Status: `Not Started`
+Status: `Ready`
 
 Objective: Land the repository-derived catalog and managed projection together with all refresh, check, and wrapper callers so the source batch is internally consistent before merge.
 
