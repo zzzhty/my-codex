@@ -4,7 +4,7 @@ Overall status: `Ready`
 
 Updated: 2026-08-20
 
-This file is the single active authority for completing the universal Agent Skills migration from M1 through M6. It is self-contained: future work starts from current `main`, reads this goal, and executes the first non-Done milestone without relying on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `Ready`, but implementation starts only after an explicit execution request. Future work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -13,8 +13,8 @@ Goal Name: `Universal Agent Skills Migration`
 Goal Description:
 
 1. Make the Git repository the only skill source authority and make `~/.agents/skills` the normal universal discovery projection.
-2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive Codex adapter or distribution profile.
-3. Decouple Watcher metadata and shared runtime from marketplace authority, perform a controlled universal cutover, and remove obsolete owned runtime paths only after evidence-backed stabilization.
+2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive skills-bearing plugin distribution profile for compatibility and rollback.
+3. Decouple Watcher metadata and shared runtime from marketplace authority and perform a controlled universal cutover on the current macOS environment without adding a zero-skill adapter.
 
 Goal Status: `Ready`
 
@@ -26,19 +26,21 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 is complete and M1 is the unique `Ready` milestone, but do not begin it without an explicit execution request. Once execution is requested, resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
-Planning preflight marker: `preflight:universal-agent-skills:20260820-lrg1`
+Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
 Planning preflight status: `Done`
 
-Preflight source: `Repository, runtime-contract, and pull-request evidence review; the inspected architecture left no unresolved design frontier for M1-M4.`
+Preflight source: `grill-with-docs`
 
-Resolved decisions: `This goal file is the complete execution contract. The one-off Phase 1b prompt and temporary prototype implementation were retired after their requirements were integrated here. Current main is the sole development baseline.`
+Planning preflight evidence: `grill-with-docs rounds 1-3 completed on 2026-08-20 after repository, runtime, GitHub, and domain-language audits. The decision frontier became empty, the complete shared understanding was presented, and the user explicitly confirmed it before this marker was recorded.`
 
-Open decisions: `M5 runtime apply and M6 destructive cleanup remain explicit runtime hard stops requiring fresh user authorization after their read-only gates pass. M3 physical relocation is conditional on evidence and defaults to no move.`
+Resolved decisions: `The one-off Phase 1b prompt and prototype were retired. The current Mac is the sole M5 cutover target. Bare SKILL.md frontmatter names are callable identities; namespaced forms remain Watcher or distribution identities. Discovery profile selection is an explicit required CLI argument. Universal mode uses repo-owned hooks without a zero-skill adapter and retains an inactive mutually exclusive skills-bearing plugin profile. M6 cleanup is a future independent goal. M3 freezes no physical move. Conditional Git/GitHub milestone writes are authorized. Task temporary cache policy is Not applicable. M5 may mutate only inventory-confirmed my-codex skills-bearing plugin state, repository-owned universal links, and the minimum my-codex marketplace, plugin, hook, and agent-support state required for the profile transition; unrelated or unmanaged state, Watcher durable state, and cleanup remain excluded. Cleanup eligibility remains at least five successful universal sessions across at least three working days. ADR-0003 records the discovery-authority trade-off. M5 uses an owner-only durable backup outside Watcher state, performs plugin-to-universal-to-plugin-to-final-universal comparison, validates each mode in a fresh non-interactive Codex CLI process without restarting Desktop, and retains the proven plugin rollback baseline until a separately Ready cleanup goal authorizes deletion.`
 
-Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/README.md`
+Open decisions: `None.`
+
+Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/README.md; CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md`
 
 ## Preflight Time Assessment
 
@@ -46,9 +48,9 @@ Assessment target: `Ready-to-Closed`
 
 Assessment mode: `Rough range`
 
-Rough elapsed-time estimate: `2-4 working weeks`
+Rough elapsed-time estimate: `1-3 weeks`
 
-Basis or blocker: `2026-08-20 estimate based on six serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and a minimum stabilization observation window. The range includes normal GitHub and CI waits and serial milestone merges; it excludes prolonged credential, machine-access, or upstream-tool outages.`
+Basis or blocker: `2026-08-20 estimate based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -56,23 +58,23 @@ Critical-path time-cost distribution: `Not required: rough range recorded.`
 
 Close housekeeping policy: `Not applicable`
 
-Housekeeping decision source: `The 2026-08-20 goal scope does not require a dedicated goal-owned temporary cache root. Future scope evolution must obtain a new explicit policy before first use.`
+Housekeeping decision source: `User explicitly confirmed Not applicable during grill-with-docs round 1 on 2026-08-20.`
 
-Task temporary cache root strategy: `Not applicable: no goal-owned task temporary cache root will be created. Tests and packaging use existing repository or tool-managed locations and must not treat them as Close-owned disposable state.`
+Task temporary cache root strategy: `Not applicable: no goal-owned task temporary cache roots will be created or used. Test-framework temporary directories remain self-cleaning and are not shared across goal steps.`
 
 Recorded task temporary cache roots: `Not applicable`
 
-Housekeeping boundary: `Close performs no task-temporary-cache cleanup. M6 may remove only separately inventoried and explicitly authorized my-codex marketplace or plugin paths whose ownership is proven; that is migration cleanup, not task-cache housekeeping.`
+Housekeeping boundary: `No task temporary cache roots are created or used. Close performs no task-temporary-cache cleanup. Plugin caches, tooling environments, backups, Watcher logs, reports, proposals, snapshots, and other runtime or durable evidence remain outside this policy.`
 
-## M0 Execution Baseline
+## Current Execution Baseline
 
 M0 design-freeze baseline:
 
-1. Current `main` contains the merged low-risk skill slimming baseline and this continuation-ready long-running goal.
+1. Current `main` contains the merged low-risk skill slimming baseline and the M0 planning-only contract recorded by revision `26934904c7e1bb586725f9dd4faec3677d5aabc0`; no universalization implementation source was admitted by the planning milestone.
 2. No universalization runtime or source implementation has been accepted merely because an earlier prototype existed. M1 must implement and validate an internally complete batch from current `main`.
 3. The one-off Phase 1b execution prompt and temporary prototype refs are not dependencies. Their durable requirements are integrated into M1 below.
 4. The current physical authority remains `plugins/*/skills/*/SKILL.md`; no top-level skill relocation is approved.
-5. Real `/home/aefv` discovery, plugin config, plugin cache, hook, and Watcher runtime state must be re-inventoried before M5. Substitute-environment evidence cannot prove live-machine state.
+5. The current Mac under `/Users/max` is the sole M5 production-cutover target. Its discovery, plugin config, plugin cache, hook, and Watcher runtime state must be re-inventoried immediately before M5 apply.
 6. `main` is the only development baseline. Every milestone branch starts from the then-current `main` and is disposable after merge or closure.
 
 Current source-of-truth evidence read:
@@ -91,25 +93,26 @@ Current source-of-truth evidence read:
 | Git `plugins/*/skills/**` | Sole canonical skill source authority |
 | `SKILL.md` frontmatter `name` | Callable universal identity authority |
 | `~/.agents/skills/**` | Managed universal discovery projection, never source or cache |
-| `~/.codex/plugins/cache/**` | Optional Codex adapter or distribution cache only |
+| `~/.codex/plugins/cache/**` | Optional skills-bearing plugin distribution cache only |
 | `.agents/plugins/*.json` | Optional distribution metadata, never universal source catalog |
 | `.codex-plugin/skill-watcher.json` or successor overlay | Non-callable Watcher attribution metadata only |
 | `$CODEX_HOME/watcher/**` | Runtime state and evidence only |
 
 ### Identity contract
 
-1. Callable identities such as `sop`, `doc-alignment`, and `long-running-goal` remain unchanged.
-2. Watcher durable identities such as `workflow:sop` and `watcher:doc-alignment` remain unchanged.
+1. Bare `SKILL.md` frontmatter names such as `sop`, `doc-alignment`, and `long-running-goal` are the sole callable identities.
+2. Watcher durable identities such as `workflow:sop` and `watcher:doc-alignment` remain unchanged but are attribution identities, not alternate callable identities.
 3. Distribution identities such as `workflow@my-codex` remain separate from callable and Watcher identities.
-4. Directory changes never imply identity renames.
-5. Any identity migration requires a separate consumer inventory, compatibility plan, explicit authorization, and independent review; it is outside this goal unless the goal is formally evolved.
+4. Plugin-qualified invocation spelling is a distribution selector; a profile change may expose the same callable identity through a different selector without creating a second callable identity.
+5. Directory changes never imply identity renames.
+6. Any callable, Watcher, or distribution identity migration requires a separate consumer inventory, compatibility plan, explicit authorization, and independent review; it is outside this goal unless the goal is formally evolved.
 
 ### Discovery contract
 
 1. One runtime has exactly one active skills discovery path for every canonical skill.
 2. Universal and skills-bearing plugin profiles are mutually exclusive.
 3. No fallback, dual-read, dual-write, compatibility shim, or second hand-maintained skill catalog may hide an incomplete transition.
-4. A zero-skill Codex adapter may coexist with universal discovery only after tests prove it cannot inject overlapping skills.
+4. Universal mode installs no zero-skill adapter; repo-owned scripts continue to manage Codex hooks and agent-support files directly.
 5. An unmanaged same-name entry fails closed; repository tooling never overwrites another source.
 6. The canonical universal catalog must be derived from repository `SKILL.md` files and directory structure, not marketplace metadata.
 
@@ -121,13 +124,15 @@ Current source-of-truth evidence read:
 - Do not migrate invocation identities as part of path changes.
 - Do not make Watcher logs, reports, proposals, or plugin cache a source authority.
 - Do not perform real installation-state mutation before M5 authorization.
+- Do not create a zero-skill adapter in this goal.
+- Do not delete obsolete plugin, marketplace, cache, config, hook-backup, or Watcher runtime paths in this goal; a later cleanup goal owns that decision after M5 stability evidence exists.
 - Do not retain a temporary implementation branch as a hidden source of truth.
 
-## Loop Blueprint / Harness Boundary
+## Loop Blueprint / Harness
 
 Execution mode: `Manual staged execution`
 
-Reason: The work is sequential, repository-coupled, and contains explicit review and runtime-cutover gates. It does not need an automated loop or mandatory subagent orchestration.
+Harness applicability: `Not applicable: manual staged execution. The work is sequential, repository-coupled, and contains explicit review and runtime-cutover gates, so it does not need an automated loop or mandatory subagent orchestration.`
 
 1. Trigger / heartbeat:
    - A user request explicitly asks to execute, resume, advance, review, or close this goal.
@@ -139,43 +144,47 @@ Reason: The work is sequential, repository-coupled, and contains explicit review
 4. Worktree and isolation:
    - Use one dedicated branch per milestone or tightly coupled batch. Serialize edits to shared refresh, check, wrapper, or Watcher-runtime files. Preserve unrelated dirty work.
 5. Skills and context:
-   - Always read `long-running-goal`; use `code-review` for Standards and Contract review, `diagnosing-bugs` for failures, `writing-for-agents` only when instruction surfaces must change, and `housekeeping` only in the separately authorized M6 ownership scope.
+   - Always read `long-running-goal`; use `code-review` for Standards and Contract review, `diagnosing-bugs` for failures, and `writing-for-agents` only when instruction surfaces must change.
 6. Connector read/write boundaries:
-   - Pre-approved: repository reads, branches, commits, pushes, Draft PR creation or updates, CI reads, and PR review metadata.
-   - Not pre-approved: merging future implementation PRs, modifying real user installation state, sending external messages, or deleting runtime, config, or cache paths unless the newest user request explicitly authorizes the action.
+   - Pre-approved: repository reads; goal-owned branches, commits, pushes, Draft PR creation or updates, available CI and review reads; gated milestone merges and safe deletion of merged goal-owned branches; and the exact M5 local backup, profile transition, rollback rehearsal, and final cutover after its frozen preconditions pass.
+   - Not pre-approved: messages to other people, external writes outside the frozen GitHub operations, cleanup or deletion outside the exact M5 profile transition and merged-branch boundary, or any local state mutation beyond the frozen M5 owner and category set.
 7. Independent verification:
-   - Each source milestone requires focused tests, applicable full suites, scoped static checks, and an independent read-only Contract review. M5 and M6 require separate read-only cutover or deletion review before apply.
+   - Each source milestone requires focused tests, applicable full suites, scoped static checks, and an independent read-only Contract review. M5 requires a separate read-only cutover review before apply.
 8. Runtime hard stops:
    - Missing real-machine access or required credentials; evidence that changes frozen authority or identity semantics; an unclassified active plugin; an unmanaged conflicting discovery entry; a destructive or external action without explicit authorization; or three distinct in-scope diagnostic or fix attempts with no safe next step.
 9. Durable learning:
    - Update this goal, focused tests, current README, runbook or ADR surfaces, validation evidence, and the current milestone checkpoint. Do not leave decisions only in chat or PR comments.
 
-## Pre-Approval / YOLO Boundary
+## Pre-Approval / YOLO
+
+Ready activation: The following pre-approvals are active because the planning preflight is complete, every approval-sensitive surface is settled, and the goal status is `Ready`.
 
 1. Pre-approved YOLO local operations:
-   - Repository code, docs, and test edits for M1-M4; branch creation; local dependency restore; focused and full tests; lint, formatting, and static checks; read-only inventories; generated test fixtures; Git commits and pushes; Draft PR updates; and fixes inside the current milestone.
+   - Non-destructive local repository code, docs, and test edits for M1-M4; branch creation; local dependency restore; focused and full tests; lint, formatting, and static checks; read-only inventories; generated test fixtures; Git commits and pushes; Draft PR updates; and fixes inside the current milestone.
    - No real plugin, cache, config, hook, or link mutation is implied before M5.
-2. Pre-approved external reads and writes:
-   - GitHub repository reads; branch, commit, and push operations; Draft PR creation and updates; CI and review reads. Future implementation PR merge remains a user authorization gate unless a newer request explicitly pre-approves it.
+   - After M1-M4, the fresh inventory, protected backup, and independent cutover review pass, the exact M5 my-codex plugin/profile mutations, repository-owned link changes, fresh CLI validation processes, targeted rollback rehearsal, final universal activation, and retained-state recording are pre-approved within the frozen M5 boundary.
+2. Pre-approved external reads/writes:
+   - GitHub repository reads; goal-owned branch and commit pushes; Draft PR creation and updates; review and available CI reads; merge after every milestone gate and independent review pass; and deletion of merged goal-owned remote branches only when they contain no commits absent from `main`.
 3. Runtime hard stops:
-   - M5 apply authorization; M6 deletion authorization; unclassified ownership; identity or consumer conflict; inaccessible required machine state; unsafe transition ordering; or repeated technical impossibility with no in-plan fallback.
+   - A proposed M5 mutation falls outside the frozen owner and category boundary; a protected backup cannot be created or restored safely; configuration drift prevents targeted restoration; ownership or identity remains unclassified; required machine state is inaccessible; transition ordering cannot preserve the discovery invariant; or repeated technical attempts leave no safe in-plan path.
 4. Non-stops:
    - Milestone boundaries, checkpoints, expected test failures with a clear local fix, rebase or update of a clean milestone branch, docs synchronization, timing rebaseline, or review findings that can be fixed inside the frozen milestone.
 
 ## Goal Execution Contract
 
-1. Execute strictly `M0 -> M1 -> M2 -> M3 -> M4 -> M5 -> M6 -> Close`.
-2. Update the status table and current milestone evidence before and after work.
-3. A milestone reaches `Done` only when its review gate passes, checkpoint evidence is recorded, and required current docs are synchronized.
-4. Use the smallest falsifying validation first, then broader suites required by the milestone.
-5. Keep source authority and installed or runtime state as separate evidence domains.
-6. Do not merge a milestone PR when its branch is internally inconsistent or its active entry points are broken.
-7. Do not use simultaneous plugin and universal skill injection as a diagnostic shadow mode. M5 comparisons use sequential isolated sessions or restored profiles.
-8. Do not delete old runtime paths until M6 observation and ownership gates pass.
-9. Record root cause, failed command, paths, breakpoint, and next fix for every material failure.
-10. Only runtime hard stops require user input; ordinary local fixes continue within scope.
-11. Start every milestone branch from current `main`; do not resume from a stale or archived implementation branch.
-12. After a milestone branch is merged or closed, treat `main` as the sole continuation baseline and remove or neutralize temporary refs when tooling permits.
+1. M0 planning is complete; do not begin M1 implementation until the newest user request explicitly asks to execute, resume, continue, or advance this goal.
+2. Once execution is requested, execute strictly `M1 -> M2 -> M3 -> M4 -> M5 -> Close`.
+3. Update the status table and current milestone evidence before and after work.
+4. A milestone reaches `Done` only when its review gate passes, checkpoint evidence is recorded, and required current docs are synchronized.
+5. Use the smallest falsifying validation first, then broader suites required by the milestone.
+6. Keep source authority and installed or runtime state as separate evidence domains.
+7. Do not merge a milestone PR when its branch is internally inconsistent or its active entry points are broken.
+8. Do not use simultaneous plugin and universal skill injection as a diagnostic shadow mode. M5 comparisons use sequential isolated sessions or restored profiles.
+9. Preserve old plugin, marketplace, cache, config, hook-backup, and Watcher state required for rollback; cleanup belongs to a later independent goal.
+10. Record root cause, failed command, paths, breakpoint, and next fix for every material failure.
+11. Only runtime hard stops require user input after the goal becomes `Ready`; ordinary local fixes then continue within scope.
+12. Start every milestone branch from current `main`; do not resume from a stale or archived implementation branch.
+13. After a milestone branch is merged or closed, treat `main` as the sole continuation baseline and remove or neutralize temporary refs when tooling permits.
 
 ## Status Definitions
 
@@ -191,12 +200,11 @@ Reason: The work is sequential, repository-coupled, and contains explicit review
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
 | M0 Contract, Plan, and Baseline Freeze | Done | Passed | Done |
-| M1 Repository-Authoritative Discovery and Profile Integration | Not Started | Pending | Pending |
+| M1 Repository-Authoritative Discovery and Profile Integration | Ready | Pending | Pending |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Not Started | Pending | Pending |
-| M3 Physical Layout Decision and Conditional Migration | Not Started | Pending | Pending |
-| M4 Optional Codex Adapter and Distribution Packaging | Not Started | Pending | Pending |
+| M3 Physical Layout Verification — No Move | Not Started | Pending | Pending |
+| M4 Optional Plugin Distribution Packaging | Not Started | Pending | Pending |
 | M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
-| M6 Obsolete Marketplace Runtime Cleanup | Not Started | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
 
 ## M0 Contract, Plan, and Baseline Freeze
@@ -206,24 +214,33 @@ Status: `Done`
 Scope:
 
 - Freeze authority, identities, compatibility, discovery profiles, milestone order, validation model, rollback, and authorization boundaries.
+- Complete or explicitly skip the required grill, record the user's housekeeping choice, settle approval-sensitive surfaces, and make the readiness contract machine-checkable.
 - Integrate all durable M1 requirements into this goal.
 - Remove the redundant one-off prompt and retire temporary implementation refs so current `main` is the sole development baseline.
 - Keep incomplete universalization source out of `main`.
 
 Review gate:
 
-- `main` contains only the long-running goal, active TODO pointer, and frozen existing source baseline.
+- `main` contains only M0 planning and domain documents plus the frozen existing source baseline; no universalization implementation source is present.
 - No `SKILL.md`, runtime script, manifest, hook, config, or cache changed during M0 cleanup.
 - No open PR remains from the planning or prototype work.
 - No continuation step requires a deleted prompt or temporary branch.
+- The planning preflight, housekeeping choice, authorization boundary, milestone lifecycle, and checkpoint evidence satisfy the current `long-running-goal` contract.
+- The default readiness checker passes before M0 becomes `Done` and M1 becomes the unique `Ready` milestone.
 
-Validation:
+Draft-format validation:
 
 ```bash
-python plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py docs/todo/universal-agent-skills-migration.md
+python plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py --allow-draft docs/todo/universal-agent-skills-migration.md
 python plugins/workflow/skills/long-running-goal/scripts/check_md_links.py docs/todo
 python plugins/workflow/skills/long-running-goal/scripts/check_todo_index.py --mode active docs/todo/universal-agent-skills-migration.md docs/todo/README.md
 git diff --check
+```
+
+Ready-promotion validation:
+
+```bash
+python plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py docs/todo/universal-agent-skills-migration.md
 ```
 
 Evidence:
@@ -231,17 +248,33 @@ Evidence:
 - The merged skill slimming baseline remains unchanged.
 - The active goal is `docs/todo/universal-agent-skills-migration.md`.
 - `docs/todo/README.md` contains the single active long-running-goal pointer.
-- The M0 cleanup commit and GitHub history are the revision checkpoint.
+- M0 contract revision `26934904c7e1bb586725f9dd4faec3677d5aabc0` and [PR #5](https://github.com/zzzhty/my-codex/pull/5) preserve the source-baseline and review evidence.
+- The 2026-08-20 readiness audit failed on preflight, lifecycle, housekeeping, heading, timing, and checkpoint-format requirements, so M0 was reopened rather than leaving a false `Ready` state.
+- Three grill-with-docs rounds, final shared-understanding confirmation, the corrected contract scan, and the default readiness gate resolved every M0 review finding.
 
-Checkpoint evidence: `The clean main commit, closed planning PR history, and branch-ref inventory constitute the M0 checkpoint; no empty commit is required.`
+Checkpoint evidence:
 
-Rollback: `Revert the M0 cleanup commit. No runtime state was changed.`
+Checkpoint component: Done
 
-Hard stop: `The cleanup diff contains any universalization implementation source or changes a frozen skill.`
+Checkpoint type: git commit
+
+Revision: 26934904c7e1bb586725f9dd4faec3677d5aabc0
+
+Changed files: CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md; docs/todo/README.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/universal-agent-skills-migration.md
+
+Validation recorded: Draft-format readiness passed before the checkpoint; default readiness, Markdown-link, active-index, and diff checks passed after lifecycle promotion on 2026-08-20
+
+Out-of-scope dirty changes: none observed before this format correction
+
+Rollback: `Revert the M0 planning-document changes. No runtime state was changed.`
+
+Hard stop: `The M0 planning diff contains any universalization implementation source or changes a frozen skill.`
+
+Completion criterion: `The preflight and housekeeping decisions are truthfully recorded, approval-sensitive surfaces are settled, the default readiness checker passes, M0 is Done/Passed/Done with final checkpoint evidence, and M1 is the unique Ready milestone.`
 
 ## M1 Repository-Authoritative Discovery and Profile Integration
 
-Status: `Not Started`
+Status: `Ready`
 
 Objective: Land the repository-derived catalog and managed projection together with all refresh, check, and wrapper callers so the source batch is internally consistent before merge.
 
@@ -276,10 +309,11 @@ Canonical catalog requirements:
 Explicit profile requirements:
 
 - Support exactly `universal` and `plugin`.
-- Prefer `--discovery-profile universal|plugin`; an environment variable may be supported only through the same authoritative parser.
-- CLI value wins over environment value.
+- Require `--discovery-profile universal|plugin` on refresh, check, Unix wrapper, and PowerShell wrapper entry points.
+- Do not add an environment, persisted-config, or implicit-default selection path.
 - Missing or invalid profile fails closed.
 - Refresh, check, and Unix and PowerShell wrappers propagate the same resolved profile.
+- Treat the new required argument as an authorized breaking CLI change and update every supported invocation in current docs and tests in the same milestone.
 
 Universal profile requirements:
 
@@ -303,7 +337,7 @@ Plugin profile requirements:
 Required transition semantics:
 
 - Plugin to universal: preflight all universal targets -> identify exact enabled skills-bearing plugins -> remove or disable those exact plugins -> verify old active path inactive -> create or repair repo-owned links -> universal closure check.
-- Universal to plugin: preflight adapter and package inputs and commands -> confirm the replacement can activate -> remove only repo-owned universal links -> install or enable plugin profile -> plugin closure check.
+- Universal to plugin: preflight package inputs and commands -> confirm the replacement can activate -> remove only repo-owned universal links -> install or enable plugin profile -> plugin closure check.
 - Never create a temporary dual-active state.
 - Never remove the only active path before the replacement passes its preflight.
 - On removal or activation failure, report the exact breakpoint and preserve the recoverable prior profile whenever possible.
@@ -316,7 +350,7 @@ Legacy bypass handling:
 Minimal falsifying validation:
 
 ```bash
-python3 -m unittest -v \
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest -v \
   tests.test_repo_skill_catalog \
   tests.test_skill_discovery_profiles \
   tests.test_sync_agents_skills \
@@ -331,10 +365,10 @@ python3 -m unittest -v \
 Broader validation:
 
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/workflow/tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
-python3 -m py_compile scripts/repo_skill_catalog.py scripts/skill_discovery_profiles.py scripts/check_skill_discovery.py scripts/sync_agents_skills.py scripts/discovery_profile_runtime.py scripts/refresh_my_codex.py scripts/check_my_codex.py
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s plugins/workflow/tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m py_compile scripts/repo_skill_catalog.py scripts/skill_discovery_profiles.py scripts/check_skill_discovery.py scripts/sync_agents_skills.py scripts/discovery_profile_runtime.py scripts/refresh_my_codex.py scripts/check_my_codex.py
 git diff --check
 ```
 
@@ -343,7 +377,7 @@ Review gate:
 - Independent read-only review confirms invocation identity, ownership and prune safety, wrapper parity, bypass rejection, transition ordering, and rollback breakpoints.
 - Universal closure does not require marketplace, cache, or Codex CLI when no plugin removal is needed.
 - Plugin closure compares installed and cached identities to canonical repository source.
-- Existing public entry points have no missing required arguments.
+- Every supported public invocation and current doc is updated for the authorized required profile argument.
 - No skill content, callable identity, Watcher identity, or slimming baseline changed.
 
 Evidence to record:
@@ -358,7 +392,7 @@ Hard stops:
 
 - Any callable or Watcher identity drift; an unmanaged target would be overwritten; wrapper parity cannot be established; a failure path can leave both or neither discovery path active; or the real environment exposes an unclassified enabled plugin.
 
-Authorization and review: `Repository source work, commits, push, and a Draft PR are pre-approved. Merge requires explicit user authorization after the gate passes unless a newer request pre-authorizes it.`
+Authorization and review: `Repository source work, commits, goal-owned branch push, Draft PR creation and updates, independent review, and merge after every gate passes are pre-approved by the 2026-08-20 preflight. A merged goal-owned remote branch with no commits absent from main may then be deleted.`
 
 Completion criterion: `The integrated source PR is merged to main, all callers use the explicit profile contract, and no runtime state was activated.`
 
@@ -372,7 +406,7 @@ Scope:
 
 1. Replace Watcher callable-skill enumeration through marketplace or plugin manifests with the canonical repository catalog.
 2. Retain role, aliases, supporting skills, logical groups, and legacy names as a separately owned attribution overlay.
-3. Resolve repository and shared runtime through an explicit repository root or installed adapter contract, not by assuming a plugin-cache path.
+3. Resolve repository and shared runtime through an explicit repository-root contract, not by assuming a plugin-cache or adapter path.
 4. Keep `$CODEX_HOME/watcher` as runtime state only.
 5. Preserve historical logs and namespaced identities without rewriting events.
 6. Update Watcher doctor, SessionStart metadata refresh, CLI, docs, and tests.
@@ -390,16 +424,17 @@ Minimal falsifying validation:
 
 - Remove or redirect the marketplace catalog in a fixture; Watcher metadata discovery and reports still resolve the canonical skill set.
 - Existing namespaced identities and legacy mappings produce the same canonical attribution.
-- Running from repository source and from the planned adapter location resolves the same shared runtime modules and assets.
+- Running from repository source and through universal skill symlinks resolves the same shared runtime modules and assets.
 
 Broader validation:
 
 ```bash
-python3 -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 plugins/watcher/scripts/watcher skill doctor
-python3 plugins/workflow/skills/long-running-goal/scripts/check_md_links.py plugins/watcher
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python plugins/workflow/skills/long-running-goal/scripts/check_md_links.py plugins/watcher
 ```
+
+The Watcher suite must include a `TemporaryDirectory`-backed doctor integration scenario. Do not run doctor against the real `$CODEX_HOME/watcher` during M2 validation.
 
 Review gate:
 
@@ -408,7 +443,7 @@ Review gate:
 
 Evidence to record:
 
-- Metadata fixture comparison, legacy-name tests, report snapshots or diffs, runtime-locator tests, doctor output, and updated Watcher architecture docs.
+- Metadata fixture comparison, legacy-name tests, report snapshots or diffs, runtime-locator tests, isolated doctor-test output, and updated Watcher architecture docs.
 
 Checkpoint evidence: `M2 commits, PR and merge record, metadata comparison evidence, and runtime-locator validation.`
 
@@ -418,24 +453,24 @@ Hard stops:
 
 - Historical attribution would change; the metadata overlay requires a second callable catalog; runtime cannot be located without cache authority; or a migration would rewrite existing logs or proposals.
 
-Authorization and review: `Source work, commits, push, and a Draft PR are pre-approved. Merge requires explicit user authorization and independent review because hooks, routing, and persisted interpretation are affected.`
+Authorization and review: `Source work, commits, goal-owned branch push, Draft PR creation and updates, independent review, and merge after every gate passes are pre-approved by the 2026-08-20 preflight.`
 
 Completion criterion: `Watcher core, doctor, reports, and metadata refresh pass with marketplace catalog absent, while all existing durable identities remain stable.`
 
-## M3 Physical Layout Decision and Conditional Migration
+## M3 Physical Layout Verification — No Move
 
 Status: `Not Started`
 
-Objective: Decide from evidence whether `plugins/*/skills` remains the canonical physical layout; move only when a proven portability or packaging blocker cannot be solved cleanly in place.
+Objective: Verify that `plugins/*/skills` remains the canonical physical layout and complete the milestone without moving skill source paths.
 
-Default decision: `No move required`
+Frozen decision: `No move`
 
-Decision gate:
+Verification gate:
 
 1. Inventory symlink resolution, shared-runtime references, updater assumptions, plugin validation, and external path consumers after M2.
-2. Record concrete blockers caused by physical layout rather than dependency direction.
+2. Record whether any concrete blocker is caused by physical layout rather than dependency direction.
 3. If no blocker exists, mark M3 Done with a no-change architecture decision and proceed.
-4. If a move is necessary, create a separately reviewed path migration preserving invocation identities and deriving optional packages from the new authority.
+4. If evidence shows that a move is required, stop and formally evolve this goal; relocation is outside the frozen execution scope.
 
 Minimal falsifying validation:
 
@@ -445,75 +480,70 @@ Minimal falsifying validation:
 
 Review gate:
 
-- A move is accepted only when evidence names the blocker, explains why in-place resolution is insufficient, inventories every path consumer, and provides an atomic rollback.
-- Directory aesthetics, convention preference, or shorter paths are insufficient reasons.
+- Independent review confirms the current layout has no portability or packaging blocker and no external consumer requires a new top-level path.
+- Directory aesthetics, convention preference, or shorter paths cannot reopen the frozen no-move decision.
 
 Evidence to record:
 
-- Portability matrix, path-consumer search, symlink resolution tests on supported platforms, decision ADR or goal update, and any migration mapping.
+- Portability matrix, path-consumer search, symlink resolution tests on supported platforms, and the no-change decision record.
 
-Checkpoint evidence: `M3 no-change decision or path-migration PR, validation evidence, and compatibility review.`
+Checkpoint evidence: `M3 no-change decision, validation evidence, and compatibility review.`
 
-Rollback: `A no-change decision requires no rollback. A move must be atomic and revertible without identity changes.`
+Rollback: `No source path changes occur, so no path rollback is required.`
 
 Hard stops:
 
-- An external or persisted path consumer lacks a migration plan; Matt mirror ownership would be violated; invocation identity would change; or Windows projection behavior is unproven for a proposed move.
+- Evidence demonstrates a required physical relocation; an external or persisted path consumer contradicts the frozen layout; Matt mirror ownership would be violated; invocation identity would change; or Windows projection behavior cannot be established.
 
-Authorization and review: `A reviewed no-change decision is pre-approved. Any physical relocation requires explicit user authorization before mutation and merge.`
+Authorization and review: `The reviewed no-change verification and its source milestone Git/GitHub operations are pre-approved. Physical relocation is not authorized and requires formal goal evolution.`
 
-Completion criterion: `The physical authority decision is documented and validated; either the current layout is retained or an explicitly authorized migration is merged without identity drift.`
+Completion criterion: `The current physical authority is retained and validated without path or identity changes.`
 
-## M4 Optional Codex Adapter and Distribution Packaging
+## M4 Optional Plugin Distribution Packaging
 
 Status: `Not Started`
 
-Objective: Isolate genuinely Codex-specific capabilities from universal skill discovery and make marketplace or plugin packaging optional.
+Objective: Keep the skills-bearing plugin profile buildable as an optional compatibility and rollback distribution without making it a universal source authority.
 
-Preferred target:
+Frozen target:
 
-- A zero-skill Codex adapter owns hooks, Codex event normalization, configuration integration, and optional UI metadata.
-- Universal skills continue to come only from `~/.agents/skills`.
-
-Compatibility target:
-
-- If a skills-bearing plugin profile must remain, it is generated or validated directly from canonical repository source, is never a second hand-maintained catalog, and is mutually exclusive with universal links.
+- Universal skills come only from `~/.agents/skills` and repo-owned scripts continue to manage hooks and agent-support files.
+- The optional skills-bearing plugin profile is generated or validated directly from canonical repository source, is never a second hand-maintained catalog, and is mutually exclusive with universal links.
+- No zero-skill adapter is created or installed in this goal.
 
 Scope:
 
-1. Define adapter identity, contents, build and validation path, and install and check contract.
-2. Remove skill injection from the zero-skill adapter.
-3. Keep Watcher core and shared runtime independent of adapter cache location.
-4. Update marketplace and install metadata so distribution artifacts are explicit profile outputs.
-5. Add package-content and coexistence tests.
+1. Define the optional plugin-profile build, validation, install, and check contract from canonical repository source.
+2. Keep Watcher core, hooks, and shared runtime independent of plugin-cache location in universal mode.
+3. Update marketplace and install metadata so the plugin package is an explicit `plugin` profile output.
+4. Add package-content and mutual-exclusion tests.
 
 Minimal falsifying validation:
 
-- The zero-skill adapter package contains no `skills/` injection surface.
-- Universal profile plus zero-skill adapter exposes each skill once and preserves hooks.
-- An optional skills-bearing plugin package validates independently and fails closed when universal links are active.
-- Package identities and source versions derive from repository authority.
+- Universal mode installs no plugin package and preserves repo-owned hooks.
+- The optional skills-bearing plugin package validates independently and fails closed when universal links are active.
+- Package identities, skills, and source versions derive from repository authority.
 
 Review gate:
 
-- Adapter boundaries are Codex-specific and do not become a new runtime or source authority.
-- No second skill catalog, fallback discovery, or duplicate injection path is introduced.
+- Optional plugin distribution remains mutually exclusive with universal discovery and does not become a new runtime or source authority.
+- No adapter entity, second skill catalog, fallback discovery, or duplicate injection path is introduced.
 
 Evidence to record:
 
-- Package manifest and tree inventory, build commands, hook tests, universal-plus-adapter discovery inventory, plugin-profile inventory, and rollback commands.
+- Package manifest and tree inventory, build commands, hook tests, universal discovery inventory, plugin-profile inventory, mutual-exclusion evidence, and rollback commands.
 
 Checkpoint evidence: `M4 commits and PR, built artifact identity, package-content checks, and coexistence or mutual-exclusion evidence.`
 
-Rollback: `Uninstall or disable the adapter package; canonical source and universal projection remain intact. Restore the previous optional plugin package only in plugin profile.`
+Rollback: `Revert the packaging source PR. No real plugin is installed during M4; the current plugin profile remains the M5 rollback baseline.`
 
 Hard stops:
 
-- Codex requires the adapter to package overlapping skills; hook operation still depends on marketplace catalog; package build requires a second catalog; or adapter removal would lose core Watcher data.
+- Universal hook operation depends on plugin cache; package build requires a second catalog; the plugin package cannot remain mutually exclusive; or optional packaging would alter callable identities.
 
-Authorization and review: `Source and package work, commits, push, and a Draft PR are pre-approved. Installing a real adapter or merging a packaging change requires explicit user authorization after independent review.`
+Authorization and review: `Source and package work, commits, goal-owned branch push, Draft PR creation and updates, independent review, and merge after every gate passes are pre-approved. Real plugin-profile mutation remains part of the M5 boundary, not M4.`
 
-Completion criterion: `Optional Codex packaging builds and validates independently, with a zero-skill adapter preferred and no possible active overlap with universal skills.`
+Completion criterion: `Optional plugin packaging builds and validates independently from canonical source, while universal mode remains plugin-free and no active overlap is possible.`
 
 ## M5 Controlled Universal Profile Cutover
 
@@ -532,32 +562,60 @@ Preconditions:
 2. Real machine access, Codex CLI capabilities, repository checkout, and rollback artifacts are available.
 3. Read-only inventory records exact `pwd`, repository, HEAD, upstream and dirty state, `~/.agents/skills`, Codex config, enabled plugins, cache versions, hooks, Watcher state, and visible skill inventory.
 4. No unmanaged same-name skill or unclassified enabled my-codex plugin remains unresolved.
-5. The user explicitly authorizes the apply step after reviewing the plan and inventory.
+5. The exact apply, backup, retained-state, and rollback boundary is frozen by the completed planning preflight.
+
+Frozen mutation boundary:
+
+1. After M1-M4, the fresh inventory, and independent cutover review pass, M5 may disable, remove, restore, or reinstall only inventory-confirmed skills-bearing plugins owned by the `my-codex` marketplace. The current read-only inventory identifies `watcher@my-codex`, `workflow@my-codex`, and `mattpocock-skills@my-codex`; the immediately pre-apply inventory is authoritative if installed state changes before M5.
+2. M5 may create, repair, prune, or roll back only universal entries under `~/.agents/skills` whose ownership is proven by the repository tooling and whose resolved target is the current `my-codex` checkout. An unmanaged entry, same-name conflict, or different target fails closed.
+3. M5 may modify only the minimum `my-codex` marketplace, plugin-install, plugin-cache, hook, and agent-support entries required to transition between the two frozen profiles and prove rollback. It may not use that authority for general refresh, upgrade, or cleanup.
+4. M5 excludes every other marketplace and plugin, unrelated Codex configuration, unmanaged skills, user files, the source checkout, and all Watcher logs, reports, proposals, snapshots, backups, and other durable runtime state.
+5. Deletion or pruning of retained rollback artifacts, old configuration, cache, hook backups, or Watcher state is outside this goal. Any mutation beyond this exact ownership and category boundary is a runtime hard stop and requires formal goal evolution or separately scoped authorization.
+
+Protected backup and evidence boundary:
+
+1. Before the first mutation, create one durable backup directory beneath `/Users/max/.codex/backups/my-codex/universal-agent-skills/` with a unique basic-ISO-8601 UTC timestamp component, for example `20260820T153045Z`. Record the fully resolved path in M5 evidence. The directory is owner-only mode `0700`; raw backup files are mode `0600`.
+2. Back up the complete pre-cutover `config.toml` and `hooks.json` when present; exact my-codex marketplace and plugin-install metadata; the three inventory-confirmed plugin package and cache trees at their exact versions; the repository-owned universal-link inventory without dereferencing canonical source content; `codex plugin list`; and repository HEAD, upstream, and dirty-state evidence.
+3. Do not copy unrelated plugin or marketplace trees, Watcher state, the repository skill source, credentials stored outside the exact backed-up files, or the rest of the Codex home. Backup package content is an inactive rollback artifact, never canonical source authority.
+4. Raw configuration, package, and environment evidence stays local and is never committed or attached to a PR. Only a redacted summary, exact owned paths, version identities, commands, and validation outcomes enter repository or GitHub evidence.
+5. A later configuration or hook drift forbids blanket file replacement. Re-inventory and restore only the frozen my-codex entries after review; if targeted restoration cannot preserve intervening user changes, stop before mutation.
+6. This directory is durable rollback evidence, not a task temporary cache root, and is therefore outside the `Not applicable` housekeeping policy.
 
 Comparison matrix:
 
 | Mode | Active skills path | Purpose | Required evidence |
 | --- | --- | --- | --- |
 | Baseline plugin | Skills-bearing plugin only | Capture current behavior and rollback baseline | Exact inventory, invocation checks, Watcher health |
-| Candidate universal | `~/.agents/skills` only; optional zero-skill adapter allowed | Target production behavior | Exact-once inventory, explicit and implicit routing, symlink and resource resolution |
-| Rollback rehearsal | Restored plugin profile in an isolated or reversible step | Prove recovery | Restoration commands, identity inventory, no data loss |
+| Candidate universal | `~/.agents/skills` only; repo-owned hooks remain active | Target production behavior | Exact-once inventory, callable-identity routing, symlink and resource resolution |
+| Rollback rehearsal | Restored plugin profile on the current Mac | Prove real recovery before final cutover | Targeted restoration commands, exact-once identity inventory, no data loss or unrelated-state overwrite |
+| Final universal | `~/.agents/skills` only; retained plugin artifacts inactive | Establish the production end state | Repeated exact-once inventory, behavior comparison, protected rollback baseline |
 
-Apply sequence after authorization:
+Fresh-process isolation boundary:
+
+1. Baseline plugin, candidate universal, rollback rehearsal, and final universal evidence each comes from a distinct, freshly spawned, non-interactive Codex CLI process against the real current Codex home.
+2. Do not use the current Desktop task, an inherited prompt, or an already-running CLI process as discovery or invocation evidence because they may retain previously loaded skill context.
+3. Do not quit or relaunch the Codex Desktop application during the cutover. Desktop-visible follow-up may be recorded later, but it is not an M5 gate or a substitute for the fresh-process evidence.
+4. Start a validation process only after the intended phase has exactly one active skills discovery path. No process is launched during a transient zero-active transition step.
+
+Apply sequence inside the frozen M5 boundary:
 
 1. Revalidate source and target conflicts.
-2. Back up relevant configuration and record current plugin and link state without copying source skills.
-3. Disable or remove exact skills-bearing plugins.
-4. Verify the old active discovery path is inactive.
-5. Create or repair only repository-owned universal links.
-6. Keep or install only the validated zero-skill Codex adapter when applicable.
-7. Restart Codex or the harness.
-8. Validate discovery, invocation behavior, resource resolution, Watcher core, hooks, and rollback readiness.
+2. Create and validate the protected backup, then record its redacted manifest and the exact targeted restoration commands.
+3. Capture the plugin-profile baseline in a fresh non-interactive Codex CLI process.
+4. Disable or remove only the inventory-confirmed skills-bearing my-codex plugins and verify the old discovery path is inactive.
+5. Create or repair only repository-owned universal links while preserving repo-owned hooks and agent-support files without installing an adapter.
+6. Capture the candidate-universal evidence in a second fresh process.
+7. Remove only repository-owned universal links and restore the exact plugin profile through targeted my-codex entry restoration.
+8. Capture rollback-rehearsal evidence in a third fresh process and prove that no unrelated or durable state changed.
+9. Repeat the reviewed plugin deactivation, inactive-path verification, and repository-owned universal-link activation.
+10. Capture final-universal evidence in a fourth fresh process and validate discovery, callable-identity behavior, resource resolution, Watcher core, hooks, and rollback readiness.
+11. Record the inactive retained-state inventory and leave every cleanup candidate untouched.
 
 Minimal falsifying validation:
 
 - Every canonical skill appears exactly once.
 - Removing or disabling the personal marketplace does not remove universal skills.
-- Explicit invocation and preserved implicit routing match the baseline.
+- Bare callable identities and implicit routing match baseline semantics; plugin-qualified selector spelling is not required to remain literal across profiles.
 - Every referenced script, reference, template, asset, and harness metadata file resolves from symlink invocation.
 - Universal profile works with plugin cache absent from the validation fixture or isolated environment.
 - Watcher core functions without marketplace catalog authority.
@@ -569,78 +627,31 @@ Review gate:
 
 Evidence to record:
 
-- Before and after config and link inventories, `codex plugin list`, cache inventory, visible skill list, invocation scenarios, Watcher doctor and report output, hook checks, and rollback rehearsal result.
+- The protected backup path and redacted manifest; before, candidate, rollback, and final config and link inventories; `codex plugin list`; cache inventory; visible skill list; invocation scenarios; Watcher doctor and report output; hook checks; and rollback-rehearsal result. Raw backup material remains local.
 
-Checkpoint evidence: `M5 authorized cutover record, exact commands, before and after evidence, user authorization context, and rollback rehearsal.`
+Checkpoint evidence: `M5 preflight authorization record, exact commands, before and after evidence, comparison matrix, retained-state inventory, and rollback rehearsal.`
 
 Rollback:
 
 1. Remove only repository-owned universal links.
-2. Restore the exact known-good marketplace or plugin configuration and package version.
-3. Restart Codex.
-4. Verify plugin-profile closure and Watcher health.
-5. Preserve failure evidence for M5 rework.
+2. Re-inventory live config and hooks, compare them to the protected backup, and stop if intervening changes make targeted restoration unsafe.
+3. Restore only the exact known-good my-codex marketplace or plugin entries and package versions.
+4. Start a fresh non-interactive Codex CLI process and verify plugin-profile closure and Watcher health.
+5. Preserve failure evidence and all retained rollback state for M5 rework.
+
+Retained rollback state:
+
+1. Retain the protected backup directory, the exact known-good versions of `watcher@my-codex`, `workflow@my-codex`, and `mattpocock-skills@my-codex`, their inactive package or cache trees, the targeted marketplace and configuration snapshots, hook and agent-support backups, and all M5 comparison evidence.
+2. Retain all existing Watcher logs, reports, proposals, snapshots, backups, metadata, and other durable runtime state in place; do not duplicate, rewrite, or classify it as a cleanup candidate during this goal.
+3. Goal Close does not delete or prune retained state. Eligibility requires at least five successful universal sessions across at least three working days, followed by a separate planning preflight, exact inventory, independent review, a `Ready` cleanup goal, and explicit destructive authorization.
 
 Hard stops:
 
-- No explicit user apply authorization; backup or rollback cannot be proven; unmanaged conflict; unknown plugin; required CLI or machine access missing; sequential comparison cannot establish exact-once discovery; or the next action would remove the only active path without a preflighted replacement.
+- The apply set exceeds the frozen preflight boundary; protected backup or targeted rollback cannot be proven; raw evidence cannot be kept private; intervening config drift makes restoration unsafe; an unmanaged conflict or unknown plugin exists; required CLI or machine access is missing; sequential fresh-process comparison cannot establish exact-once discovery; or the next action would remove the only active path without a preflighted replacement.
 
-Authorization and review: `Read-only inventory is pre-approved. Apply is not authorized by this goal file and requires a fresh explicit user instruction.`
+Authorization and review: `Read-only inventory and the exact M5 apply and rollback operations recorded by the completed planning preflight are pre-approved after M1-M4, the inventory, and independent cutover review pass. Any broader mutation is a runtime hard stop.`
 
-Completion criterion: `The real environment runs universal profile with exact-once discovery, preserved invocation behavior, working resources, Watcher and adapter integration, and a proven rollback path.`
-
-## M6 Obsolete Marketplace Runtime Cleanup
-
-Status: `Not Started`
-
-Objective: Remove only obsolete, owned marketplace or plugin runtime paths after universal production stability is demonstrated.
-
-Preconditions:
-
-1. M5 is Done.
-2. Universal profile has passed at least five successful sessions across at least three working days, including explicit invocation, implicit routing, Watcher core, and hook or adapter checks.
-3. No core code, doc, or test reads the candidate old path.
-4. A read-only deletion inventory and independent ownership review are complete.
-5. The user explicitly authorizes the exact deletion set.
-
-Scope candidates:
-
-- Disabled stale my-codex skills-bearing plugin config.
-- Superseded owned cache versions and marketplace snapshots.
-- Old runtime or source-assumption code and active docs proven unused.
-- Legacy validation expectations that require plugin cache in universal profile.
-
-Protected state:
-
-- Unrelated plugins or marketplaces, unmanaged skills, Watcher logs, reports and proposals, rollback evidence still inside the observation window, the source checkout, user or private config unrelated to my-codex, and historical docs.
-
-Minimal falsifying validation:
-
-- Repository-wide path and term scan finds no active consumer.
-- Universal closure passes before deletion.
-- The exact owned deletion plan contains no symlink, junction, or reparse-point escape.
-- Universal closure, invocation scenarios, Watcher health, and adapter checks pass after deletion and restart.
-
-Review gate:
-
-- Independent deletion review classifies every path as owned, obsolete, and recoverable or no longer required.
-- No wildcard or broad-root deletion is accepted without an exact bounded inventory.
-
-Evidence to record:
-
-- Observation log, deletion inventory, ownership evidence, authorization, before and after sizes and paths, commands, restart validation, and residual rollback assets.
-
-Checkpoint evidence: `M6 cleanup commit or config record, authorized deletion log, post-cleanup validation, and final retained-state inventory.`
-
-Rollback: `Restore the known-good plugin or profile artifact only if post-cleanup universal validation regresses; otherwise source remains universal and old cache stays removed.`
-
-Hard stops:
-
-- Explicit deletion authorization missing; ownership uncertain; any current consumer remains; observation window incomplete; deletion would affect unrelated sources or durable Watcher evidence; or a rollback artifact must still be retained.
-
-Authorization and review: `No mutation is authorized until the exact deletion set receives fresh user approval and independent read-only review.`
-
-Completion criterion: `Only obsolete owned marketplace runtime paths are removed, universal profile still passes the full oracle, and no source, cache, or runtime authority ambiguity remains.`
+Completion criterion: `The current Mac runs universal profile with exact-once discovery, bare callable identities, working resources, repo-owned hooks, protected Watcher durable state, a retained plugin rollback baseline, and a proven rollback path.`
 
 ## Close Goal Closure and Archive
 
@@ -648,11 +659,11 @@ Status: `Not Started`
 
 Close prerequisites:
 
-1. M1-M6 are `Done`, `Review=Passed`, and `Checkpoint=Done`.
+1. M1-M5 are `Done`, `Review=Passed`, and `Checkpoint=Done`.
 2. The frozen acceptance oracle below has evidence.
 3. Root README, relevant plugin and Watcher docs, wrappers, and runbooks describe the target architecture.
 4. Active TODO navigation points only to current work.
-5. No task-temporary-cache cleanup is attempted because the policy is `Not applicable`.
+5. The explicit Task Temporary Cache / Housekeeping policy recorded during planning preflight has been honored.
 
 Frozen acceptance oracle:
 
@@ -664,30 +675,31 @@ Frozen acceptance oracle:
 - Universal profile requires no plugin cache.
 - Watcher core requires no marketplace catalog.
 - Optional plugin profile builds independently and is mutually exclusive with universal skills.
-- Any zero-skill Codex adapter can coexist without overlapping skill injection.
+- Universal mode uses repo-owned hooks without installing a zero-skill adapter.
 - Installer and sync tooling modifies only repository-owned links and fails closed on conflicts.
-- No dangling links, second catalog, dual runtime authority, or source and cache confusion remains.
+- No dangling links, second catalog, dual active discovery authority, or source and cache confusion remains.
+- Retained plugin configuration, package, cache, hook backups, and other rollback artifacts are inventoried, inactive where required, and explicitly protected for the later cleanup goal.
 - The merged slimming behavior is preserved.
-- Invocation and routing, hook, permission, transition, and deletion changes received independent read-only review.
+- Callable identity, routing, hook, permission, and transition changes received independent read-only review.
 
 Final validation:
 
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/workflow/tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
-python plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py docs/todo/universal-agent-skills-migration.md
-python plugins/workflow/skills/long-running-goal/scripts/check_md_links.py docs/todo
-python plugins/workflow/skills/long-running-goal/scripts/check_todo_index.py --mode closed --archived-goal docs/todo/archive/universal-agent-skills-migration.md docs/todo/universal-agent-skills-migration.md docs/todo/README.md
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s plugins/workflow/tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
+/Users/max/.codex/venvs/my-codex/bin/python plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py docs/todo/universal-agent-skills-migration.md
+/Users/max/.codex/venvs/my-codex/bin/python plugins/workflow/skills/long-running-goal/scripts/check_md_links.py docs/todo
+/Users/max/.codex/venvs/my-codex/bin/python plugins/workflow/skills/long-running-goal/scripts/check_todo_index.py --mode closed --archived-goal docs/todo/archive/universal-agent-skills-migration.md docs/todo/universal-agent-skills-migration.md docs/todo/README.md
 git diff --check
 ```
 
 Close actions:
 
-1. Record final comparison, validation, rollback, observation, and retained-state evidence.
+1. Record final comparison, validation, rollback, and retained-state evidence, including the future cleanup eligibility boundary.
 2. Move this file to `docs/todo/archive/universal-agent-skills-migration.md`.
 3. Replace the active index entry with an archive entry and remove stale active navigation.
-4. Close remaining completed PRs or issues and delete or neutralize temporary implementation branches when supported and explicitly in scope.
+4. Close remaining completed PRs or issues and delete merged goal-owned branches only when they contain no commits absent from `main`.
 5. Mark overall status `Closed` only after the archive and index gate passes.
 
 Close checkpoint evidence: `Final merge or revision, archive path, closed PRs, validation logs, acceptance matrix, and retained rollback evidence.`
@@ -701,7 +713,7 @@ Continue the long-running goal at docs/todo/universal-agent-skills-migration.md.
 
 Read the newest user request first and confirm it still advances the same universal Agent Skills migration. Read the goal file, root AGENTS.md, current main, current branch or PR state, and the source and testing surfaces named by the first non-Done milestone. Do not rely on chat history, deleted prompts, archived prototypes, or unpublished patches.
 
-Execute only the first non-Done milestone. Start its branch from current main. Preserve the Git-only source authority, callable and Watcher identities, frozen slimming baseline, one-active-discovery-path invariant, unmanaged-user-state protection, and milestone-specific authorization boundary. Use local YOLO operations inside the frozen scope, continue through ordinary failures when the next local diagnostic is clear, and stop only at a recorded runtime hard stop.
+If the overall goal is Draft, complete M0 planning preflight, approval freezing, readiness validation, and checkpoint evidence; do not execute M1-M5. Once the goal is Ready, execute only the first non-Done implementation milestone and start its branch from current main. Preserve the Git-only source authority, bare callable identities, Watcher identities, frozen slimming baseline, one-active-discovery-path invariant, unmanaged-user-state protection, and milestone-specific authorization boundary. Use non-destructive local YOLO operations inside the frozen scope, continue through ordinary failures when the next local diagnostic is clear, and stop only at a recorded runtime hard stop.
 
-Before marking the milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. Do not perform real runtime cutover or deletion unless the current milestone explicitly requires it and the goal records fresh user authorization.
+Before marking the milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. Perform M5 only inside its frozen apply and rollback boundary. Do not delete retained plugin, marketplace, cache, hook-backup, or Watcher state; cleanup belongs to a later independent goal.
 ```
