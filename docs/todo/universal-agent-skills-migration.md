@@ -2,7 +2,7 @@
 
 Overall status: `In Progress`
 
-Updated: 2026-08-20
+Updated: 2026-08-21
 
 This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M1 after the explicit 2026-08-20 execution request. Work starts from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
@@ -388,6 +388,10 @@ Execution evidence:
 
 - Execution started on 2026-08-20 from clean `main` revision `3da1d41a1044218e39a0394ea827f105ed268710` on goal-owned branch `codex/universal-agent-skills-m1`; `origin/main` matched and no open PR existed.
 - Initial read-only caller inventory covered the five required entry points, root README, current tests, marketplace and install metadata references, and legacy skip/prune flags. No memory entry supplied an alternate implementation source.
+- Initial integrated implementation commit `80e8a8a` added the repository catalog, owned universal projection, explicit profile policy, rollback-capable transitions, complete closure checks, wrapper propagation, current documentation, and focused tests without changing skill content or callable identities.
+- The first independent Standards and Spec reviews found strict-parser, duplicate-authority, transition-interface, alternate-marketplace, selector-scope, and universal-link-removal rollback gaps. The branch now fails closed on malformed CLI rows and config disagreement, centralizes plugin and marketplace identity parsing, rejects or precisely removes alternate-marketplace copies, limits selectors to the canonical catalog and chosen marketplace, uses direction-specific transition runtimes, and rolls back partial universal-link removal. Re-review remains pending before the gate passes.
+- Post-fix validation on 2026-08-21 passed the required 51 focused tests, all 70 root tests, all 64 Workflow tests, and all 62 Watcher tests with three platform skips; owner-venv byte compilation, shell syntax, CLI help, Markdown links, goal readiness, and `git diff --check` also passed. The bare system `python3` correctly remained unsuitable because it lacks PyYAML, so all supported checks used `/Users/max/.codex/venvs/my-codex/bin/python` as frozen.
+- A real-environment read-only inventory parsed all current `codex plugin list` rows, confirmed the canonical three `my-codex` packages enabled at one exact cache version each with 34 callable identities and plugin-profile closure, and confirmed `/Users/max/.agents/skills` is absent. No refresh, check, link, plugin, hook, cache, or durable-state mutation was run against the live installation during M1.
 
 Checkpoint evidence: `M1 commits, PR URL, merge authorization and result, focused and full validation logs, independent review, and remaining runtime blockers.`
 

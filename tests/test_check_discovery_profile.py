@@ -11,7 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import check_my_codex  # noqa: E402
-from check_skill_discovery import plugin_profile_issues, universal_profile_issues  # noqa: E402
+from check_skill_discovery import (  # noqa: E402
+    PluginListRow,
+    codex_plugin_rows,
+    plugin_installation_issues,
+    plugin_profile_issues,
+    universal_profile_issues,
+)
 from repo_skill_catalog import load_repo_skill_catalog  # noqa: E402
 from sync_agents_skills import sync_layer  # noqa: E402
 
@@ -88,6 +94,72 @@ class DiscoveryProfileClosureTests(unittest.TestCase):
         self.assertIn("not enabled: beta", report)
         self.assertIn("no canonical repository skills: adapter", report)
         self.assertIn("universal callable identity remains active", report)
+
+
+class PluginListParserTests(unittest.TestCase):
+    def test_parses_installed_and_uninstalled_rows(self) -> None:
+        output = (
+            "Marketplace `my-codex`\n"
+            "/repo/.agents/plugins/marketplace.json\n\n"
+            "PLUGIN  STATUS              VERSION  PATH\n"
+            "alpha@my-codex  installed, enabled  1.2.3  /cache/alpha\n"
+            "beta@my-codex  not installed          /repo/plugins/beta\n"
+        )
+        self.assertEqual(
+            codex_plugin_rows(output),
+            {
+                ("my-codex", "alpha"): PluginListRow("installed, enabled", "1.2.3"),
+                ("my-codex", "beta"): PluginListRow("not installed", ""),
+            },
+        )
+
+    def test_malformed_candidate_row_fails_closed(self) -> None:
+        output = (
+            "Marketplace `my-codex`\n"
+            "/repo/.agents/plugins/marketplace.json\n\n"
+            "PLUGIN  STATUS              VERSION  PATH\n"
+            "alpha@my-codex installed, enabled 1.2.3 /cache/alpha\n"
+        )
+        with self.assertRaisesRegex(ValueError, "malformed plugin list row"):
+            codex_plugin_rows(output)
+
+
+class PluginInstallationClosureTests(unittest.TestCase):
+    def test_cli_and_cache_version_drift_are_reported_by_shared_closure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            source = write_skill(repo, "alpha", "one")
+            source_manifest = source.parents[1] / ".codex-plugin" / "plugin.json"
+            source_manifest.parent.mkdir(parents=True, exist_ok=True)
+            source_manifest.write_text(
+                '{"name": "alpha", "version": "2.0.0"}\n',
+                encoding="utf-8",
+            )
+            catalog = load_repo_skill_catalog(repo)
+            codex_home = root / "codex"
+            for version in ("1.0.0", "2.0.0"):
+                (codex_home / "plugins" / "cache" / "test" / "alpha" / version).mkdir(
+                    parents=True
+                )
+
+            issues = plugin_installation_issues(
+                catalog,
+                marketplace_name="test",
+                target_root=root / "agents" / "skills",
+                codex_home=codex_home,
+                rows={
+                    ("test", "alpha"): PluginListRow(
+                        "installed, enabled",
+                        "1.0.0",
+                    )
+                },
+                plugin_sources={"alpha": source.parents[1]},
+            )
+
+        report = "\n".join(issues)
+        self.assertIn("installed version mismatch", report)
+        self.assertIn("expected exactly one inspectable cache version", report)
 
 
 class CheckDiscoveryProfileCliTests(unittest.TestCase):

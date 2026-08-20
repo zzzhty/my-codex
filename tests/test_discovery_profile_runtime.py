@@ -9,7 +9,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from discovery_profile_runtime import (  # noqa: E402
-    DiscoveryTransitionRuntime,
+    PluginToUniversalRuntime,
+    UniversalToPluginRuntime,
     transition_plugin_to_universal,
     transition_universal_to_plugin,
 )
@@ -30,24 +31,37 @@ class RecordingRuntime:
         if self.failed_once and label == self.rollback_fail_at:
             raise SystemExit(f"rollback failed at {label}")
 
-    def runtime(self) -> DiscoveryTransitionRuntime:
-        return DiscoveryTransitionRuntime(
+    def plugin_to_universal_runtime(self) -> PluginToUniversalRuntime:
+        return PluginToUniversalRuntime(
             preflight_universal=lambda: self.step("preflight-universal"),
             activate_universal=lambda: self.step("activate-universal"),
             deactivate_universal=lambda: self.step("deactivate-universal"),
             verify_universal=lambda: self.step("verify-universal"),
-            preflight_plugin=lambda: self.step("preflight-plugin"),
             activate_plugin=lambda selector: self.step(f"activate-plugin:{selector}"),
             deactivate_plugin=lambda selector: self.step(f"deactivate-plugin:{selector}"),
             verify_plugin=lambda: self.step("verify-plugin"),
             verify_plugins_inactive=lambda: self.step("verify-plugins-inactive"),
         )
 
+    def universal_to_plugin_runtime(self) -> UniversalToPluginRuntime:
+        return UniversalToPluginRuntime(
+            preflight_plugin=lambda: self.step("preflight-plugin"),
+            activate_universal=lambda: self.step("activate-universal"),
+            deactivate_universal=lambda: self.step("deactivate-universal"),
+            verify_universal=lambda: self.step("verify-universal"),
+            activate_plugin=lambda selector: self.step(f"activate-plugin:{selector}"),
+            deactivate_plugin=lambda selector: self.step(f"deactivate-plugin:{selector}"),
+            verify_plugin=lambda: self.step("verify-plugin"),
+        )
+
 
 class DiscoveryProfileRuntimeTests(unittest.TestCase):
     def test_plugin_to_universal_orders_preflight_deactivation_and_activation(self) -> None:
         recording = RecordingRuntime()
-        transition_plugin_to_universal(recording.runtime(), ["alpha@test", "beta@test"])
+        transition_plugin_to_universal(
+            recording.plugin_to_universal_runtime(),
+            ["alpha@test", "beta@test"],
+        )
         self.assertEqual(
             recording.events,
             [
@@ -63,7 +77,10 @@ class DiscoveryProfileRuntimeTests(unittest.TestCase):
     def test_plugin_to_universal_failure_removes_partial_links_before_restoring_plugins(self) -> None:
         recording = RecordingRuntime(fail_at="verify-universal")
         with self.assertRaisesRegex(SystemExit, "failed at verify-universal"):
-            transition_plugin_to_universal(recording.runtime(), ["alpha@test", "beta@test"])
+            transition_plugin_to_universal(
+                recording.plugin_to_universal_runtime(),
+                ["alpha@test", "beta@test"],
+            )
         self.assertEqual(
             recording.events[-4:],
             [
@@ -76,7 +93,10 @@ class DiscoveryProfileRuntimeTests(unittest.TestCase):
 
     def test_universal_to_plugin_preflights_before_removing_links(self) -> None:
         recording = RecordingRuntime()
-        transition_universal_to_plugin(recording.runtime(), ["alpha@test", "beta@test"])
+        transition_universal_to_plugin(
+            recording.universal_to_plugin_runtime(),
+            ["alpha@test", "beta@test"],
+        )
         self.assertEqual(
             recording.events,
             [
@@ -91,12 +111,32 @@ class DiscoveryProfileRuntimeTests(unittest.TestCase):
     def test_universal_to_plugin_failure_removes_partial_plugins_before_restoring_links(self) -> None:
         recording = RecordingRuntime(fail_at="activate-plugin:beta@test")
         with self.assertRaisesRegex(SystemExit, "failed at activate-plugin:beta@test"):
-            transition_universal_to_plugin(recording.runtime(), ["alpha@test", "beta@test"])
+            transition_universal_to_plugin(
+                recording.universal_to_plugin_runtime(),
+                ["alpha@test", "beta@test"],
+            )
         self.assertEqual(
             recording.events[-4:],
             [
                 "deactivate-plugin:beta@test",
                 "deactivate-plugin:alpha@test",
+                "activate-universal",
+                "verify-universal",
+            ],
+        )
+
+    def test_universal_removal_failure_restores_partial_links(self) -> None:
+        recording = RecordingRuntime(fail_at="deactivate-universal")
+        with self.assertRaisesRegex(SystemExit, "failed at deactivate-universal"):
+            transition_universal_to_plugin(
+                recording.universal_to_plugin_runtime(),
+                ["alpha@test", "beta@test"],
+            )
+        self.assertEqual(
+            recording.events,
+            [
+                "preflight-plugin",
+                "deactivate-universal",
                 "activate-universal",
                 "verify-universal",
             ],
@@ -111,7 +151,10 @@ class DiscoveryProfileRuntimeTests(unittest.TestCase):
             SystemExit,
             "failed at verify-universal.*rollback failed at activate-plugin:alpha@test",
         ):
-            transition_plugin_to_universal(recording.runtime(), ["alpha@test"])
+            transition_plugin_to_universal(
+                recording.plugin_to_universal_runtime(),
+                ["alpha@test"],
+            )
 
 
 if __name__ == "__main__":

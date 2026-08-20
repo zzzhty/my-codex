@@ -72,8 +72,11 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
                 '\n'.join(
                     [
                         '[plugins."watcher@my-codex"]',
+                        'enabled = true',
                         '[plugins."workflow@my-codex"]',
+                        'enabled = true',
                         '[plugins."mattpocock-skills@my-codex"]',
+                        'enabled = true',
                     ]
                 ),
                 encoding="utf-8",
@@ -106,6 +109,50 @@ class RefreshDiscoveryProfileCliTests(unittest.TestCase):
         inspect.assert_called_once()
         self.assertTrue(require_commands.call_args.kwargs["require_remove"])
         self.assertFalse(require_commands.call_args.kwargs["require_marketplace"])
+
+    def test_universal_removes_a_canonical_skill_plugin_from_an_alternate_marketplace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex_home = root / "codex"
+            codex_home.mkdir()
+            codex_home.joinpath("config.toml").write_text(
+                '[plugins."watcher@legacy-marketplace"]\nenabled = true\n',
+                encoding="utf-8",
+            )
+            rows = {
+                ("legacy-marketplace", "watcher"): PluginListRow(
+                    "installed, enabled",
+                    "fixture",
+                )
+            }
+            arguments = [
+                "--discovery-profile",
+                "universal",
+                "--codex-home",
+                str(codex_home),
+                "--agents-skills-root",
+                str(root / "agents" / "skills"),
+                "--dry-run",
+                "--skip-bootstrap",
+                "--skip-agents",
+                "--skip-hooks",
+                "--skip-doctor",
+            ]
+            with (
+                mock.patch.object(refresh, "resolve_codex_executable", return_value="/fake/codex"),
+                mock.patch.object(refresh, "require_codex_plugin_commands"),
+                mock.patch.object(refresh, "read_codex_plugin_rows", return_value=rows),
+                mock.patch.object(refresh, "run", return_value=0) as run,
+            ):
+                self.run_main(arguments)
+
+        self.assertTrue(
+            any(
+                call.args[0][-1] == "watcher@legacy-marketplace"
+                and call.args[0][2] == "remove"
+                for call in run.call_args_list
+            )
+        )
 
     def test_legacy_bypass_fails_before_bootstrap(self) -> None:
         with mock.patch.object(refresh, "run_tooling_bootstrap") as bootstrap:

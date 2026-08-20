@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,27 +20,50 @@ class PluginListRow:
 
 
 def codex_plugin_rows(output: str) -> dict[tuple[str, str], PluginListRow]:
-    """Parse the stable marketplace/plugin rows printed by `codex plugin list`."""
+    """Parse `codex plugin list`, rejecting unrecognized candidate rows."""
 
     rows: dict[tuple[str, str], PluginListRow] = {}
     marketplace_name: str | None = None
+    reading_rows = False
     for raw_line in output.splitlines():
         line = raw_line.strip()
         marketplace_match = re.fullmatch(r"Marketplace `([^`]+)`", line)
         if marketplace_match:
             marketplace_name = marketplace_match.group(1)
+            reading_rows = False
             continue
-        if not line or line.startswith("PLUGIN") or marketplace_name is None:
+        if not line:
+            continue
+        if marketplace_name is None:
+            raise ValueError(f"unexpected output before marketplace header: {line!r}")
+        if re.fullmatch(r"PLUGIN\s+STATUS\s+VERSION\s+PATH", line):
+            reading_rows = True
+            continue
+        if not reading_rows:
+            if re.match(r"\S+@\S+\s{2,}", line):
+                raise ValueError(f"plugin row appeared before table header: {line!r}")
             continue
         columns = re.split(r"\s{2,}", line, maxsplit=3)
-        if len(columns) < 2:
-            continue
+        if len(columns) < 3:
+            raise ValueError(f"malformed plugin list row: {line!r}")
         plugin_name, separator, listed_marketplace = columns[0].rpartition("@")
         if not separator or not plugin_name or listed_marketplace != marketplace_name:
-            continue
+            raise ValueError(
+                f"plugin selector does not match marketplace {marketplace_name!r}: {columns[0]!r}"
+            )
         status = columns[1]
-        version = columns[2] if len(columns) >= 4 else ""
-        rows[(marketplace_name, plugin_name)] = PluginListRow(status=status, version=version)
+        if status not in {"installed, enabled", "installed", "not installed"}:
+            raise ValueError(f"unrecognized plugin status in row: {line!r}")
+        if status == "not installed":
+            version = ""
+        elif len(columns) < 4 or not columns[2].strip():
+            raise ValueError(f"installed plugin row has no version: {line!r}")
+        else:
+            version = columns[2].strip()
+        key = (marketplace_name, plugin_name)
+        if key in rows:
+            raise ValueError(f"duplicate plugin list row: {plugin_name}@{marketplace_name}")
+        rows[key] = PluginListRow(status=status, version=version)
     return rows
 
 
@@ -55,7 +79,7 @@ def enabled_plugin_names(
     }
 
 
-def _manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
+def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
     if not manifest.is_file():
         raise ValueError(f"{label} manifest missing: {manifest}")
     try:
@@ -71,6 +95,97 @@ def _manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
             raise ValueError(f"{label} manifest {field} must be a non-empty string: {manifest}")
         identity.append(value.strip())
     return identity[0], identity[1]
+
+
+def _marketplace_payload(marketplace: Path) -> tuple[str, list[object]]:
+    if not marketplace.is_file():
+        raise ValueError(f"marketplace file missing: {marketplace}")
+    try:
+        payload = json.loads(marketplace.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"marketplace file is not valid readable JSON: {marketplace}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"marketplace must be an object: {marketplace}")
+    marketplace_name = payload.get("name")
+    if not isinstance(marketplace_name, str) or not marketplace_name.strip():
+        raise ValueError(f"marketplace name must be a non-empty string: {marketplace}")
+    plugins = payload.get("plugins")
+    if not isinstance(plugins, list):
+        raise ValueError(f"marketplace plugins field is not a list: {marketplace}")
+    return marketplace_name.strip(), plugins
+
+
+def marketplace_plugin_names(marketplace: Path) -> set[str]:
+    """Return unique package names from a validated marketplace document."""
+
+    _, plugins = _marketplace_payload(marketplace)
+    names: set[str] = set()
+    for index, entry in enumerate(plugins, start=1):
+        if not isinstance(entry, dict):
+            raise ValueError(f"marketplace plugin entry #{index} must be an object: {marketplace}")
+        plugin_name = entry.get("name")
+        if not isinstance(plugin_name, str) or not plugin_name.strip():
+            raise ValueError(f"marketplace plugin entry #{index} name missing: {marketplace}")
+        plugin_name = plugin_name.strip()
+        if plugin_name in names:
+            raise ValueError(f"duplicate marketplace plugin name {plugin_name!r}: {marketplace}")
+        names.add(plugin_name)
+    return names
+
+
+def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]:
+    """Load exact local marketplace package owners beneath ``source_root``."""
+
+    try:
+        resolved_source_root = source_root.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError(f"source root cannot be resolved: {source_root}: {exc}") from exc
+    marketplace = resolved_source_root / ".agents" / "plugins" / "marketplace.json"
+    marketplace_name, plugins = _marketplace_payload(marketplace)
+
+    sources: dict[str, Path] = {}
+    for index, entry in enumerate(plugins, start=1):
+        if not isinstance(entry, dict):
+            raise ValueError(f"marketplace plugin entry #{index} must be an object: {marketplace}")
+        plugin_name = entry.get("name")
+        if not isinstance(plugin_name, str) or not plugin_name.strip():
+            raise ValueError(f"marketplace plugin entry #{index} name missing: {marketplace}")
+        plugin_name = plugin_name.strip()
+        if plugin_name in sources:
+            raise ValueError(f"duplicate marketplace plugin name {plugin_name!r}: {marketplace}")
+        source = entry.get("source")
+        if not isinstance(source, dict):
+            raise ValueError(
+                f"marketplace plugin entry #{index} source must be an object: {marketplace}"
+            )
+        source_kind = source.get("source")
+        if source_kind != "local":
+            raise ValueError(
+                f"unsupported marketplace source kind {source_kind!r} "
+                f"for {plugin_name!r}: {marketplace}"
+            )
+        raw_path = source.get("path")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError(f"marketplace local plugin entry #{index} path missing: {marketplace}")
+        plugin_dir = Path(os.path.expandvars(raw_path.strip())).expanduser()
+        if not plugin_dir.is_absolute():
+            plugin_dir = resolved_source_root / plugin_dir
+        try:
+            plugin_dir = plugin_dir.resolve(strict=True)
+            plugin_dir.relative_to(resolved_source_root)
+        except OSError as exc:
+            raise ValueError(f"marketplace local plugin path missing: {plugin_dir}: {exc}") from exc
+        except ValueError as exc:
+            raise ValueError(f"marketplace plugin path escapes source root: {plugin_dir}") from exc
+        manifest = plugin_dir / ".codex-plugin" / "plugin.json"
+        manifest_name, _ = plugin_manifest_identity(manifest, label="source")
+        if manifest_name != plugin_name:
+            raise ValueError(
+                f"marketplace/source manifest name mismatch for entry #{index}; "
+                f"catalog has {plugin_name!r}, manifest has {manifest_name!r} at {manifest}"
+            )
+        sources[plugin_name] = plugin_dir
+    return marketplace_name, sources
 
 
 def plugin_package_issues(
@@ -105,7 +220,7 @@ def plugin_package_issues(
             )
             continue
         try:
-            manifest_name, _ = _manifest_identity(
+            manifest_name, _ = plugin_manifest_identity(
                 source_resolved / ".codex-plugin" / "plugin.json",
                 label="source",
             )
@@ -233,6 +348,18 @@ def plugin_installation_issues(
             enabled_plugin_names=enabled,
         )
     )
+    alternate_enabled = sorted(
+        f"{plugin_name}@{marketplace}"
+        for (marketplace, plugin_name), row in rows.items()
+        if marketplace != marketplace_name
+        and plugin_name in set(catalog.plugin_names)
+        and row.status == "installed, enabled"
+    )
+    if alternate_enabled:
+        issues.append(
+            "canonical skill plugins are also enabled through another marketplace: "
+            + ", ".join(alternate_enabled)
+        )
 
     expected_by_plugin: dict[str, set[str]] = {}
     for source in catalog.sources:
@@ -253,7 +380,7 @@ def plugin_installation_issues(
         if source_root is None:
             continue
         try:
-            source_name, source_version = _manifest_identity(
+            source_name, source_version = plugin_manifest_identity(
                 source_root / ".codex-plugin" / "plugin.json",
                 label="source",
             )
@@ -302,7 +429,7 @@ def plugin_installation_issues(
             )
             continue
         try:
-            cache_name, cache_version = _manifest_identity(
+            cache_name, cache_version = plugin_manifest_identity(
                 version_root / ".codex-plugin" / "plugin.json",
                 label="cache",
             )

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -12,7 +11,7 @@ from pathlib import Path
 from check_skill_discovery import (
     PluginListRow,
     codex_plugin_rows,
-    enabled_plugin_names,
+    marketplace_plugin_sources,
     plugin_installation_issues,
     plugin_package_issues,
     universal_profile_issues,
@@ -28,6 +27,7 @@ from refresh_my_codex import (
     cached_plugin_names,
     command_text,
     configured_plugin_names,
+    enabled_configured_plugin_selectors,
     expand_path,
     resolve_codex_executable,
     selected_plugins,
@@ -97,87 +97,6 @@ def print_text(message: str) -> None:
         encoding = sys.stdout.encoding or "utf-8"
         safe = message.encode(encoding, errors="backslashreplace").decode(encoding, errors="replace")
         print(safe)
-
-
-def plugin_manifest_identity(manifest: Path, *, label: str) -> tuple[str, str]:
-    if not manifest.is_file():
-        raise ValueError(f"{label} manifest missing: {manifest}")
-    try:
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{label} manifest is not valid JSON: {manifest}: line {exc.lineno}, column {exc.colno}"
-        ) from exc
-    except OSError as exc:
-        raise ValueError(f"{label} manifest cannot be read: {manifest}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"{label} manifest must be an object: {manifest}")
-    identity = []
-    for field in ("name", "version"):
-        value = data.get(field)
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"{label} manifest {field} must be a non-empty string: {manifest}")
-        identity.append(value.strip())
-    return identity[0], identity[1]
-
-
-def marketplace_plugin_sources(source_root: Path) -> tuple[str, dict[str, Path]]:
-    marketplace = source_root / ".agents" / "plugins" / "marketplace.json"
-    if not marketplace.is_file():
-        raise ValueError(f"marketplace file missing: {marketplace}")
-    try:
-        data = json.loads(marketplace.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"marketplace file is not valid JSON: {marketplace}: line {exc.lineno}, column {exc.colno}"
-        ) from exc
-    except OSError as exc:
-        raise ValueError(f"marketplace file cannot be read: {marketplace}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"marketplace must be an object: {marketplace}")
-    marketplace_name = data.get("name")
-    if not isinstance(marketplace_name, str) or not marketplace_name.strip():
-        raise ValueError(f"marketplace name must be a non-empty string: {marketplace}")
-    plugins = data.get("plugins")
-    if not isinstance(plugins, list):
-        raise ValueError(f"marketplace plugins field is not a list: {marketplace}")
-
-    sources: dict[str, Path] = {}
-    for index, entry in enumerate(plugins, start=1):
-        if not isinstance(entry, dict):
-            raise ValueError(f"marketplace plugin entry #{index} must be an object: {marketplace}")
-        plugin_name = entry.get("name")
-        if not isinstance(plugin_name, str) or not plugin_name.strip():
-            raise ValueError(f"marketplace plugin entry #{index} name missing: {marketplace}")
-        plugin_name = plugin_name.strip()
-        if plugin_name in sources:
-            raise ValueError(f"duplicate marketplace plugin name {plugin_name!r}: {marketplace}")
-        source = entry.get("source")
-        if not isinstance(source, dict):
-            raise ValueError(f"marketplace plugin entry #{index} source must be an object: {marketplace}")
-        source_kind = source.get("source")
-        if source_kind != "local":
-            raise ValueError(
-                f"unsupported marketplace source kind {source_kind!r} for {plugin_name!r}: {marketplace}"
-            )
-        raw_path = source.get("path")
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            raise ValueError(f"marketplace local plugin entry #{index} path missing: {marketplace}")
-        plugin_dir = expand_path(raw_path.strip())
-        if not plugin_dir.is_absolute():
-            plugin_dir = source_root / plugin_dir
-        plugin_dir = plugin_dir.resolve()
-        if not plugin_dir.is_dir():
-            raise ValueError(f"marketplace local plugin path missing: {plugin_dir}")
-        manifest = plugin_dir / ".codex-plugin" / "plugin.json"
-        manifest_name, _ = plugin_manifest_identity(manifest, label="source")
-        if manifest_name != plugin_name:
-            raise ValueError(
-                f"marketplace/source manifest name mismatch for entry #{index}; "
-                f"catalog has {plugin_name!r}, manifest has {manifest_name!r} at {manifest}"
-            )
-        sources[plugin_name] = plugin_dir
-    return marketplace_name.strip(), sources
 
 
 class CheckRunner:
@@ -274,59 +193,11 @@ class CheckRunner:
             output = (result.stderr or result.stdout).strip()
             self.fail(f"`codex plugin list` failed: {output}")
             return None
-        return codex_plugin_rows(result.stdout)
-
-    def check_codex_plugin_list(
-        self,
-        codex: str,
-        plugins: list[str],
-        *,
-        env: dict[str, str],
-        plugin_sources: dict[str, Path],
-    ) -> dict[tuple[str, str], PluginListRow] | None:
-        rows = self.read_plugin_rows(codex, env=env)
-        if rows is None:
+        try:
+            return codex_plugin_rows(result.stdout)
+        except ValueError as exc:
+            self.fail(f"failed to parse `codex plugin list` output: {exc}")
             return None
-        failures: list[str] = []
-        for selector in plugins:
-            plugin_name, separator, marketplace_name = selector.partition("@")
-            if not separator or not plugin_name or not marketplace_name:
-                failures.append(f"invalid plugin selector: {selector!r}")
-                continue
-            plugin_dir = plugin_sources.get(plugin_name)
-            if plugin_dir is None:
-                failures.append(f"{selector}: no source path from marketplace catalog")
-                continue
-            source_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
-            try:
-                source_name, source_version = plugin_manifest_identity(source_manifest, label="source")
-            except ValueError as exc:
-                failures.append(f"{selector}: {exc}")
-                continue
-            if source_name != plugin_name:
-                failures.append(
-                    f"{selector}: source manifest name mismatch at {source_manifest}; "
-                    f"expected {plugin_name!r}, found {source_name!r}"
-                )
-                continue
-            installed = rows.get((marketplace_name, plugin_name))
-            if installed is None:
-                failures.append(f"{selector}: missing from `codex plugin list`")
-                continue
-            if installed.status != "installed, enabled":
-                failures.append(
-                    f"{selector}: expected status 'installed, enabled', found {installed.status!r}"
-                )
-            if installed.version != source_version:
-                failures.append(
-                    f"{selector}: installed version mismatch; expected source version {source_version!r}, "
-                    f"found {installed.version!r}"
-                )
-        if failures:
-            self.fail("plugin source/installed identity check failed: " + "; ".join(failures))
-            return rows
-        self.ok("codex plugin list matches source plugin name/version identities and enabled status")
-        return rows
 
     def check_universal_discovery_profile(
         self,
@@ -335,14 +206,38 @@ class CheckRunner:
         target_root: Path,
         marketplace_name: str,
         rows: dict[tuple[str, str], PluginListRow],
+        configured_enabled_selectors: set[tuple[str, str]],
     ) -> None:
-        enabled = enabled_plugin_names(rows, marketplace_name=marketplace_name)
-        unclassified = sorted(enabled - set(catalog.plugin_names))
+        expected = set(catalog.plugin_names)
+        all_enabled = {
+            (marketplace, plugin_name)
+            for (marketplace, plugin_name), row in rows.items()
+            if row.status == "installed, enabled"
+        }
+        enabled = {
+            plugin_name
+            for _, plugin_name in all_enabled
+            if plugin_name in expected
+        }
+        unclassified = sorted(
+            plugin_name
+            for marketplace, plugin_name in all_enabled
+            if marketplace == marketplace_name and plugin_name not in expected
+        )
         issues = universal_profile_issues(
             catalog,
             target_root=target_root,
             enabled_plugin_names=enabled,
         )
+        missing_from_cli = sorted(configured_enabled_selectors - all_enabled)
+        if missing_from_cli:
+            issues.append(
+                "Codex config and `codex plugin list` disagree about enabled discovery plugins: "
+                + ", ".join(
+                    f"{plugin_name}@{marketplace}"
+                    for marketplace, plugin_name in missing_from_cli
+                )
+            )
         if unclassified:
             issues.append(
                 "unclassified enabled my-codex plugins are outside the frozen discovery profile: "
@@ -377,77 +272,6 @@ class CheckRunner:
                 self.fail(issue)
             return
         self.ok("plugin discovery profile matches repository, CLI, cache, and inactive universal layer")
-
-    def check_plugin_cache(
-        self,
-        plugins: list[str],
-        *,
-        codex_home: Path,
-        plugin_sources: dict[str, Path],
-    ) -> None:
-        failures: list[str] = []
-        cache_root = codex_home / "plugins" / "cache"
-        for selector in plugins:
-            plugin_name, separator, marketplace_name = selector.partition("@")
-            if not separator or not plugin_name or not marketplace_name:
-                failures.append(f"invalid plugin selector: {selector!r}")
-                continue
-            plugin_dir = plugin_sources.get(plugin_name)
-            if plugin_dir is None:
-                failures.append(f"{selector}: no source path from marketplace catalog")
-                continue
-            source_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
-            try:
-                source_name, source_version = plugin_manifest_identity(source_manifest, label="source")
-            except ValueError as exc:
-                failures.append(f"{selector}: {exc}")
-                continue
-            if source_name != plugin_name:
-                failures.append(
-                    f"{selector}: source manifest name mismatch at {source_manifest}; "
-                    f"expected {plugin_name!r}, found {source_name!r}"
-                )
-                continue
-            plugin_root = cache_root / marketplace_name / plugin_name
-            version_roots = (
-                sorted(path for path in plugin_root.iterdir() if path.is_dir())
-                if plugin_root.is_dir()
-                else []
-            )
-            if len(version_roots) != 1:
-                found_text = ", ".join(path.name for path in version_roots) or "none"
-                failures.append(
-                    f"{selector}: expected exactly one cache version {source_version!r}; "
-                    f"found versions: {found_text}"
-                )
-                continue
-            version_root = version_roots[0]
-            if version_root.is_symlink() or version_root.name != source_version:
-                failures.append(
-                    f"{selector}: exact cache version mismatch; expected {source_version!r}, "
-                    f"found {version_root.name!r}"
-                )
-                continue
-            cache_manifest = version_root / ".codex-plugin" / "plugin.json"
-            try:
-                cache_name, cache_version = plugin_manifest_identity(cache_manifest, label="cache")
-            except ValueError as exc:
-                failures.append(f"{selector}: {exc}")
-                continue
-            if cache_name != source_name:
-                failures.append(
-                    f"{selector}: cache manifest name mismatch at {cache_manifest}; "
-                    f"expected {source_name!r}, found {cache_name!r}"
-                )
-            if cache_version != source_version:
-                failures.append(
-                    f"{selector}: cache manifest version mismatch at {cache_manifest}; "
-                    f"expected {source_version!r}, found {cache_version!r}"
-                )
-        if failures:
-            self.fail("plugin source/cache identity check failed: " + "; ".join(failures))
-            return
-        self.ok(f"plugin source/cache manifest identity matches under {cache_root}")
 
     def check_no_stale_my_codex_plugins(
         self,
@@ -671,10 +495,12 @@ def main() -> None:
     tooling_python = tooling_python_from_args(args, venv_path)
     env = build_env(codex_home=codex_home, tooling_python=tooling_python)
     codex: str | None = None
-    if profile is DiscoveryProfile.PLUGIN or configured_plugin_names(
-        codex_home,
-        args.marketplace_name,
-    ):
+    configured_for_discovery = {
+        (marketplace, plugin_name)
+        for marketplace, plugin_name in enabled_configured_plugin_selectors(codex_home)
+        if plugin_name in set(catalog.plugin_names) or marketplace == args.marketplace_name
+    }
+    if profile is DiscoveryProfile.PLUGIN or configured_for_discovery:
         codex = resolve_codex_executable(args.codex, codex_home=codex_home)
 
     source_plugins = [
@@ -720,6 +546,7 @@ def main() -> None:
             target_root=agents_skills_root,
             marketplace_name=args.marketplace_name,
             rows=rows,
+            configured_enabled_selectors=configured_for_discovery,
         )
     if not args.skip_hooks:
         runner.check_hook_config(tooling_python, hook_config=codex_home / "hooks.json")

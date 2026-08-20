@@ -12,16 +12,26 @@ PluginStep = Callable[[str], None]
 
 
 @dataclass(frozen=True)
-class DiscoveryTransitionRuntime:
+class PluginToUniversalRuntime:
     preflight_universal: Step
     activate_universal: Step
     deactivate_universal: Step
     verify_universal: Step
-    preflight_plugin: Step
     activate_plugin: PluginStep
     deactivate_plugin: PluginStep
     verify_plugin: Step
     verify_plugins_inactive: Step
+
+
+@dataclass(frozen=True)
+class UniversalToPluginRuntime:
+    preflight_plugin: Step
+    activate_universal: Step
+    deactivate_universal: Step
+    verify_universal: Step
+    activate_plugin: PluginStep
+    deactivate_plugin: PluginStep
+    verify_plugin: Step
 
 
 def _transition_failure(
@@ -37,7 +47,7 @@ def _transition_failure(
 
 
 def transition_plugin_to_universal(
-    runtime: DiscoveryTransitionRuntime,
+    runtime: PluginToUniversalRuntime,
     plugin_selectors: Sequence[str],
 ) -> None:
     """Deactivate exact plugins before activating links; restore plugins on failure."""
@@ -67,15 +77,15 @@ def transition_plugin_to_universal(
 
 
 def transition_universal_to_plugin(
-    runtime: DiscoveryTransitionRuntime,
+    runtime: UniversalToPluginRuntime,
     plugin_selectors: Sequence[str],
 ) -> None:
     """Preflight packages, remove links, and restore universal links on failure."""
 
     runtime.preflight_plugin()
     installed: list[str] = []
-    runtime.deactivate_universal()
     try:
+        runtime.deactivate_universal()
         for selector in plugin_selectors:
             installed.append(selector)
             runtime.activate_plugin(selector)

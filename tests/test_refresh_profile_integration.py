@@ -73,7 +73,10 @@ class ProfileFixture:
     def configure_plugins(self) -> None:
         self.codex_home.mkdir(parents=True, exist_ok=True)
         self.codex_home.joinpath("config.toml").write_text(
-            '\n'.join(f'[plugins."{name}@test"]' for name in sorted(self.enabled)),
+            '\n'.join(
+                f'[plugins."{name}@test"]\nenabled = true'
+                for name in sorted(self.enabled)
+            ),
             encoding="utf-8",
         )
 
@@ -198,6 +201,22 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             self.fixture.events,
             ["add:alpha", "add:beta", "remove:beta", "remove:alpha"],
         )
+
+    def test_plugin_selector_cannot_escape_the_selected_marketplace_or_catalog(self) -> None:
+        rows_patch, run_patch = self.patches()
+        with rows_patch, run_patch:
+            with self.assertRaisesRegex(SystemExit, "canonical skills-bearing packages"):
+                refresh.apply_plugin_discovery_profile(
+                    self.fixture.catalog,
+                    codex="codex",
+                    codex_home=self.fixture.codex_home,
+                    marketplace_name="test",
+                    target_root=self.fixture.target,
+                    requested_plugins=["alpha@other"],
+                    env={},
+                    dry_run=False,
+                )
+        self.assertEqual(self.fixture.events, [])
 
 
 if __name__ == "__main__":
