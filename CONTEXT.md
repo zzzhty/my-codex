@@ -1,8 +1,36 @@
 # Watcher
 
-This context describes the language used to evaluate Watcher usage data for Codex skills, documentation audits, and plugin-provided skill systems.
+This context describes the language used for canonical skill source, discovery and distribution profiles, Watcher usage data, documentation audits, and plugin-provided skill systems.
 
 ## Language
+
+### Universal Skill Distribution
+
+**Canonical Skill Source**:
+The version-controlled repository content from which every discovery or distribution projection is derived.
+_Avoid_: plugin cache authority, marketplace authority, installed source
+
+**Callable Skill Identity**:
+The bare name declared by a skill's `SKILL.md` frontmatter and used consistently across discovery profiles.
+_Avoid_: plugin-qualified selector, Watcher identity, directory identity
+
+**Watcher Skill Identity**:
+A namespaced durable identifier used for Watcher attribution and historical interpretation, separate from callable and distribution identities.
+_Avoid_: callable skill identity, invocation alias
+
+**Universal Discovery Projection**:
+A managed user-level exposure of canonical skills for harness-native discovery; it is neither source nor cache.
+_Avoid_: universal source, copied skills, plugin cache
+
+**Discovery Profile**:
+An explicitly selected, mutually exclusive runtime mode that activates either universal discovery or skills-bearing plugin discovery.
+_Avoid_: implicit default, mixed discovery, fallback mode
+
+**Plugin Distribution Profile**:
+An optional skills-bearing Codex package projection used for compatibility and rollback while remaining inactive during universal discovery.
+_Avoid_: canonical source, universal adapter, concurrent plugin mode
+
+### Watcher Attribution and Runtime
 
 **Primary Skill**:
 The entry skill that a turn is directly attributed to through an explicit signal or the strongest detected match.
