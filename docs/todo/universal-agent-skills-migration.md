@@ -743,12 +743,14 @@ Runtime hard-stop evidence: `2026-08-21 candidate universal discovery preserved 
 - The exact breakpoint is the universal branch of the deterministic fresh-output gate after successful candidate closure, resource, hook, and doctor checks. The final-universal phase was not attempted.
 - The reviewed rollback removed the 34 canonical links and reinstalled the same three package selectors at versions `1.2.3+codex.20260812033502`, `0.1.0+codex.20260817071906`, and `0.1.0+codex.20260814091823`. Plugin closure and isolated Watcher doctor passed with zero warnings. A third fresh process reproduced the baseline 20 identity, bare-identity, and cache-locator triples exactly, with no duplicates. Live Watcher durable-state stat inventory remained exactly unchanged, and the protected pre-cutover cache archives remain available.
 - Current safe state is the single active plugin discovery profile with the repo-owned hooks repaired and healthy; `/Users/max/.agents/skills` is inactive and empty. No retained backup, Watcher state, unrelated plugin, marketplace, config, or user entry was deleted. Further M5 work requires user-directed formal goal evolution at this runtime hard stop.
+- Blocked-state evidence revision `ca23a10b4195db852b31a156b530e9ce6d484911` is published in Draft [PR #10](https://github.com/zzzhty/my-codex/pull/10). The PR must remain unmerged while M5 is Blocked.
+- Independent post-rollback review returned Clean: the candidate hard stop is not a prompt, schema, or oracle false positive; final universal was never executed; live rollback closure is complete; and the Draft PR/no-merge boundary is accurate. The reviewer also confirmed a non-blocking cache fact: reinstalling from current canonical source preserves the exact selectors, manifest versions, skill identities, and health gates but does not promise byte identity with the pre-cutover emergency archives, which remain protected.
 
 Checkpoint evidence: `M5 preflight authorization record, exact commands, before and after evidence, comparison matrix, retained-state inventory, and rollback rehearsal.`
 
 Checkpoint component: Pending because the candidate universal identity gate failed and M5 is Blocked.
 
-Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed pre-apply source; the blocked-state evidence remains at the active `codex/universal-agent-skills-m5` branch head and unmerged while the checkpoint is Pending.
+Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed pre-apply source; `ca23a10b4195db852b31a156b530e9ce6d484911` records the blocked-state evidence in Draft PR #10. The checkpoint remains Pending and unmerged.
 
 Rollback:
 
