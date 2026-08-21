@@ -161,8 +161,8 @@ Execution mode: `Loop-shaped execution`
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
 | M0 Live Main/PR State and Isolation | Done | Passed | Done |
-| M1 Diff Scope and Frozen Surface Audit | In Progress | Pending | Pending |
-| M2 Test Matrix and Source Validation | Not Started | Pending | Pending |
+| M1 Diff Scope and Frozen Surface Audit | Done | Passed | Done |
+| M2 Test Matrix and Source Validation | In Progress | Pending | Pending |
 | M3 Deterministic, Installed-State, and Resource Audit | Not Started | Pending | Pending |
 | M4 Independent Contract Review and Behavioral Sampling | Not Started | Pending | Pending |
 | M5 Bounded Repair and Revalidation | Not Started | Pending | Pending |
@@ -220,14 +220,14 @@ Hard stop: `PR identity cannot be resolved, the PR is no longer the requested ca
 - Harness evidence: explicit same-goal trigger; current request/root docs/live Git/GitHub inputs; isolated worktree; authorized GitHub reads only so far; no runtime hard stop; durable evidence recorded here.
 - Checkpoint component: Done
 - Checkpoint type: artifact revision
-- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M0 checkpoint commit
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` in commit `4e7aeaa89af3e2157e853fdb263cd7c524e9edd1`
 - Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
 - Validation recorded: candidate goal readiness checker passed; local main and live PR head were reverified after worktree creation
 - Out-of-scope dirty changes: none
 
 ## M1 Diff Scope and Frozen Surface Audit
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Prove the current PR diff contains only expected S0-S4, validation-goal, evidence, and bounded repair surfaces.
 
@@ -247,9 +247,31 @@ Rollback: `No mutation required. Remove or explicitly resolve unexpected scope b
 
 Hard stop: `An unexpected path requires identity/runtime/universalization/PR #3 redesign rather than bounded validation repair.`
 
+### Execution Evidence for M1 — 2026-08-21
+
+- Diff basis: `origin/main@4c80da5a04ce190f8a5ee17024da99628a772adc...HEAD@4e7aeaa89af3e2157e853fdb263cd7c524e9edd1`.
+- Changed-path count: 20; unexpected paths: none.
+- `S0-S4 source/test/doc`: `agents/operating-principles.md`; `docs/todo/README.md`; `docs/todo/archive/README.md`; the two exact archive renames for `skill-slimming-batch-1-validation.md` and `skill-slimming-v2-review.md`; `docs/todo/skill-slimming-plan.md`; `docs/todo/subagent-orchestration-follow-up.md`; `plugins/watcher/skills/doc-alignment/SKILL.md`; its two changed/new direct references; `plugins/watcher/tests/test_doc_alignment_disclosure.py`; `plugins/workflow/README.md`; `plugins/workflow/skills/long-running-goal/SKILL.md`; its `agents/openai.yaml`; `plugins/workflow/skills/orchestrate-subagents/SKILL.md`; its direct recipe; and the three changed/new Workflow tests.
+- `validation evidence`: `docs/todo/skill-slimming-macos-validation-goal.md`.
+- `bounded repair`: checker-alignment and live M0 evidence within the same validation-goal file only.
+- `unexpected`: none.
+- Frozen-surface audit: `git diff --exit-code origin/main...HEAD -- ...` returned 0 for root `AGENTS.md`, all Watcher attribution overlays, plugin manifests/marketplace, PR #3 frozen skill bodies (`summary-in-html`, `sop`, `housekeeping`, `prompt-strategy-loop`, `skill-compressor`), `skill-maintainer`, the complete Matt Pocock mirror and sync surfaces, universal support-sync source/ADR, hook paths, and config paths.
+- Scope inspection: core orchestration, `doc-alignment`, and `long-running-goal` diffs place conditional detail in one-level direct references while retaining entry triggers, authority, failure visibility, report-only safety, lifecycle routing, and deterministic owner tests.
+- Whitespace gate: `git diff --check origin/main...HEAD` passed.
+- Behavior impact: no identity, invocation mode, overlay, installed/runtime, universalization, hook, config, marketplace, Matt mirror, or PR #3 body change is present in the PR diff.
+- Rollback: revert only the expected S0-S4/validation commits; no runtime rollback is applicable.
+- Remaining risk: semantic reachability still depends on M2-M4 tests, validators, independent review, and behavioral sampling.
+- Harness evidence: three-point diff derived from live base/head; changed paths reconciled with GitHub's 20-file inventory; no external write; no hard stop.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M1 checkpoint commit
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
+- Validation recorded: changed-path classification, exact frozen-surface zero-diff command, core diff inspection, and `git diff --check` all passed
+- Out-of-scope dirty changes: none
+
 ## M2 Test Matrix and Source Validation
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Run focused semantic falsifiers and all current root, Workflow, and Watcher suites without skipping later suites after an earlier failure.
 
