@@ -129,12 +129,12 @@ Tests protect semantic reachability and owner boundaries rather than historical 
 
 | Surface | Before | Candidate | Change |
 | --- | ---: | ---: | ---: |
-| `agents/operating-principles.md` | 8,429 | 4,359 | -48.3% |
+| `agents/operating-principles.md` | 8,429 | 5,390 | -36.1% |
 | `orchestrate-subagents/SKILL.md` | 4,296 | 2,490 | -42.0% |
 | `doc-alignment/SKILL.md` | 6,938 | 3,399 | -51.0% |
-| `long-running-goal/SKILL.md` | 11,148 | 6,723 | -39.7% |
+| `long-running-goal/SKILL.md` | 11,148 | 7,580 | -32.0% |
 
-Primary entry surfaces fall from 30,811 bytes to 16,971 bytes (-44.9%). The nine repository-owned `SKILL.md` bodies fall by about 9.8 KB, from about 37.9 KB to about 28.1 KB. Conditional references grow where branch completeness requires it; they load only after a matching trigger.
+After the bounded macOS semantic repair, primary entry surfaces fall from 30,811 bytes to 18,859 bytes (-38.8%). The nine repository-owned `SKILL.md` bodies fall by about 8.9 KB, from about 37.9 KB to 29,032 bytes. Conditional references grow where branch completeness requires it; they load only after a matching trigger. Size remains a triage signal rather than the acceptance oracle.
 
 ## Source-Review Validation Already Completed
 

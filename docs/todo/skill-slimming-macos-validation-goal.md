@@ -165,8 +165,8 @@ Execution mode: `Loop-shaped execution`
 | M2 Test Matrix and Source Validation | Done | Passed | Done |
 | M3 Deterministic, Installed-State, and Resource Audit | Done | Passed | Done |
 | M4 Independent Contract Review and Behavioral Sampling | Done | Passed | Done |
-| M5 Bounded Repair and Revalidation | In Progress | Pending | Pending |
-| M6 PR Evidence and Final Report Handoff | Not Started | Pending | Pending |
+| M5 Bounded Repair and Revalidation | Done | Passed | Done |
+| M6 PR Evidence and Final Report Handoff | In Progress | Pending | Pending |
 | Close User Merge Decision and Post-Merge Archive | Not Started | Pending | Pending |
 
 ## M0 Live Main/PR State and Isolation
@@ -443,7 +443,7 @@ Hard stop: `No independent reviewer or no safe candidate-loaded context is avail
 
 ## M5 Bounded Repair and Revalidation
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Fix only PR #13 regressions proven by M1-M4, then rerun affected and aggregate gates.
 
@@ -467,9 +467,31 @@ Rollback: `Revert bounded repair commits that weaken the oracle; never rebaselin
 
 Hard stop: `A necessary fix changes frozen semantics or remains unresolved after three distinct approaches.`
 
+### Execution Evidence for M5 — 2026-08-21
+
+- Proven regressions: the slimmed entry lost the parent plan's complete Draft option and explicit pause/stop/redirect/change-scope override; structural tests treated line counts and heading placement as acceptance oracles; the support note removed the sole repository owner for user-visible local scheduling/monitoring and bounded memory writeback; behavior scenario D independently reproduced an inferred housekeeping decision.
+- Bounded repair: commit `ce3bd9eafa27edea79c6fa66ef1b615e55e92171` (`fix(workflow): restore slimming semantic contracts`) changed only five existing PR paths: `agents/operating-principles.md`, `plugins/workflow/skills/long-running-goal/SKILL.md`, `plugins/workflow/tests/test_instruction_ownership.py`, `plugins/workflow/tests/test_long_running_goal_disclosure.py`, and `plugins/watcher/tests/test_doc_alignment_disclosure.py`. Stat: 48 insertions, 76 deletions. No identity, reference topology, checker, template, frozen skill body, runtime, or universalization source changed.
+- Repair semantics: complete non-executable Draft or Ready creation is explicit; missing design/permission/housekeeping choices cannot be invented or inferred; explicit pause/stop/redirect/change-scope overrides continuation and paused goals cannot mutate milestone/evidence/native-goal state; semantic tests replace line/heading oracles; scheduling/monitoring/local-wall-clock and bounded memory-writeback owners are restored.
+- Post-repair tests with owner-bound `TMPDIR`, Python `3.13.14`, and PyYAML `6.0.3`: focused 18/18 passed; root 95/95 passed; Workflow 68/68 passed; Watcher 72/72 passed with 3 expected Windows-only skips; four changed tests compiled; `git diff --check` passed.
+- Post-repair validators: Workflow and Watcher package validation passed; Watcher candidate validation passed for `orchestrate-subagents`, `doc-alignment`, and `long-running-goal`; the current goal readiness checker passed; temporary support projection dry-run reported the expected update, apply completed, and `--check --prune` passed.
+- Installed-state classification: candidate-vs-real support check reports exactly one expected `operating-principles.md` drift. Candidate `check_my_codex.py --discovery-profile universal --skip-doctor` reports the same 37 expected activation drifts (34 universal links, Watcher hook source, support file, aggregate exposure layer); the protected-main command passes with 0 warnings. No repair was applied to real installed/runtime state.
+- Universal-resource revalidation: the candidate projection `--check --prune` passed for 34 skills. The three target links resolve directly to the isolated worktree and expose 3 orchestration, 4 doc-alignment, and 14 long-running-goal files (21 total), all readable with zero nested resource symlinks. `codex debug prompt-input` again rendered all three candidate paths from `fixtures/candidate-agents-skills`.
+- Behavior and independent review: repaired scenario D passed creation plus same-session unrelated-request supersession with unchanged hashes; A-C and E remained passing. Both independent reviewers re-reviewed fixed commit `ce3bd9e` and returned `PASS` with no blocker.
+- Ordinary diagnostic failures remained visible: invoking `watcher_runtime.cli` by file path lacked its package import root and failed with `ModuleNotFoundError`; rerunning the documented module entry with `PYTHONPATH=plugins/watcher/scripts` passed. A read-only resource loop temporarily assigned zsh's special `path` variable and made `readlink/find/wc/tr` unavailable; a fresh shell using `skill_path` passed. Neither failure mutated source, installed state, or runtime state.
+- Live remote coordination: immediately before push, PR #13 still reported base `main@4c80da5a04ce190f8a5ee17024da99628a772adc`, remote head `62baf32ccff91cf9a92eccd16d40edc7298e2850`, Draft/open, clean/mergeable, and no auto-merge. The actual branch accepted the bounded repair/evidence range `62baf32..2bfd7ee`; GitHub then reported PR head `2bfd7ee659327b0fe0b2420507a81a935053f132`, still Draft/open with auto-merge absent.
+- Rollback: revert only repair commit `ce3bd9e` if a stronger oracle proves semantic weakening; no installed/runtime rollback exists because no activation occurred.
+- Remaining risk: GitHub mergeability may briefly report `UNKNOWN` while recalculating after pushes; M6 must re-fetch the final head and publish the complete PR report before recommendation.
+- Harness evidence: all retests and projections remained owner-bound; actual PR head/branch were reconciled before push; expected drift stayed visible; no runtime hard stop occurred.
+- Checkpoint component: Done
+- Checkpoint type: current HEAD
+- Revision: repaired candidate `ce3bd9eafa27edea79c6fa66ef1b615e55e92171`, validated and pushed through `2bfd7ee659327b0fe0b2420507a81a935053f132`
+- Changed files: the five explicit repair paths listed above
+- Validation recorded: focused/root/Workflow/Watcher suites, compile, package/skill/planning/support/universal/installed checks, behavior D, independent re-review, diff check, and live PR-head verification all passed or produced the exact expected read-only drift
+- Out-of-scope dirty changes: none
+
 ## M6 PR Evidence and Final Report Handoff
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Make the PR branch and PR conversation contain everything needed for the user to decide whether to merge.
 
