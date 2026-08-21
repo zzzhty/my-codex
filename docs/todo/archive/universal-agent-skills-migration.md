@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo/archive`
 
-Continuation contract: Closed. Do not resume this archive as an execution authority. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final state. Any retained-state cleanup must begin from the separate active cleanup follow-up, pass a new planning preflight and independent review, become Ready, and receive explicit destructive authorization.
+Continuation contract: Closed. Do not resume this archive as an execution authority. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final state unless the separately authorized [Universal Agent Skills Local Cleanup](../universal-agent-skills-cleanup.md) goal advances through its own Ready contract, independent review, and exact destructive boundary.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -869,4 +869,4 @@ Close rollback: `Restore the active goal and index entry if closure validation r
 
 ## Close Continuation Boundary
 
-This goal is `Closed` and has no remaining implementation or Close milestone. Do not resume this archive as an execution authority. Preserve the final universal live state and retained rollback evidence. Any retained-state cleanup must start from the separate `docs/todo/universal-agent-skills-cleanup-follow-up.md` planning boundary and receive its own planning preflight, independent review, Ready goal, and explicit destructive authorization.
+This goal is `Closed` and has no remaining implementation or Close milestone. Do not resume this archive as an execution authority. Preserve the final universal live state. Retained-state cleanup is owned only by the separately authorized [Universal Agent Skills Local Cleanup](../universal-agent-skills-cleanup.md) goal and its exact preservation and deletion gates.

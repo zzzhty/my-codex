@@ -5,7 +5,6 @@
 - [Subagent Orchestration Follow-Up](subagent-orchestration-follow-up.md): future plan for validated read-only review contracts, custom-agent TOML criteria, and targeted Superpowers-inspired workflow improvements.
 - [Second-Pass Skill Slimming Review](skill-slimming-v2-review.md): active rule-ownership map, per-skill slimming priorities, behavioral benchmark matrix, and reusable implementation entry point for reducing instruction-induced passivity.
 - [Skill Slimming Batch 1 Validation Handoff](skill-slimming-batch-1-validation.md): source candidate scope, preserved contracts, size results, development-environment commands, behavioral scenarios, and rollback guidance.
-- [Universal Agent Skills Cleanup Follow-Up](universal-agent-skills-cleanup-follow-up.md): deferred, non-executable boundary for creating a separately authorized cleanup goal only after universal-profile stabilization.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
 Closed historical records should stay out of active navigation unless a current
@@ -13,7 +12,7 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-No active long-running goals are currently tracked.
+- [Universal Agent Skills Local Cleanup](universal-agent-skills-cleanup.md): Ready bounded cleanup of the obsolete local rollback bundle, live personal marketplace registration, and empty cache namespace while preserving universal discovery and Watcher state.
 
 ## Archive
 
