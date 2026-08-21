@@ -134,13 +134,13 @@ This goal does not:
 
 | Milestone | Status | Review | Checkpoint |
 |---|---|---|---|
-| M0 Contract, Inventory, and Deletion Freeze | Ready | Pending | Pending |
-| M1 Exact Local Cleanup and Validation | Not Started | Pending | Pending |
+| M0 Contract, Inventory, and Deletion Freeze | Done | Passed | Done |
+| M1 Exact Local Cleanup and Validation | Ready | Pending | Pending |
 | Close Goal Closure and Archive | Not Started | Pending | Pending |
 
 ## M0 Contract, Inventory, and Deletion Freeze
 
-Status: `Ready`
+Status: `Done`
 
 Scope:
 
@@ -164,15 +164,15 @@ Validation:
 git diff --check
 ```
 
-Execution evidence: `Pending M0 validation and independent review.`
+Execution evidence: `2026-08-21 readiness, active TODO index, Markdown links, planning-tree topology, zsh syntax, exact read-only oracle prefix, forced-failure present-state rollback, and git diff checks all passed. Independent Contract and deletion/runtime reviewers each returned Clean after verifying the literal command order, serializer boundaries, transition rollback, protected state, and exact destructive scope. No cleanup runtime mutation occurred during M0.`
 
-Checkpoint component: `Pending until the M0 review gate passes.`
+Checkpoint component: `M0 Contract, Inventory, and Deletion Freeze`
 
-Checkpoint evidence: `Pending M0 Git commit and Draft PR publication.`
+Checkpoint evidence: `Commit 76b1af37ec53bf20fb09164e5abfc97fbbe408be published the reviewed contract on codex/universal-agent-skills-cleanup; Draft PR #12 is https://github.com/zzzhty/my-codex/pull/12.`
 
 ## M1 Exact Local Cleanup and Validation
 
-Status: `Not Started`
+Status: `Ready`
 
 Scope:
 
