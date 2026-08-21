@@ -3,7 +3,7 @@
 ## Active Design Notes
 
 - [Subagent Orchestration Follow-Up](subagent-orchestration-follow-up.md): future plan for evidence-driven custom-agent criteria and targeted orchestration improvements beyond the current built-in-role workflow.
-- [Skill Instruction Slimming Plan](skill-slimming-plan.md): S0-S4 source candidate, semantic ownership oracle, size and validation evidence, and the remaining full-checkout merge/archive gate.
+- [Skill Instruction Slimming Plan](skill-slimming-plan.md): S0-S4 design and semantic authority; source implementation is complete and the remaining macOS validation/PR-ready execution is delegated to the active long-running goal below.
 
 Use active design notes for unresolved plans, options, and follow-up decisions.
 Closed historical records should stay out of active navigation unless a current
@@ -11,7 +11,7 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-No active long-running goals are currently tracked.
+- [Skill Slimming macOS Validation](skill-slimming-macos-validation-goal.md): continuation-ready macOS validation, bounded repair, independent review, behavior sampling, evidence writeback, and PR #13 Draft-to-Ready handoff; merge is explicitly out of scope.
 
 ## Archive
 
