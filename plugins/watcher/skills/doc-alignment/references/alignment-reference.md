@@ -1,6 +1,41 @@
 # Conditional Alignment Reference
 
-Read only the sections triggered by the target named in `../SKILL.md`. The main skill owns mode selection, audit safety, common review steps, severity, and final reporting.
+Read only the sections triggered by the target named in `../SKILL.md`. The entry skill owns mode selection and audit safety. This reference owns classification, surface-specific alignment, severity, reporting detail, and validation selection.
+
+## Review Inventory And Classification
+
+Inventory the target and references. Prefer `rg`:
+
+```bash
+rg --files <target>
+rg --hidden -n "<old-term>|<old-path>|<disputed-term>" <target> . --glob '!**/.git/**' --glob '!**/node_modules/**'
+```
+
+Read entry points first: `AGENTS.md`, root and area READMEs, current development, usage, operations, architecture and validation guides, package commands, devcontainer and CI files, runbooks, subdirectory indexes, active plans, skill metadata, and relevant Watcher reports.
+
+Classify each file by its live role:
+
+- **Overview**: current navigation and execution posture.
+- **Guide**: current commands and expected environment.
+- **Architecture / Contract**: ownership, relationships, wire shapes, and compatibility boundaries.
+- **Validation / Audit**: commands, pass signals, and active blockers.
+- **Template**: reusable skeleton without real task state.
+- **TODO / Goal**: unfinished work, ordered milestones, or planned cleanup.
+- **Archive**: dated or replaced material only.
+- **Script / Runner**: executable entry point with a stable, discoverable name.
+- **Skill**: reusable agent procedure with trigger metadata, instructions, and direct resources.
+
+Align recursively: keep root docs as current posture plus links, select one typed owner for detail, use the same owner terms in active docs, move replaced evidence to the existing archive, and keep unresolved future work in the active planning location.
+
+Classify findings:
+
+- `High`: active guidance contradicts current truth, routes users to broken commands, links to missing required files, or describes removed workflows.
+- `Medium`: stale terminology, missing docs for recent behavior, duplicated guidance, unclear ownership, or active watch-term hits.
+- `Low`: cleanup-only wording drift, minor index issues, archive labeling, or future polish.
+
+Each finding needs paths or command evidence, reasoning, severity, and a bounded next action. Final reporting identifies reviewed entry points, changed or proposed semantics, moves, archives, renames or preserved history, exact validation, unresolved conflicts, and legacy identifiers.
+
+Completion criterion: the active inventory has one current owner per live role, history is distinguished from current guidance, every finding is evidence-backed and classified, and final reporting covers the changed or proposed surface.
 
 ## Script And Entry-Point Naming
 

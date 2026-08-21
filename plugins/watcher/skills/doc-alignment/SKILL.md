@@ -1,102 +1,37 @@
 ---
 name: doc-alignment
-description: Use within Watcher to audit or align documentation, scripts, skills, runbooks, operational entry points, and planning folders across configured local repositories so current guidance, names, references, ownership, and validation gates match the current source of truth.
+description: Audit or align documentation, scripts, skills, runbooks, operational entry points, and planning trees against repository source of truth; keep review-only and scheduled Watcher runs non-mutating.
 ---
 
 # Doc Alignment
 
-Use this Watcher skill to keep local repository guidance source-of-truth driven. Names, entry points, references, ownership boundaries, active instructions, archives, and validation gates must agree.
+Keep current guidance, names, references, ownership, navigation, and validation aligned with the current source of truth. Historical material may preserve prior terms, but it must not remain active guidance.
 
-Keep the alignment contract here; do not defer Watcher doc-domain semantics to another skill.
+## Contract
 
-## Core Contract
-
-1. Identify current truth before editing: root instructions, active overview docs, current plans, runtime guides, script indexes, package commands, CI, configs, or Watcher doc reports.
-2. Keep current guidance separate from history. Archives may preserve old terms; active docs and entry points must point at the current workflow.
-3. Normalize user-facing names around current semantics. Preserve real code identifiers only as compatibility fields, migrations, or historical terms.
-4. Update every path people or tools follow, including hidden/config folders such as `.devcontainer` and `.github`, the repository's resolved skill root (for example `.agents/skills`, legacy `.codex/skills`, or another configured harness root), package scripts, READMEs, and runbooks.
-5. Treat broken links, stale paths, failed validation, inconsistent names, and failed audit commands as first-class failures. Fix root causes before claiming alignment.
+1. Identify current truth before proposing or making changes: root instructions, current overview and architecture docs, active plans, runtime guides, scripts, package commands, CI, configs, tests, or Watcher reports.
+2. Re-read the newest request and use it to freeze mode and scope. Older goals and implementation threads are background unless the request explicitly continues them.
+3. Keep current guidance separate from history. Preserve real compatibility identifiers and historical terms only where their role is explicit.
+4. Update every path people or tools follow, including hidden configuration, resolved repository skill roots, wrappers, package commands, indexes, READMEs, and runbooks.
+5. Treat broken links, stale paths, inconsistent names, failed audit commands, and failed validation as first-class failures. Fix root causes before claiming alignment.
 6. Scheduled Watcher doc audits must keep target repositories read-only and write only under `$CODEX_HOME/watcher/doc/` or an explicit output path.
 
-## Mode Selection
+## Mode
 
-Re-read the newest request before using prior context; it controls scope, and older goals or implementation threads remain background unless explicitly continued.
+For review, audit, analysis, comparison, assessment, report-only or scheduled scans, or explicit no-edit language, run only non-mutating commands. Report evidence, findings, proposed edits, gaps, and questions without moving, renaming, deleting, archiving, or rewriting targets.
 
-For review, audit, analysis, comparison, assessment, report-only/scheduled scans, or explicit no-edit language, run only non-mutating commands and report evidence, proposed edits, gaps, and questions. Do not move, rename, delete, archive, or rewrite targets without implementation approval.
+Use implementation mode when the user asks to align, update, reorganize, prune, rename, fix, or otherwise make changes. Apply the smallest sufficient edits in the owning files and validate them.
 
-Use implementation mode when the user asks to align, update, reorganize, prune, rename, fix, or otherwise make changes; apply the smallest sufficient edits and validate them.
+## Workflow
 
-## Watcher Doc Audit Workflow
+1. Freeze the target, mode, current authority, active-versus-history boundary, and write scope.
+2. For a configured, scheduled, commit-dependent, or one-repository Watcher audit, read `references/watcher-audit.md` and complete that branch.
+3. Inventory current entry points and disputed names, paths, commands, links, ownership, and validation claims. For script or entry-point naming, documentation-tree placement, planning/TODO navigation, agent skills, classification, severity, reporting, or validation selection, read `references/alignment-reference.md` and apply every matching section.
+4. Classify drift against current truth. In report-only mode, publish evidence-backed findings and bounded recommendations. In implementation mode, edit the narrowest owner, update all active consumers, and preserve declared history or compatibility.
+5. Re-run the affected inventory, stale-term or link scan, and owning validation. Report exact failures and partial checks without presenting them as full validation.
 
-Start configured repository audits with deterministic evidence:
+## Completion
 
-```bash
-python3 scripts/watcher doc doctor --config config/repos.example.json
-python3 scripts/watcher doc commit-counter --config config/repos.example.json
-python3 scripts/watcher doc report --config config/repos.example.json --mode commit-dependent --mark-audited --digest
-```
+Report the mode, scope, current truth, entry points reviewed, evidence, changed or proposed semantics, moved or preserved history, validation commands and results, unresolved conflicts, and preserved legacy identifiers.
 
-Use `config/repos.json` when a private config exists. For one repo:
-
-```bash
-python3 scripts/watcher doc audit --repo <repo-path> --name <repo-name> --print-report
-```
-
-Prefer a repository-owned config when the repository separates current authority, framework-owned
-site docs, and history. Use distinct named profiles: generic relative-link and active watch-term
-checks for current authority, an `owner-command` link validator for framework-specific site docs,
-and `report-only` findings for history. Treat `owner-command` as trusted, unsandboxed execution:
-Watcher constrains its working directory and timeout but cannot prove it is read-only. Review the
-repository-owned validation workflow before configuring it. Treat configured `authority_paths` as
-path-presence checks only; semantic alignment still requires the review workflow below.
-
-When `scripts/watcher doc report --mode commit-dependent` skips a repo, report it as skipped. Config changes make a repo due even below the commit threshold. If any repo fails, surface the repo, command/path, and exact failure text.
-
-Review reports for stale active guidance, history mixed into current docs, mismatched product/command/path/validation terms, recent behavior changes without docs, watch-term hits, broken links, and missing referenced files.
-
-## Review Workflow
-
-1. Inventory the target and references. Prefer `rg`:
-
-```bash
-rg --files <target>
-rg --hidden -n "<old-term>|<old-path>|<disputed-term>" <target> . --glob '!**/.git/**' --glob '!**/node_modules/**'
-```
-
-2. Read entry points first: `AGENTS.md`, root/area README, current dev/usage/ops guide, checklist/TODO/goal plan, package commands, devcontainer and CI/workflow files, runbooks, subdirectory indexes, active planning files, skill metadata, and Watcher doc reports under `$CODEX_HOME/watcher/doc/reports/` or `$CODEX_HOME/watcher/doc/audits/`.
-
-3. Classify each file role:
-   - **Overview**: current navigation and execution posture.
-   - **Guide**: current commands and expected environment.
-   - **Architecture / Contract**: ownership, relationships, wire shapes, and compatibility boundaries.
-   - **Validation / Audit**: commands, pass signals, and active blockers.
-   - **Template**: reusable skeleton only, no real task state.
-   - **TODO / Goal**: unfinished work, ordered milestones, or planned cleanup.
-   - **Archive**: dated or replaced material only.
-   - **Script / Runner**: executable entry point with stable, discoverable name.
-   - **Skill**: reusable agent procedure with concise trigger metadata and body instructions.
-
-4. Align recursively:
-   - Move misplaced files into the existing typed owner directory.
-   - Keep root docs as current posture plus links, not duplicated detail.
-   - Use the same owner terms in root and subfolder docs.
-   - Move dated/replaced reviews to the existing archive, or mark historical and remove from current navigation.
-   - Put future cleanup in the active TODO/goal location.
-
-## Finding Severity
-
-- `High`: active docs contradict current truth, route users to broken commands, link to missing required files, or describe removed workflows.
-- `Medium`: stale terminology, missing docs for recent behavior changes, duplicated guidance, unclear ownership, or active watch-term hits.
-- `Low`: cleanup-only wording drift, minor index issues, archive labeling, or future polish.
-
-Each finding needs file paths or command evidence, reasoning, and recommended next action.
-
-## Conditional Alignment Reference
-
-Before continuing, read `references/alignment-reference.md` when the target touches a script or entry-point name, documentation tree placement, planning/TODO navigation, agent skill source, or validation command selection. Apply every matching section; for implementation work, always apply its Validation section before claiming completion.
-
-Completion criterion: the common workflow above is satisfied and every triggered reference section meets its own criterion.
-
-## Final Report
-
-Report reviewed directories/entry points, changed semantics or naming conventions, moved/archived/renamed/historical items, exact validation commands/results, and unresolved conflicts or preserved legacy identifiers.
+Completion requires the common workflow and every triggered reference completion criterion to pass; report-only work must leave target repositories unchanged.
