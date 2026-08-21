@@ -1,10 +1,10 @@
 # Universal Agent Skills Migration Long-Running Goal
 
-Overall status: `In Progress`
+Overall status: `Closed`
 
 Updated: 2026-08-21
 
-This archived file is the temporary Close authority for the universal Agent Skills migration after the completed M0 contract freeze. M1 through M5 are `Done`, Draft PR #10 is merged, and the controlled cutover established the final universal live profile with every runtime, repository, and Contract review gate passed. Close is `In Progress` only for archive/index validation, final review, checkpoint publication, and status finalization. Work does not rely on chat history, a separate Phase 1b prompt, a prototype branch, or an unpublished patch.
+This archived file is the closed record for the universal Agent Skills migration. M0 through M5 and Close are `Done`; Draft PR #10 merged the final universal implementation and M5 evidence, while Close Draft PR #11 owns only archive, index, validation, and final-status evidence. The controlled cutover established the final universal live profile with every runtime, repository, Contract review, and closure gate passed. This archive is no longer an execution authority.
 
 ## Goal Summary
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Remove runtime dependence on the personal Codex marketplace/plugin cache while preserving an optional, mutually exclusive skills-bearing plugin distribution profile for compatibility and rollback.
 3. Decouple Watcher metadata and shared runtime from marketplace authority and perform a controlled universal cutover on the current macOS environment without adding a zero-skill adapter.
 
-Goal Status: `In Progress`
+Goal Status: `Closed`
 
 Goal Owner: `my-codex repository maintainer`
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo/archive`
 
-Continuation contract: Read this archived file, root `AGENTS.md`, current `main`, the active Close branch or PR, and the newest user request before acting. M0 through M5 are Done and M5 Draft PR #10 is merged. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final live state. Close is In Progress: complete only archive/index validation, final review, checkpoint publication, PR merge, and merged-branch cleanup. Do not resume implementation, mutate live discovery, or perform deferred cleanup.
+Continuation contract: Closed. Do not resume this archive as an execution authority. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final state. Any retained-state cleanup must begin from the separate active cleanup follow-up, pass a new planning preflight and independent review, become Ready, and receive explicit destructive authorization.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -50,7 +50,7 @@ Assessment mode: `Rough range`
 
 Rough elapsed-time estimate: `30-90 minutes`
 
-Basis or blocker: `As of 2026-08-21, the M5 cutover, rollback rehearsal, final universal activation, M5 PR merge, archive/index transition, and final validation are complete. The remaining critical path is the Close review fix cycle, checkpoint publication, Close PR merge, final status confirmation, and safe merged-branch deletion. The repository has no CI workflow, and the separately scoped cleanup observation window is excluded.`
+Basis or blocker: `As of 2026-08-21, the 30-90 minute Close estimate was met: review fixes, checkpoint publication, final status confirmation, and Draft PR #11 creation are complete. Only the already-authorized merge and safe merged-branch deletion remain as mechanical handoff actions; no goal work or cleanup remains.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -207,7 +207,7 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M3 Physical Layout Verification — No Move | Done | Passed | Done |
 | M4 Optional Plugin Distribution Packaging | Done | Passed | Done |
 | M5 Controlled Universal Profile Cutover | Done | Passed | Done |
-| Close Goal Closure and Archive | In Progress | Pending | Pending |
+| Close Goal Closure and Archive | Done | Passed | Done |
 
 ## M0 Contract, Plan, and Baseline Freeze
 
@@ -800,7 +800,7 @@ Completion criterion: `The current Mac runs universal profile with exact-once di
 
 ## Close Goal Closure and Archive
 
-Status: `In Progress`
+Status: `Done`
 
 Close prerequisites:
 
@@ -847,18 +847,26 @@ Close actions:
 4. Close remaining completed PRs or issues and delete merged goal-owned branches only when they contain no commits absent from `main`.
 5. Mark overall status `Closed` only after the archive and index gate passes.
 
-Close execution evidence in progress:
+## Close Execution Evidence
 
 - M5 [PR #10](https://github.com/zzzhty/my-codex/pull/10) merged as `606f45f1f722404dff0669175cb2dd16913a0392`. The local and remote M5 branches were deleted only after `git merge-base --is-ancestor` and an empty `main..branch` revision set proved no unmerged commits remained.
 - Close branch `codex/universal-agent-skills-close` started from that exact merge commit. The active goal path was moved to `docs/todo/archive/universal-agent-skills-migration.md`; active long-running-goal navigation was removed, and both TODO indexes now point to the archive record.
 - The planning-time Task Temporary Cache / Housekeeping decision remains `Not applicable`. No goal-owned temporary cache root was created, so Close has no task-temporary deletion action.
 - The protected root `/Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z`, all cache archives, raw and generated evidence, recovery failures, targeted rollback material, Watcher durable state, hooks, and inactive plugin rollback identities remain retained. Close performs no cleanup.
-- Final validation from merged `main` passed: 95 root tests; 64 Workflow tests; 70 Watcher tests with three existing Windows skips; universal profile closure with zero warnings; archived-goal readiness; TODO planning-tree structure; Markdown relative links; closed-index ownership; and `git diff --check`. Independent Close review and checkpoint publication remain Pending before status can become Closed.
+- Final validation from merged `main` passed: 95 root tests; 64 Workflow tests; 70 Watcher tests with three existing Windows skips; universal profile closure with zero warnings; archived-goal readiness; TODO planning-tree structure; Markdown relative links; closed-index ownership; and `git diff --check`.
+- Independent Close Contract review returned Clean after two findings were fixed: the readiness example now targets the archived goal, while the closed-index command intentionally retains the absent old active path; and the time assessment now reflects only the actual remaining Close mechanics.
+- Archive/index checkpoint revision `a493bd37343341d9e8257464e0a08f97c5664886` is published in Draft [PR #11](https://github.com/zzzhty/my-codex/pull/11). The PR contains only the 94%-similarity goal move and the two index updates; GitHub reports it mergeable with no repository status checks configured.
 
-Close checkpoint evidence: `Pending independent Close review and checkpoint publication. Final validation, archive path, merged M5 PR, Not applicable housekeeping result, and retained rollback boundary are recorded above.`
+Temporary cache / housekeeping evidence:
+
+- Recorded policy: `Not applicable`
+- No task temporary cache roots were created.
+- Action: No task-temporary cleanup was performed; protected rollback material and Watcher durable evidence remain retained.
+
+Checkpoint evidence: `Done. M5 merge 606f45f1f722404dff0669175cb2dd16913a0392; Close archive/index revision a493bd37343341d9e8257464e0a08f97c5664886; archive path docs/todo/archive/universal-agent-skills-migration.md; merged PR #10 and Draft Close PR #11; 95/64/70-test validation matrix with three existing skips; universal closure at zero warnings; archived readiness, planning-tree, Markdown-link, closed-index, and diff gates passed; independent Close review Clean; housekeeping Not applicable with no task root; protected rollback and Watcher evidence retained.`
 
 Close rollback: `Restore the active goal and index entry if closure validation reveals incomplete work; do not reopen old runtime authority silently.`
 
 ## Close Continuation Boundary
 
-This goal has no remaining implementation milestone. While Close is `In Progress`, preserve the final universal live state and perform only the declared final validation, independent review, checkpoint publication, Close PR merge, and safe merged-branch deletion. After status becomes `Closed`, do not resume this archive as an execution authority. Any retained-state cleanup must start from the separate `docs/todo/universal-agent-skills-cleanup-follow-up.md` planning boundary and receive its own Ready goal and explicit destructive authorization.
+This goal is `Closed` and has no remaining implementation or Close milestone. Do not resume this archive as an execution authority. Preserve the final universal live state and retained rollback evidence. Any retained-state cleanup must start from the separate `docs/todo/universal-agent-skills-cleanup-follow-up.md` planning boundary and receive its own planning preflight, independent review, Ready goal, and explicit destructive authorization.
