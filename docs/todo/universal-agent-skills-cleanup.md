@@ -135,8 +135,8 @@ This goal does not:
 | Milestone | Status | Review | Checkpoint |
 |---|---|---|---|
 | M0 Contract, Inventory, and Deletion Freeze | Done | Passed | Done |
-| M1 Exact Local Cleanup and Validation | Ready | Pending | Pending |
-| Close Goal Closure and Archive | Not Started | Pending | Pending |
+| M1 Exact Local Cleanup and Validation | Done | Passed | Done |
+| Close Goal Closure and Archive | Ready | Pending | Pending |
 
 ## M0 Contract, Inventory, and Deletion Freeze
 
@@ -172,7 +172,7 @@ Checkpoint evidence: `Commit 76b1af37ec53bf20fb09164e5abfc97fbbe408be published 
 
 ## M1 Exact Local Cleanup and Validation
 
-Status: `Ready`
+Status: `Done`
 
 Scope:
 
@@ -472,11 +472,11 @@ Execution evidence: `2026-08-21 the committed frozen oracle ran once and returne
 
 Checkpoint component: `M1 Exact Local Cleanup and Validation`
 
-Checkpoint evidence: `Pending the M1 evidence commit and Draft PR update.`
+Checkpoint evidence: `Commit fc77599a28a1e6562aa56c2086f5feda7b72669f records the exact cleanup and independent post-apply Clean review on Draft PR #12.`
 
 ## Close Goal Closure and Archive
 
-Status: `Not Started`
+Status: `Ready`
 
 Close prerequisites:
 
