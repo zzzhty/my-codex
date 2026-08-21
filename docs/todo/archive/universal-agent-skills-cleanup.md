@@ -1,10 +1,10 @@
 # Universal Agent Skills Local Cleanup Long-Running Goal
 
-Overall status: `In Progress`
+Overall status: `Closed`
 
 Updated: 2026-08-21
 
-This archived-path file is the sole Close authority for the completed bounded local cleanup that followed the Universal Agent Skills migration. It replaced the deferred design note after the user explicitly waived the observation window, accepted Git as the functional recovery checkpoint, authorized the exact local and GitHub mutations, and confirmed permanent deletion of the exact rollback root.
+This archived file is the closed record for the bounded local cleanup that followed the Universal Agent Skills migration. M0, M1, and Close are `Done`; the exact authorized local residue is absent, every protected runtime boundary passed independent review, and PR #12 owns the published archive checkpoint and authorized merge mechanics. This archive is no longer an execution authority.
 
 ## Goal Summary
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Preserve the active 34-link universal discovery profile, repository source and optional plugin distribution, current hooks and agent support, unrelated configuration, and all Watcher durable state.
 3. Publish a Git checkpoint and closure record that is sufficient to reconstruct functionally equivalent plugin or universal profiles in another environment, while explicitly accepting that deleted local historical evidence cannot be reproduced byte-for-byte.
 
-Goal Status: `In Progress`
+Goal Status: `Closed`
 
 Goal Owner: `my-codex repository maintainer`
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo/archive`
 
-Continuation contract: M0 and M1 are complete, independently reviewed, and checkpointed. Do not rerun the Frozen executable oracle: its exact destructive preconditions no longer exist because the authorized targets are absent. The only remaining authority is Close documentation, final read-only validation, PR merge, and safe deletion of the fully merged goal branch. Preserve universal discovery, repository source, unrelated config, hooks, agent support, Watcher durable state, backup parents, and unrelated plugin caches.
+Continuation contract: Closed. Do not resume this archive or rerun the Frozen executable oracle: its exact destructive preconditions no longer exist because the authorized targets are absent. Preserve universal discovery, repository source, unrelated config, hooks, agent support, Watcher durable state, backup parents, and unrelated plugin caches. The already-authorized PR #12 merge and fully-merged branch deletion are mechanical post-checkpoint actions, not authority to reopen cleanup.
 
 Planning preflight marker: `preflight:universal-agent-skills-cleanup:20260821-grill2`
 
@@ -146,7 +146,7 @@ This goal does not:
 |---|---|---|---|
 | M0 Contract, Inventory, and Deletion Freeze | Done | Passed | Done |
 | M1 Exact Local Cleanup and Validation | Done | Passed | Done |
-| Close Goal Closure and Archive | In Progress | Pending | Pending |
+| Close Goal Closure and Archive | Done | Passed | Done |
 
 ## M0 Contract, Inventory, and Deletion Freeze
 
@@ -486,7 +486,7 @@ Checkpoint evidence: `Commit fc77599a28a1e6562aa56c2086f5feda7b72669f records th
 
 ## Close Goal Closure and Archive
 
-Status: `In Progress`
+Status: `Done`
 
 Close prerequisites:
 
@@ -507,11 +507,11 @@ Final validation:
 git diff --check
 ```
 
-Close execution evidence: `Recorded in the Close Execution Evidence section below; final checkpoint and merge fields remain pending until their exact revisions exist.`
+Close execution evidence: `Done. Recorded in the Close Execution Evidence section below.`
 
 Checkpoint component: `Close Goal Closure and Archive`
 
-Close checkpoint evidence: `Pending Close Git revision and PR merge.`
+Close checkpoint evidence: `Done. Reviewed archive/index revision 3943b252fc7c3109f0c402568665cc96a953acff is published on mergeable PR #12 with no configured status checks; the authorized merge and safe fully-merged branch deletion follow this closed checkpoint.`
 
 Close rollback: `Restore active navigation only if closure documentation is incomplete. Do not recreate the permanently deleted local rollback root or silently re-register the marketplace after successful cleanup.`
 
@@ -520,7 +520,7 @@ Close rollback: `Restore active navigation only if closure documentation is inco
 - M0 and M1 are `Done/Passed/Done`. M0 checkpoint `4e87d3058ad0c18fb2ef8d1aed72e1a68f4bddf8` records the independently Clean deletion contract; M1 checkpoint `fc77599a28a1e6562aa56c2086f5feda7b72669f` records the exact apply and independent post-apply Clean review, and `d907585c1de2ca05a75ee945da94ba97fe2f6d87` made Close Ready.
 - The active goal path is moved to `docs/todo/archive/universal-agent-skills-cleanup.md`. Active long-running-goal navigation is empty; both TODO indexes link the archive; the migration archive's current navigation now points to this completed cleanup record without rewriting its historical evidence.
 - Final validation passes: universal profile closure and Watcher doctor report zero warnings; archived-goal readiness, Markdown links, closed-index ownership across both indexes, planning-tree topology, and `git diff --check` pass. The exact deleted targets remain absent and every protected hash and runtime boundary in Current Final State remains unchanged.
-- Draft [PR #12](https://github.com/zzzhty/my-codex/pull/12) remains Open while this Close diff and independent Close review are completed. PR merge, final checkpoint revision, containment proof, and local/remote branch deletion remain pending and must not be reported as complete early.
+- Independent Close review returned Clean after the lifecycle state, Close-only continuation, pre-cleanup/final-state distinction, and M0 checkpoint reference were corrected. Archive/index checkpoint `3943b252fc7c3109f0c402568665cc96a953acff` is published on mergeable [PR #12](https://github.com/zzzhty/my-codex/pull/12), which has no configured status checks. The authorized merge and containment-gated local/remote branch deletion are mechanical post-checkpoint actions and must still be verified before the final user handoff.
 
 Temporary cache / housekeeping evidence:
 
@@ -528,7 +528,7 @@ Temporary cache / housekeeping evidence:
 - No task temporary cache roots were created.
 - Action: no task-temporary cleanup is required. The permanently deleted rollback root and empty cache namespace were the separately authorized primary M1 scope, not a task-temporary-cache action; durable runtime and Watcher state remain preserved.
 
-Checkpoint evidence: `Pending the reviewed Close archive/index commit, PR #12 merge, containment proof, and safe branch deletion.`
+Checkpoint evidence: `Done. Independent Close review Clean; archive/index revision 3943b252fc7c3109f0c402568665cc96a953acff; PR #12 mergeable with no status checks; archived readiness, universal closure, Markdown links, closed-index ownership, planning tree, and diff gates passed; housekeeping Not applicable with no task temporary cache root.`
 
 ## Current Risks
 
@@ -539,7 +539,7 @@ Checkpoint evidence: `Pending the reviewed Close archive/index commit, PR #12 me
 ## Recommended Goal Prompt
 
 ```text
-Complete only the Close section of docs/todo/archive/universal-agent-skills-cleanup.md. Do not rerun M0 or M1 and do not recreate the permanently deleted local evidence or personal marketplace entry. Preserve the validated universal and Watcher runtime, finish archive/index evidence, merge PR #12 after final review, prove the goal branch is fully contained in main, and then delete only that merged branch locally and remotely.
+This goal is Closed. Do not resume it, rerun M0/M1, recreate the deleted local evidence, or silently re-register the personal marketplace. Read-only verification may confirm the Current Final State; any future plugin-profile transition or new cleanup requires a new explicit request and current inventory.
 ```
 
 ## Related Documents
