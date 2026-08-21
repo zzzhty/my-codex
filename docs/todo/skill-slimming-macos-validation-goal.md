@@ -162,8 +162,8 @@ Execution mode: `Loop-shaped execution`
 | --- | --- | --- | --- |
 | M0 Live Main/PR State and Isolation | Done | Passed | Done |
 | M1 Diff Scope and Frozen Surface Audit | Done | Passed | Done |
-| M2 Test Matrix and Source Validation | In Progress | Pending | Pending |
-| M3 Deterministic, Installed-State, and Resource Audit | Not Started | Pending | Pending |
+| M2 Test Matrix and Source Validation | Done | Passed | Done |
+| M3 Deterministic, Installed-State, and Resource Audit | In Progress | Pending | Pending |
 | M4 Independent Contract Review and Behavioral Sampling | Not Started | Pending | Pending |
 | M5 Bounded Repair and Revalidation | Not Started | Pending | Pending |
 | M6 PR Evidence and Final Report Handoff | Not Started | Pending | Pending |
@@ -264,14 +264,14 @@ Hard stop: `An unexpected path requires identity/runtime/universalization/PR #3 
 - Harness evidence: three-point diff derived from live base/head; changed paths reconciled with GitHub's 20-file inventory; no external write; no hard stop.
 - Checkpoint component: Done
 - Checkpoint type: artifact revision
-- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M1 checkpoint commit
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` in commit `a364376d79024a0fb158397664c65241c4cb9619`
 - Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
 - Validation recorded: changed-path classification, exact frozen-surface zero-diff command, core diff inspection, and `git diff --check` all passed
 - Out-of-scope dirty changes: none
 
 ## M2 Test Matrix and Source Validation
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Run focused semantic falsifiers and all current root, Workflow, and Watcher suites without skipping later suites after an earlier failure.
 
@@ -303,9 +303,31 @@ Rollback: `Tests are non-mutating outside recorded temporary artifacts.`
 
 Hard stop: `A required suite remains unavailable after three distinct local approaches or repair requires scope expansion.`
 
+### Execution Evidence for M2 — 2026-08-21
+
+- Final test Python: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/fixtures/tooling-venv/bin/python`; Python `3.13.14`; PyYAML `6.0.3`.
+- Focused semantic falsifiers: 18 tests passed. Log: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/logs/m2-focused-tooling.log`.
+- Root suite: initial system-Python run produced 10 import errors plus 5 dependent failures because PyYAML was absent. This was classified as `environment/dependency failure`, not source regression. Repository-owned bootstrap dry-run and apply created only the recorded fixture venv; the rerun passed 95 tests. Logs: `m2-root-suite.log`, `m2-tooling-bootstrap-dry-run.log`, `m2-tooling-bootstrap.log`, and `m2-root-suite-tooling.log` under the recorded log root.
+- Workflow suite: 68 tests passed. Log: `m2-workflow-suite-tooling.log`.
+- Watcher suite: initial system-Python run had 2 PyYAML import errors; the tooling-Python rerun passed 72 tests with 3 expected Windows-only skips. Logs: `m2-watcher-suite.log` and `m2-watcher-suite-tooling.log`.
+- Compilation: the four changed Python tests compiled successfully with `PYTHONPYCACHEPREFIX` bound to the goal-owned fixture root; no repository `__pycache__` or `.pyc` was created. Log: `m2-compile-changed-tests.log` (empty because the successful compiler emitted no output).
+- Whitespace: `git diff --check origin/main...HEAD` passed. Log: `m2-diff-check.log` (empty success output).
+- Complete test-log inventory: 12 `m2-*.log` files, 1157 lines total, preserved under the recorded log root.
+- Source repair: none required by M2. The only failure root cause was the unbootstrapped system Python; the isolated tooling environment restored the documented execution contract.
+- Behavior impact: focused ownership/disclosure tests and all root/Workflow/Watcher suites pass on the candidate; no real installed/runtime state was read or mutated by the bootstrap.
+- Rollback: preserve or ignore the goal-owned tooling fixture; no repository or installed-state rollback is necessary.
+- Remaining risk: deterministic validators, real installed-state drift, universal resource resolution, independent Contract review, and A-E behavior remain for M3-M4.
+- Harness evidence: tests used the isolated candidate worktree and owner-bound logs/fixture venv; ordinary dependency failure was diagnosed and recovered without a hard stop or external write.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M2 checkpoint commit
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
+- Validation recorded: focused 18/18, root 95/95, Workflow 68/68, Watcher 72/72 with 3 platform skips, changed-test compilation, and diff check
+- Out-of-scope dirty changes: none
+
 ## M3 Deterministic, Installed-State, and Resource Audit
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Validate deterministic owners and resource resolution without applying installed/runtime changes.
 
