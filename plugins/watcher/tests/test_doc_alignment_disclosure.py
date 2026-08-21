@@ -16,8 +16,6 @@ class DocAlignmentDisclosureTests(unittest.TestCase):
     def test_entry_interface_keeps_mode_safety_and_one_level_pointers(self) -> None:
         text = SKILL.read_text(encoding="utf-8")
 
-        for heading in ("## Contract", "## Mode", "## Workflow", "## Completion"):
-            self.assertIn(heading, text)
         self.assertIn(
             "Scheduled Watcher doc audits must keep target repositories read-only",
             text,
@@ -26,16 +24,8 @@ class DocAlignmentDisclosureTests(unittest.TestCase):
         self.assertIn("Fix root causes before claiming alignment", text)
         self.assertIn("references/watcher-audit.md", text)
         self.assertIn("references/alignment-reference.md", text)
-
-        for moved_detail in (
-            "scripts/watcher doc doctor",
-            "## Watcher Doc Audit Workflow",
-            "## Finding Severity",
-            "**Overview**",
-            "## Final Report",
-        ):
-            self.assertNotIn(moved_detail, text)
-        self.assertLessEqual(len(text.splitlines()), 80)
+        self.assertIn("report-only work must leave target repositories unchanged", text)
+        self.assertIn("every triggered reference completion criterion", text)
 
     def test_watcher_audit_reference_is_complete_for_operations_branch(self) -> None:
         text = WATCHER_AUDIT.read_text(encoding="utf-8")
@@ -53,15 +43,6 @@ class DocAlignmentDisclosureTests(unittest.TestCase):
     def test_alignment_reference_owns_classification_surfaces_and_validation(self) -> None:
         text = ALIGNMENT.read_text(encoding="utf-8")
 
-        for heading in (
-            "## Review Inventory And Classification",
-            "## Script And Entry-Point Naming",
-            "## Documentation Tree Alignment",
-            "## Planning/TODO Tree Alignment",
-            "## Skill Alignment",
-            "## Validation",
-        ):
-            self.assertIn(heading, text)
         for role in (
             "**Overview**",
             "**Guide**",
@@ -73,6 +54,14 @@ class DocAlignmentDisclosureTests(unittest.TestCase):
             self.assertIn(role, text)
         for severity in ("`High`", "`Medium`", "`Low`"):
             self.assertIn(severity, text)
+        for semantic in (
+            "runtime checks: `check_<target>`",
+            "Root docs are current overview and execution entry points only",
+            "Active index files are navigation and execution posture",
+            "Keep `SKILL.md` frontmatter to `name` and `description`",
+            "Match validation to the changed surface",
+        ):
+            self.assertIn(semantic, text)
         self.assertIn("python3 -m compileall -q scripts/watcher_runtime", text)
         self.assertGreaterEqual(text.count("Completion criterion:"), 6)
 

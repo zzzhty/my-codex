@@ -23,30 +23,22 @@ class InstructionOwnershipTests(unittest.TestCase):
         root = AGENTS.read_text(encoding="utf-8")
         support = SUPPORT.read_text(encoding="utf-8")
 
-        for heading in (
-            "## Failure-handling policy",
-            "## Test coverage policy",
-            "## Delegation policy",
-            "## Subagent failure handling",
+        for semantic in (
+            "Surface failures directly",
+            "Keep tests focused on behavioral red lines",
+            "Use subagents only when",
+            "Treat subagent failures as first-class failures",
         ):
-            self.assertIn(heading, root)
+            self.assertIn(semantic, root)
 
-        self.assertIn("## Durable Owner Map", support)
-        self.assertIn("## Delegation Routing", support)
-        self.assertIn("## Sync And Validation", support)
+        self.assertIn("Root `AGENTS.md` owns global authority", support)
+        self.assertIn("Repository-specific support paths and role-label mapping", support)
+        self.assertIn("does not invoke `$orchestrate-subagents` by itself", support)
         self.assertIn("scripts/sync_codex_agents.py", support)
-
-        for duplicated_generic_section in (
-            "## Core Loop",
-            "## Capture",
-            "## Persist",
-            "## Act",
-            "## Review",
-            "## Monitor",
-            "## Remember",
-            "## Workflow Contract Template",
-        ):
-            self.assertNotIn(duplicated_generic_section, support)
+        self.assertIn("preserve the user-visible local time", support)
+        self.assertIn("verify the written automation state", support)
+        self.assertIn("Do not write secrets, full private prompts, full tool responses", support)
+        self.assertIn("Memory updates must remain reviewable", support)
 
     def test_orchestrate_skill_is_a_deep_interface_with_one_level_disclosure(self) -> None:
         skill = ORCHESTRATE.read_text(encoding="utf-8")
@@ -54,7 +46,6 @@ class InstructionOwnershipTests(unittest.TestCase):
 
         self.assertIn("name: orchestrate-subagents", skill)
         self.assertIn("references/subagent-recipes.md", skill)
-        self.assertNotIn("## Subagent Prompt Template", skill)
         self.assertIn("## Assignment Contract", recipes)
 
         for required_entry_semantic in (

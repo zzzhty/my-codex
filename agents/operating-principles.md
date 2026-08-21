@@ -67,6 +67,18 @@ This repository does not maintain or install custom-agent preset TOML. Add one o
 
 Custom-agent work must not broaden read-only review authorization into implicit mutation.
 
+## Scheduling And Monitoring Boundary
+
+Scheduled or repeated workflows must define the trigger or schedule, exact command or tool, working directory, inputs and output contract, allowed and forbidden actions, report or memory location, validation or freshness checks, and stop condition. For `long-running-goal`, use its narrower runtime hard-stop boundary.
+
+For wall-clock schedules, preserve the user-visible local time unless the user explicitly requests UTC, and verify the written automation state before reporting the schedule.
+
+## Memory Writeback Boundary
+
+Write back only durable, reusable knowledge: user preferences that affect future work, validated commands, recurring failure modes, workflow contracts, open loops or close criteria, and privacy or mutation boundaries. Do not write secrets, full private prompts, full tool responses, unverified assumptions, one-off noise, or implementation details that are cheap to rediscover.
+
+Memory updates must remain reviewable through file paths, diffs, or report artifacts.
+
 ## Sync And Validation
 
 Preview and apply the managed support-file projection:

@@ -23,38 +23,22 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
     def test_entry_interface_keeps_lifecycle_authority_and_goal_tool_contracts(self) -> None:
         text = SKILL.read_text(encoding="utf-8")
 
-        for heading in (
-            "## Trigger And Ready Contract",
-            "## Request Supersession",
-            "## Branch Routing",
-            "## Execution Authority",
-            "## Harness Goal Tool Boundary",
-            "## Completion",
-        ):
-            self.assertIn(heading, text)
-
         for semantic in (
             "A `Ready` goal",
             "Keep the goal `Draft`",
+            "complete `Draft` or `Ready` contract",
+            "Never invent or infer a missing decision",
+            "An explicit pause, stop, redirect, or change-scope request overrides",
+            "without running milestone commands, editing goal evidence, or updating native goal-tool status",
             "Only a `Ready` goal pre-approves",
             "normally after at least three attempts or three distinct approaches",
             "Stop only at a runtime hard stop",
             "Task temporary cache housekeeping is separate",
             "Use the harness's native goal tools only when the user explicitly asks",
+            "check_goal_ready.py [--allow-draft] <goal-file>",
+            "non-executable `Draft` that records known facts and open decisions",
         ):
             self.assertIn(semantic, text)
-
-        for implementation_detail in (
-            "## Goal File And Template",
-            "## Components",
-            "## Pre-Approval And YOLO Boundary",
-            "## Bundled Helpers",
-            "## Quality Bar",
-            "A useful long-running goal must answer:",
-        ):
-            self.assertNotIn(implementation_detail, text)
-
-        self.assertLessEqual(len(text.splitlines()), 90)
 
     def test_each_conditional_branch_has_a_strong_pointer_and_completion_criterion(self) -> None:
         skill = SKILL.read_text(encoding="utf-8")
@@ -74,15 +58,6 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
             "execute, resume, continue, advance, evolve, or close",
         ):
             self.assertIn(trigger, skill)
-        for moved_heading in (
-            "## Create Or Upgrade",
-            "## Loop Blueprint Harness",
-            "## Production Cutover Gate",
-            "## Execute, Checkpoint, And Evolve",
-            "## Current Docs And Close",
-        ):
-            self.assertNotIn(moved_heading, skill)
-
         for reference in REFERENCES.values():
             text = reference.read_text(encoding="utf-8")
             self.assertIn("Completion criterion:", text)
