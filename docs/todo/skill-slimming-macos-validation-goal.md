@@ -306,21 +306,22 @@ Hard stop: `A required suite remains unavailable after three distinct local appr
 ### Execution Evidence for M2 — 2026-08-21
 
 - Final test Python: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/fixtures/tooling-venv/bin/python`; Python `3.13.14`; PyYAML `6.0.3`.
-- Focused semantic falsifiers: 18 tests passed. Log: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/logs/m2-focused-tooling.log`.
-- Root suite: initial system-Python run produced 10 import errors plus 5 dependent failures because PyYAML was absent. This was classified as `environment/dependency failure`, not source regression. Repository-owned bootstrap dry-run and apply created only the recorded fixture venv; the rerun passed 95 tests. Logs: `m2-root-suite.log`, `m2-tooling-bootstrap-dry-run.log`, `m2-tooling-bootstrap.log`, and `m2-root-suite-tooling.log` under the recorded log root.
-- Workflow suite: 68 tests passed. Log: `m2-workflow-suite-tooling.log`.
-- Watcher suite: initial system-Python run had 2 PyYAML import errors; the tooling-Python rerun passed 72 tests with 3 expected Windows-only skips. Logs: `m2-watcher-suite.log` and `m2-watcher-suite-tooling.log`.
+- Focused semantic falsifiers: 18 tests passed. Authoritative bounded log: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/logs/m2-focused-bounded.log`.
+- Root suite: initial system-Python run produced 10 import errors plus 5 dependent failures because PyYAML was absent. This was classified as `environment/dependency failure`, not source regression. Repository-owned bootstrap dry-run and apply created only the recorded fixture venv; the authoritative bounded rerun passed 95 tests. Logs: `m2-root-suite.log`, `m2-tooling-bootstrap-dry-run.log`, `m2-tooling-bootstrap.log`, and `m2-root-bounded.log` under the recorded log root.
+- Workflow suite: 68 tests passed. Authoritative bounded log: `m2-workflow-bounded.log`.
+- Watcher suite: initial system-Python run had 2 PyYAML import errors; the authoritative bounded rerun passed 72 tests with 3 expected Windows-only skips. Logs: `m2-watcher-suite.log` and `m2-watcher-bounded.log`.
 - Compilation: the four changed Python tests compiled successfully with `PYTHONPYCACHEPREFIX` bound to the goal-owned fixture root; no repository `__pycache__` or `.pyc` was created. Log: `m2-compile-changed-tests.log` (empty because the successful compiler emitted no output).
 - Whitespace: `git diff --check origin/main...HEAD` passed. Log: `m2-diff-check.log` (empty success output).
-- Complete test-log inventory: 12 `m2-*.log` files, 1157 lines total, preserved under the recorded log root.
+- Harness correction: the first successful tooling-Python runs left Python's internal `tempfile` resolver on the macOS default root, and those test-owned directories auto-cleaned outside the recorded namespace. M2 was reopened; authoritative reruns set `TMPDIR` to the recorded goal-owned fixtures root. Logs prove root and Watcher temporary paths under `.../fixtures/tmp*`; focused 18, root 95, Workflow 68, and Watcher 72 with 3 platform skips all passed again. No installed/runtime path was touched by this deviation.
+- Complete test-log inventory: 16 `m2-*.log` files, 1727 lines total, preserved under the recorded log root.
 - Source repair: none required by M2. The only failure root cause was the unbootstrapped system Python; the isolated tooling environment restored the documented execution contract.
 - Behavior impact: focused ownership/disclosure tests and all root/Workflow/Watcher suites pass on the candidate; no real installed/runtime state was read or mutated by the bootstrap.
 - Rollback: preserve or ignore the goal-owned tooling fixture; no repository or installed-state rollback is necessary.
 - Remaining risk: deterministic validators, real installed-state drift, universal resource resolution, independent Contract review, and A-E behavior remain for M3-M4.
-- Harness evidence: tests used the isolated candidate worktree and owner-bound logs/fixture venv; ordinary dependency failure was diagnosed and recovered without a hard stop or external write.
+- Harness evidence: final authoritative tests used the isolated candidate worktree, owner-bound logs/fixture venv, and owner-bound `TMPDIR`; the initial namespace deviation and recovery remain visible; no hard stop or external write occurred.
 - Checkpoint component: Done
 - Checkpoint type: artifact revision
-- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M2 checkpoint commit
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M2 correction checkpoint commit
 - Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
 - Validation recorded: focused 18/18, root 95/95, Workflow 68/68, Watcher 72/72 with 3 platform skips, changed-test compilation, and diff check
 - Out-of-scope dirty changes: none
