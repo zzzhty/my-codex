@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo/archive`
 
-Continuation contract: Closed. Do not resume this archive as an execution authority. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final state unless the separately authorized [Universal Agent Skills Local Cleanup](../universal-agent-skills-cleanup.md) goal advances through its own Ready contract, independent review, and exact destructive boundary.
+Continuation contract: Closed. Do not resume this archive as an execution authority. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, and live Watcher durable state is unchanged. The separately authorized [Universal Agent Skills Local Cleanup](universal-agent-skills-cleanup.md) record owns the completed deletion of the former protected rollback material and personal marketplace residue.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -869,4 +869,4 @@ Close rollback: `Restore the active goal and index entry if closure validation r
 
 ## Close Continuation Boundary
 
-This goal is `Closed` and has no remaining implementation or Close milestone. Do not resume this archive as an execution authority. Preserve the final universal live state. Retained-state cleanup is owned only by the separately authorized [Universal Agent Skills Local Cleanup](../universal-agent-skills-cleanup.md) goal and its exact preservation and deletion gates.
+This goal is `Closed` and has no remaining implementation or Close milestone. Do not resume this archive as an execution authority. Preserve the final universal live state. The separately authorized [Universal Agent Skills Local Cleanup](universal-agent-skills-cleanup.md) record documents the completed exact deletion and preserved-state gates.

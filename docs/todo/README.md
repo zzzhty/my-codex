@@ -12,10 +12,11 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-- [Universal Agent Skills Local Cleanup](universal-agent-skills-cleanup.md): Ready bounded cleanup of the obsolete local rollback bundle, live personal marketplace registration, and empty cache namespace while preserving universal discovery and Watcher state.
+No active long-running goals are currently tracked.
 
 ## Archive
 
+- [Universal Agent Skills Local Cleanup](archive/universal-agent-skills-cleanup.md): completed exact removal of the obsolete local rollback bundle, personal marketplace registration, and empty cache namespace with universal discovery and Watcher state preserved.
 - [Universal Agent Skills Migration](archive/universal-agent-skills-migration.md): closed migration contract, controlled universal cutover evidence, qualified-identity decision, rollback rehearsal, retained-state boundary, and Close record.
 - [Skill Prompt Optimization Report](archive/skill-prompt-optimization.md): historical report from the pre-consolidation `doc-watcher` and `skill-watcher` source layout.
 - [Doc Alignment Progressive Disclosure Record](archive/doc-alignment-progressive-disclosure-proposal.md): accepted oracle, implementation map, and semantic-review evidence for the disclosed Watcher skill reference.

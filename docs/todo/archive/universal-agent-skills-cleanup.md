@@ -1,10 +1,10 @@
 # Universal Agent Skills Local Cleanup Long-Running Goal
 
-Overall status: `Ready`
+Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the sole active execution authority for the bounded local cleanup that follows the completed Universal Agent Skills migration. It replaces the deferred design note after the user explicitly waived the observation window, accepted Git as the functional recovery checkpoint, authorized the exact local and GitHub mutations, and confirmed permanent deletion of the exact rollback root.
+This archived-path file is the sole Close authority for the completed bounded local cleanup that followed the Universal Agent Skills migration. It replaced the deferred design note after the user explicitly waived the observation window, accepted Git as the functional recovery checkpoint, authorized the exact local and GitHub mutations, and confirmed permanent deletion of the exact rollback root.
 
 ## Goal Summary
 
@@ -16,17 +16,17 @@ Goal Description:
 2. Preserve the active 34-link universal discovery profile, repository source and optional plugin distribution, current hooks and agent support, unrelated configuration, and all Watcher durable state.
 3. Publish a Git checkpoint and closure record that is sufficient to reconstruct functionally equivalent plugin or universal profiles in another environment, while explicitly accepting that deleted local historical evidence cannot be reproduced byte-for-byte.
 
-Goal Status: `Ready`
+Goal Status: `In Progress`
 
 Goal Owner: `my-codex repository maintainer`
 
-Goal Path: `docs/todo/universal-agent-skills-cleanup.md`
+Goal Path: `docs/todo/archive/universal-agent-skills-cleanup.md`
 
 Planning root: `docs/todo`
 
-Goal directory: `docs/todo`
+Goal directory: `docs/todo/archive`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the newest user request, and current local runtime state before acting. Execute strictly in order `M0 -> M1 -> Close`. M0 admits no cleanup mutation. M1 may mutate only the exact authorized local targets after readiness and independent deletion review are Clean. Permanent rollback-root deletion is intentionally irreversible; preserve every excluded boundary and stop before deletion on any inventory, ownership, closure, config, hash, or review contradiction.
+Continuation contract: M0 and M1 are complete, independently reviewed, and checkpointed. Do not rerun the Frozen executable oracle: its exact destructive preconditions no longer exist because the authorized targets are absent. The only remaining authority is Close documentation, final read-only validation, PR merge, and safe deletion of the fully merged goal branch. Preserve universal discovery, repository source, unrelated config, hooks, agent support, Watcher durable state, backup parents, and unrelated plugin caches.
 
 Planning preflight marker: `preflight:universal-agent-skills-cleanup:20260821-grill2`
 
@@ -42,13 +42,13 @@ Docs written: `Not applicable: the existing discovery-profile and cleanup vocabu
 
 ## Preflight Time Assessment
 
-Assessment target: `Ready-to-Closed`
+Assessment target: `current-milestone-to-Closed`
 
 Assessment mode: `Rough range`
 
-Rough elapsed-time estimate: `30-60 minutes`
+Rough elapsed-time estimate: `10-20 minutes`
 
-Basis or blocker: `2026-08-21 bounded inventory shows three exact local mutation classes totaling 912 KiB, no installed target plugins, an empty live cache namespace, and no repository or runtime consumer of the rollback root. The range includes serial independent review, local apply and recovery checks, GitHub Draft PR publication and merge, and branch cleanup. It assumes ordinary GitHub availability; the repository has no configured CI checks or other external wait.`
+Basis or blocker: `2026-08-21 M0 and M1 are complete, exact cleanup and independent post-apply review passed, and Draft PR #12 is published with no configured status checks. Only Close review fixes, archive/index checkpoint publication, ready transition, merge, containment proof, and safe branch deletion remain.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -64,7 +64,9 @@ Recorded task temporary cache roots: `Not applicable`
 
 Housekeeping boundary: `No task temporary cache root will be created or cleaned at Close. The permanent deletion authorized for M1 is the goal's primary exact cleanup target, not task-temporary-cache housekeeping. Generic ignored Python caches, dependencies, runtime state, logs, reports, and unknown producers remain outside this goal.`
 
-## Current Execution Baseline
+## Pre-Cleanup Execution Baseline
+
+The following facts were frozen before M1 and are retained as historical deletion-gate evidence; the authorized marketplace entry, timestamp root, and empty cache namespace described here are now absent.
 
 1. Repository `main` and `origin/main` both resolve to migration Close merge `f01d0a17b82dfbdb0e002675d2cd90908fd41d09`; the preflight worktree was clean.
 2. Universal discovery exposes exactly 34 repository-owned symlinks below `/Users/max/.agents/skills`, with zero non-link entries. The three skills-bearing `my-codex` plugins are not installed and the live `/Users/max/.codex/plugins/cache/my-codex` directory is empty.
@@ -82,6 +84,14 @@ Current truth sources read:
 2. `docs/todo/archive/universal-agent-skills-migration.md`, the superseded cleanup follow-up, and the protected M5 execution summary and inventories.
 3. Current `~/.codex/config.toml`, plugin and marketplace CLI inventories, universal links, hooks, agent support, Watcher state, backup tree, and cache tree.
 4. `workflow:long-running-goal`, `watcher:housekeeping`, `mattpocock-skills:grilling`, `mattpocock-skills:domain-modeling`, and GitHub publishing guidance.
+
+## Current Final State
+
+1. `/Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z` and `/Users/max/.codex/plugins/cache/my-codex` are permanently absent. All backup parents and the four unrelated `openai-*` plugin cache namespaces remain real directories.
+2. The live `my-codex` marketplace registration is absent, the three `my-codex` plugin selectors remain not installed, and the canonical sorted compact JSON SHA-256 of the entire remaining config is `5783be69c8778981c11ade709c0c8f1c58b984494b32a7fdfb05a0d55ca35dc1`.
+3. Universal discovery remains exactly 34 repository-owned symlinks and zero nonlinks. Strict closure, Watcher doctor, and all three source/package validators pass with zero warnings.
+4. Hooks SHA-256 remains `f24da46573b7130a0684213dc096dbae1413d27a6ea48392fc7db152cc1f0520`; agent-support SHA-256 remains `66aa398bca3cf1793914613b943a611ee11b5461f3e99562ba443a251d3f0d5e`; the immediate pre/post Watcher stat SHA-256 remained `76fa1304b7842334ac37b626e5a98922a81f895b586d27a3c9b4e9348b8f5291`.
+5. Repository Git history provides functional reconstruction of either discovery profile in another environment, but the deleted archives, config/hook snapshots, raw cutover evidence, and generated timestamps are intentionally not byte-identically recoverable.
 
 ## Loop Blueprint / Harness
 
@@ -136,7 +146,7 @@ This goal does not:
 |---|---|---|---|
 | M0 Contract, Inventory, and Deletion Freeze | Done | Passed | Done |
 | M1 Exact Local Cleanup and Validation | Done | Passed | Done |
-| Close Goal Closure and Archive | Ready | Pending | Pending |
+| Close Goal Closure and Archive | In Progress | Pending | Pending |
 
 ## M0 Contract, Inventory, and Deletion Freeze
 
@@ -168,7 +178,7 @@ Execution evidence: `2026-08-21 readiness, active TODO index, Markdown links, pl
 
 Checkpoint component: `M0 Contract, Inventory, and Deletion Freeze`
 
-Checkpoint evidence: `Commit 76b1af37ec53bf20fb09164e5abfc97fbbe408be published the reviewed contract on codex/universal-agent-skills-cleanup; Draft PR #12 is https://github.com/zzzhty/my-codex/pull/12.`
+Checkpoint evidence: `Commit 76b1af37ec53bf20fb09164e5abfc97fbbe408be froze the initial contract; commit 4e87d3058ad0c18fb2ef8d1aed72e1a68f4bddf8 first recorded both independent Clean reviews and marked M0 Done/Passed/Done on codex/universal-agent-skills-cleanup. Draft PR #12 is https://github.com/zzzhty/my-codex/pull/12.`
 
 ## M1 Exact Local Cleanup and Validation
 
@@ -476,7 +486,7 @@ Checkpoint evidence: `Commit fc77599a28a1e6562aa56c2086f5feda7b72669f records th
 
 ## Close Goal Closure and Archive
 
-Status: `Ready`
+Status: `In Progress`
 
 Close prerequisites:
 
@@ -497,13 +507,28 @@ Final validation:
 git diff --check
 ```
 
-Close execution evidence: `Pending after M1 and archive/index completion.`
+Close execution evidence: `Recorded in the Close Execution Evidence section below; final checkpoint and merge fields remain pending until their exact revisions exist.`
 
-Checkpoint component: `Pending until the Close review gate passes.`
+Checkpoint component: `Close Goal Closure and Archive`
 
 Close checkpoint evidence: `Pending Close Git revision and PR merge.`
 
 Close rollback: `Restore active navigation only if closure documentation is incomplete. Do not recreate the permanently deleted local rollback root or silently re-register the marketplace after successful cleanup.`
+
+## Close Execution Evidence
+
+- M0 and M1 are `Done/Passed/Done`. M0 checkpoint `4e87d3058ad0c18fb2ef8d1aed72e1a68f4bddf8` records the independently Clean deletion contract; M1 checkpoint `fc77599a28a1e6562aa56c2086f5feda7b72669f` records the exact apply and independent post-apply Clean review, and `d907585c1de2ca05a75ee945da94ba97fe2f6d87` made Close Ready.
+- The active goal path is moved to `docs/todo/archive/universal-agent-skills-cleanup.md`. Active long-running-goal navigation is empty; both TODO indexes link the archive; the migration archive's current navigation now points to this completed cleanup record without rewriting its historical evidence.
+- Final validation passes: universal profile closure and Watcher doctor report zero warnings; archived-goal readiness, Markdown links, closed-index ownership across both indexes, planning-tree topology, and `git diff --check` pass. The exact deleted targets remain absent and every protected hash and runtime boundary in Current Final State remains unchanged.
+- Draft [PR #12](https://github.com/zzzhty/my-codex/pull/12) remains Open while this Close diff and independent Close review are completed. PR merge, final checkpoint revision, containment proof, and local/remote branch deletion remain pending and must not be reported as complete early.
+
+Temporary cache / housekeeping evidence:
+
+- Recorded policy: `Not applicable`
+- No task temporary cache roots were created.
+- Action: no task-temporary cleanup is required. The permanently deleted rollback root and empty cache namespace were the separately authorized primary M1 scope, not a task-temporary-cache action; durable runtime and Watcher state remain preserved.
+
+Checkpoint evidence: `Pending the reviewed Close archive/index commit, PR #12 merge, containment proof, and safe branch deletion.`
 
 ## Current Risks
 
@@ -514,11 +539,11 @@ Close rollback: `Restore active navigation only if closure documentation is inco
 ## Recommended Goal Prompt
 
 ```text
-Execute docs/todo/universal-agent-skills-cleanup.md strictly in order M0 -> M1 -> Close. Preserve the active universal profile, source checkout, unrelated config, current hooks and agent support, and all Watcher durable state. M0 performs no cleanup mutation and requires independent Clean review. M1 first removes only the live my-codex marketplace registration and proves the exact semantic config diff plus universal health; only then permanently deletes the frozen rollback root and confirmed-empty owned namespaces. Use no temporary cache root. Publish the authorized Draft PR, merge only after every gate passes, prove the goal branch is fully contained in main, delete it locally and remotely, archive the goal, and stop only at a declared runtime hard stop.
+Complete only the Close section of docs/todo/archive/universal-agent-skills-cleanup.md. Do not rerun M0 or M1 and do not recreate the permanently deleted local evidence or personal marketplace entry. Preserve the validated universal and Watcher runtime, finish archive/index evidence, merge PR #12 after final review, prove the goal branch is fully contained in main, and then delete only that merged branch locally and remotely.
 ```
 
 ## Related Documents
 
-1. [Universal Agent Skills Migration archive](archive/universal-agent-skills-migration.md)
-2. [TODO index](README.md)
-3. [Repository discovery-profile guide](../../README.md#skill-discovery-profiles)
+1. [Universal Agent Skills Migration archive](universal-agent-skills-migration.md)
+2. [TODO index](../README.md)
+3. [Repository discovery-profile guide](../../../README.md#skill-discovery-profiles)
