@@ -44,21 +44,48 @@ def preflight_layer(catalog: SkillCatalog, *, target_root: Path) -> None:
             raise SystemExit(f"refusing unmanaged universal skill entry: {target}")
 
 
+def preflight_profile_layer(catalog: SkillCatalog, *, target_root: Path) -> None:
+    """Freeze a profile transition to the exact canonical projection names."""
+
+    preflight_layer(catalog, target_root=target_root)
+    for source in catalog.sources:
+        target = target_root / source.name
+        if not target.is_symlink():
+            continue
+        destination = managed_destination(target, catalog)
+        if destination != source.path:
+            raise SystemExit(
+                "refusing universal skill link outside exact canonical mapping: "
+                f"expected {target} -> {source.path}, found {destination}"
+            )
+    if not target_root.is_dir():
+        return
+    expected = catalog.by_name
+    for target in sorted(target_root.iterdir()):
+        if target.name in expected or not target.is_symlink():
+            continue
+        destination = managed_destination(target, catalog)
+        if destination is not None:
+            raise SystemExit(
+                "refusing repository-target universal skill symlink outside exact "
+                f"canonical set: {target} -> {destination}"
+            )
+
+
 def remove_managed_layer(
     catalog: SkillCatalog,
     *,
     target_root: Path,
     dry_run: bool,
 ) -> int:
-    """Remove only repository-owned universal links and preserve every other entry."""
+    """Remove only canonical repository-owned links and preserve every other entry."""
 
     preflight_layer(catalog, target_root=target_root)
     if not target_root.is_dir():
         print("universal skills layer already inactive")
         return 0
-    for target in sorted(target_root.iterdir()):
-        if not target.is_symlink():
-            continue
+    for source in catalog.sources:
+        target = target_root / source.name
         destination = managed_destination(target, catalog)
         if destination is None:
             continue

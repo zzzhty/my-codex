@@ -144,6 +144,56 @@ class SyncLayerTests(unittest.TestCase):
         self.assertFalse(ghost.exists() or ghost.is_symlink())
         self.assertTrue(user_skill.is_dir())
 
+    def test_profile_preflight_rejects_links_outside_exact_canonical_set(self) -> None:
+        target_root = self.sandbox.target_root
+        target_root.mkdir(parents=True)
+        ghost = target_root / "ghost"
+        ghost.symlink_to(self.sandbox.foo)
+
+        with self.assertRaisesRegex(SystemExit, "outside exact canonical set"):
+            sync_agents_skills.preflight_profile_layer(
+                self.sandbox.catalog,
+                target_root=target_root,
+            )
+
+        self.assertTrue(ghost.is_symlink())
+
+    def test_profile_preflight_rejects_canonical_name_with_wrong_repo_target(self) -> None:
+        target_root = self.sandbox.target_root
+        target_root.mkdir(parents=True)
+        drifted = target_root / "foo"
+        drifted.symlink_to(self.sandbox.bar)
+
+        with self.assertRaisesRegex(SystemExit, "outside exact canonical mapping"):
+            sync_agents_skills.preflight_profile_layer(
+                self.sandbox.catalog,
+                target_root=target_root,
+            )
+
+        self.assertEqual(drifted.resolve(), self.sandbox.bar.resolve())
+
+    def test_profile_removal_unlinks_only_canonical_names(self) -> None:
+        sync_agents_skills.sync_layer(
+            self.sandbox.catalog,
+            target_root=self.sandbox.target_root,
+            dry_run=False,
+            prune=False,
+        )
+        ghost = self.sandbox.target_root / "ghost"
+        ghost.symlink_to(self.sandbox.foo)
+
+        sync_agents_skills.remove_managed_layer(
+            self.sandbox.catalog,
+            target_root=self.sandbox.target_root,
+            dry_run=False,
+        )
+
+        self.assertTrue(ghost.is_symlink())
+        self.assertEqual(
+            sorted(path.name for path in self.sandbox.target_root.iterdir()),
+            ["ghost"],
+        )
+
     def test_sync_never_replaces_unmanaged_targets(self) -> None:
         target_root = self.sandbox.target_root
         target_root.mkdir(parents=True)

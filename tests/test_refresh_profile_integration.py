@@ -291,6 +291,30 @@ class RefreshProfileIntegrationTests(unittest.TestCase):
             ["remove:alpha", "remove:beta", "add:alpha", "add:beta"],
         )
 
+    def test_transition_rejects_extra_repo_target_link_before_plugin_mutation(self) -> None:
+        self.fixture.enabled.update({"alpha", "beta"})
+        self.fixture.configure_plugins()
+        self.fixture.target.mkdir(parents=True)
+        ghost = self.fixture.target / "ghost"
+        ghost.symlink_to(next(iter(self.fixture.catalog.sources)).path)
+        rows_patch, run_patch = self.patches()
+
+        with rows_patch, run_patch:
+            with self.assertRaisesRegex(SystemExit, "outside exact canonical set"):
+                refresh.apply_universal_discovery_profile(
+                    self.fixture.catalog,
+                    codex="codex",
+                    codex_home=self.fixture.codex_home,
+                    marketplace_name="test",
+                    target_root=self.fixture.target,
+                    env={},
+                    dry_run=False,
+                )
+
+        self.assertEqual(self.fixture.enabled, {"alpha", "beta"})
+        self.assertEqual(self.fixture.events, [])
+        self.assertTrue(ghost.is_symlink())
+
     def test_plugin_closure_failure_restores_universal_links_and_removes_partial_plugins(self) -> None:
         refresh.sync_layer(
             self.fixture.catalog,

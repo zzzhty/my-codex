@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration from M1 through M5 after the completed M0 contract freeze. The goal is `In Progress` at M4 after the explicit 2026-08-20 execution request and the merged M1 through M3 checkpoints. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration after the completed M0 contract freeze. M1 through M5 are `Done` after the controlled cutover established the final universal live profile and every runtime, repository, and Contract review gate passed. Close is `In Progress`; its first serial operation is the authorized Draft PR #10 merge, followed by archive and index finalization from updated `main`. Work does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active milestone branch or PR, and the newest user request before acting. M0 through M3 are complete and M4 is the unique `In Progress` milestone after explicit execution authorization. Resume only the first non-Done milestone. Preserve callable skill identities, the frozen slimming baseline, user-owned installation state, and the single-active-discovery-path invariant. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active M5 branch or PR, and the newest user request before acting. M0 through M5 are Done; M5 implementation, validation, runtime review, Contract review, and checkpoint evidence are complete. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final live state. Close is In Progress: merge the completed M5 Draft PR, update local `main`, then execute only the declared archive, index, validation, and closure sequence. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -36,11 +36,11 @@ Preflight source: `grill-with-docs`
 
 Planning preflight evidence: `grill-with-docs rounds 1-3 completed on 2026-08-20 after repository, runtime, GitHub, and domain-language audits. The decision frontier became empty, the complete shared understanding was presented, and the user explicitly confirmed it before this marker was recorded.`
 
-Resolved decisions: `The one-off Phase 1b prompt and prototype were retired. The current Mac is the sole M5 cutover target. Bare SKILL.md frontmatter names are callable identities; namespaced forms remain Watcher or distribution identities. Discovery profile selection is an explicit required CLI argument. Universal mode uses repo-owned hooks without a zero-skill adapter and retains an inactive mutually exclusive skills-bearing plugin profile. M6 cleanup is a future independent goal. M3 freezes no physical move. Conditional Git/GitHub milestone writes are authorized. Task temporary cache policy is Not applicable. M5 may mutate only inventory-confirmed my-codex skills-bearing plugin state, repository-owned universal links, and the minimum my-codex marketplace, plugin, hook, and agent-support state required for the profile transition; unrelated or unmanaged state, Watcher durable state, and cleanup remain excluded. Cleanup eligibility remains at least five successful universal sessions across at least three working days. ADR-0003 records the discovery-authority trade-off. M5 uses an owner-only durable backup outside Watcher state, performs plugin-to-universal-to-plugin-to-final-universal comparison, validates each mode in a fresh non-interactive Codex CLI process without restarting Desktop, and retains the proven plugin rollback baseline until a separately Ready cleanup goal authorizes deletion.`
+Resolved decisions: `The one-off Phase 1b prompt and prototype were retired. The current Mac is the sole M5 cutover target. Bare SKILL.md frontmatter names are catalog skill names and universal-link basenames. For the current canonical plugin-owned source layout, Codex invocation identities are the exact native ${plugin}:${catalog-name} forms in both plugin and universal profiles; a bare prompt-level request reference may resolve to that qualified identity but is not itself the promised runtime identity. Watcher durable identities retain their namespaced spelling and persisted attribution meaning, while distribution package identities remain separate. The existing plugins/*/skills/* physical authority is retained; no neutral copy, source relocation, or projection workaround will erase plugin context. Discovery profile selection is an explicit required CLI argument. Universal mode uses repo-owned hooks without a zero-skill adapter and retains an inactive mutually exclusive skills-bearing plugin profile. M6 cleanup is a future independent goal. Conditional Git/GitHub milestone writes are authorized. Task temporary cache policy is Not applicable. M5 may mutate only inventory-confirmed my-codex skills-bearing plugin state, repository-owned universal links, and the minimum my-codex marketplace, plugin, hook, and agent-support state required for the profile transition; unrelated or unmanaged state, Watcher durable state, and cleanup remain excluded. Cleanup eligibility remains at least five successful universal sessions across at least three working days. ADR-0004 supersedes ADR-0003 and records the native invocation-identity decision. M5 uses an owner-only durable backup outside Watcher state, performs plugin-to-universal-to-plugin-to-final-universal comparison, validates each mode in a fresh non-interactive Codex CLI process without restarting Desktop, and retains the proven plugin rollback baseline until a separately Ready cleanup goal authorizes deletion.`
 
-Open decisions: `None.`
+Open decisions: `None. The 2026-08-21 user decision accepts native qualified Codex invocation identities and rejects a neutral-layout workaround. The evolved oracle and cutover artifacts completed independent review, and the user then explicitly resumed live M5 execution under this contract.`
 
-Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/README.md; CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md`
+Docs written: `docs/todo/universal-agent-skills-migration.md; docs/todo/universal-agent-skills-cleanup-follow-up.md; docs/todo/README.md; README.md; CONTEXT.md; docs/adr/0003-universal-skill-discovery-authority.md; docs/adr/0004-accept-native-codex-skill-invocation-identities.md`
 
 ## Preflight Time Assessment
 
@@ -48,9 +48,9 @@ Assessment target: `current-milestone-to-Closed`
 
 Assessment mode: `Rough range`
 
-Rough elapsed-time estimate: `1-3 weeks`
+Rough elapsed-time estimate: `1-3 hours`
 
-Basis or blocker: `2026-08-20 initial-execution rebaseline remains 1-3 weeks from M1 to Closed, based on five serial implementation and cutover milestones, focused and full-suite validation, independent reviews, cross-platform wrapper checks, and conditional GitHub PR and review waits. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded. The range assumes serial milestone execution on the current Mac and excludes prolonged credential, machine-access, or upstream-tool outages.`
+Basis or blocker: `The 2026-08-21 M5 cutover, rollback rehearsal, final universal activation, and independent post-apply review are complete. The remaining critical path is repository evidence synchronization, final validation and Contract review, Draft PR completion and merge, then the mechanical Close archive and index gate. The repository currently has no CI workflow, and the separately scoped cleanup observation window is excluded.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -91,7 +91,8 @@ Current source-of-truth evidence read:
 | Surface | Target responsibility |
 | --- | --- |
 | Git `plugins/*/skills/**` | Sole canonical skill source authority |
-| `SKILL.md` frontmatter `name` | Callable universal identity authority |
+| `SKILL.md` frontmatter `name` | Bare catalog skill name and universal-link basename authority |
+| Resolved canonical plugin provenance plus catalog name | Native Codex invocation identity `${plugin}:${catalog-name}` for both supported profiles |
 | `~/.agents/skills/**` | Managed universal discovery projection, never source or cache |
 | `~/.codex/plugins/cache/**` | Optional skills-bearing plugin distribution cache only |
 | `.agents/plugins/*.json` | Optional distribution metadata, never universal source catalog |
@@ -100,12 +101,13 @@ Current source-of-truth evidence read:
 
 ### Identity contract
 
-1. Bare `SKILL.md` frontmatter names such as `sop`, `doc-alignment`, and `long-running-goal` are the sole callable identities.
-2. Watcher durable identities such as `workflow:sop` and `watcher:doc-alignment` remain unchanged but are attribution identities, not alternate callable identities.
-3. Distribution identities such as `workflow@my-codex` remain separate from callable and Watcher identities.
-4. Plugin-qualified invocation spelling is a distribution selector; a profile change may expose the same callable identity through a different selector without creating a second callable identity.
-5. Directory changes never imply identity renames.
-6. Any callable, Watcher, or distribution identity migration requires a separate consumer inventory, compatibility plan, explicit authorization, and independent review; it is outside this goal unless the goal is formally evolved.
+1. Bare `SKILL.md` frontmatter names such as `sop`, `doc-alignment`, and `long-running-goal` are catalog skill names and universal-link basenames, not promised Codex runtime identities.
+2. For every canonical plugin-owned skill, the accepted Codex invocation identity is exactly `${plugin}:${catalog-name}`, such as `workflow:sop` or `watcher:doc-alignment`, in both plugin and universal profiles.
+3. A bare prompt-level skill request reference may resolve to the exact qualified Codex invocation identity. M5 records both the requested reference and resolved identity instead of treating the request spelling as the runtime identity.
+4. Watcher durable identities remain unchanged. Their spelling intentionally aligns with the current Codex invocation identities, but their ownership and meaning remain persisted attribution rather than runtime discovery authority.
+5. Distribution package identities such as `workflow@my-codex` remain separate from catalog names, Codex invocation identities, and Watcher identities.
+6. Directory changes never imply identity renames, and this evolution authorizes no physical source move or neutral packaging projection.
+7. Any later catalog-name, Codex invocation, Watcher, or distribution identity migration requires a new consumer inventory, compatibility plan, explicit authorization, and independent review.
 
 ### Discovery contract
 
@@ -121,7 +123,7 @@ Current source-of-truth evidence read:
 - Preserve the current slimming result; do not reopen wording or token optimization.
 - Do not edit Matt Pocock mirror skill content outside its updater-owned workflow.
 - Do not move skills merely for directory aesthetics.
-- Do not migrate invocation identities as part of path changes.
+- Do not move or copy canonical skill source merely to erase Codex's native plugin-qualified invocation context.
 - Do not make Watcher logs, reports, proposals, or plugin cache a source authority.
 - Do not perform real installation-state mutation before M5 authorization.
 - Do not create a zero-skill adapter in this goal.
@@ -203,9 +205,9 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M1 Repository-Authoritative Discovery and Profile Integration | Done | Passed | Done |
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
 | M3 Physical Layout Verification — No Move | Done | Passed | Done |
-| M4 Optional Plugin Distribution Packaging | In Progress | Pending | Pending |
-| M5 Controlled Universal Profile Cutover | Not Started | Pending | Pending |
-| Close Goal Closure and Archive | Not Started | Pending | Pending |
+| M4 Optional Plugin Distribution Packaging | Done | Passed | Done |
+| M5 Controlled Universal Profile Cutover | Done | Passed | Done |
+| Close Goal Closure and Archive | In Progress | Pending | Pending |
 
 ## M0 Contract, Plan, and Baseline Freeze
 
@@ -281,7 +283,7 @@ Objective: Land the repository-derived catalog and managed projection together w
 Scope:
 
 1. Start from current `main` and inventory every existing refresh, check, wrapper, marketplace, plugin, and projection caller.
-2. Derive the canonical catalog from `plugins/*/skills/*/SKILL.md` and frontmatter identity, independent of marketplace metadata.
+2. Derive the canonical catalog from `plugins/*/skills/*/SKILL.md` and frontmatter catalog name, independent of marketplace metadata.
 3. Add one shared explicit discovery-profile policy supporting only `universal` and `plugin`.
 4. Update `sync_agents_skills.py`, `refresh_my_codex.py`, `check_my_codex.py`, `upgrade_my_codex.sh`, and `upgrade_my_codex.ps1` as one integrated contract.
 5. Reject legacy skip-flag combinations that can create dual-active or zero-active discovery.
@@ -301,7 +303,7 @@ Preconditions:
 Canonical catalog requirements:
 
 - Scan `plugins/*/skills/*/SKILL.md` directly.
-- Use frontmatter `name` as callable identity, even when the physical directory name differs.
+- Use frontmatter `name` as the bare catalog skill name, even when the physical directory name differs.
 - Reject duplicate identities, malformed frontmatter, missing `SKILL.md`, and source or file symlink escape outside repository authority.
 - Do not read marketplace or plugin manifests to decide the universal catalog.
 - Do not introduce a second hand-maintained catalog.
@@ -378,7 +380,7 @@ Review gate:
 - Universal closure does not require marketplace, cache, or Codex CLI when no plugin removal is needed.
 - Plugin closure compares installed and cached identities to canonical repository source.
 - Every supported public invocation and current doc is updated for the authorized required profile argument.
-- No skill content, callable identity, Watcher identity, or slimming baseline changed.
+- No skill content, catalog name, observed Codex invocation identity, Watcher identity, or slimming baseline changed.
 
 Evidence to record:
 
@@ -388,10 +390,10 @@ Execution evidence:
 
 - Execution started on 2026-08-20 from clean `main` revision `3da1d41a1044218e39a0394ea827f105ed268710` on goal-owned branch `codex/universal-agent-skills-m1`; `origin/main` matched and no open PR existed.
 - Initial read-only caller inventory covered the five required entry points, root README, current tests, marketplace and install metadata references, and legacy skip/prune flags. No memory entry supplied an alternate implementation source.
-- Initial integrated implementation commit `80e8a8a` added the repository catalog, owned universal projection, explicit profile policy, rollback-capable transitions, complete closure checks, wrapper propagation, current documentation, and focused tests without changing skill content or callable identities.
+- Initial integrated implementation commit `80e8a8a` added the repository catalog, owned universal projection, explicit profile policy, rollback-capable transitions, complete closure checks, wrapper propagation, current documentation, and focused tests without changing skill content or catalog names.
 - The independent Standards and Spec reviews found strict-parser, duplicate-authority, transition-interface, alternate-marketplace, selector-scope, universal-link-removal rollback, shared-manifest behavior-coverage, dead-helper, and wrapper-bootstrap gaps. The branch now fails closed on malformed CLI rows and config disagreement, centralizes plugin and marketplace identity parsing, rejects or precisely removes alternate-marketplace copies, limits selectors to the canonical catalog and chosen marketplace, uses direction-specific transition runtimes, rolls back partial universal-link removal, exercises manifest schema and identity failures through the shared closure, removes superseded helper surfaces, and uses the bootstrap Python only to establish the tooling venv before running profile helpers with its PyYAML-capable Python. Final independent re-review of `3da1d41...d78eccb` passed both Standards and Spec with no actionable findings; each reviewer independently reran all 52 focused tests.
 - Post-fix validation on 2026-08-21 passed the required 52 focused tests, all 71 root tests, all 64 Workflow tests, and all 62 Watcher tests with three platform skips; owner-venv byte compilation, shell syntax, CLI help, Markdown links, goal readiness, and `git diff --check` also passed. The bare system `python3` correctly remained unsuitable because it lacks PyYAML, so all supported checks used `/Users/max/.codex/venvs/my-codex/bin/python` as frozen.
-- A real-environment read-only inventory parsed all current `codex plugin list` rows, confirmed the canonical three `my-codex` packages enabled at one exact cache version each with 34 callable identities and plugin-profile closure, and confirmed `/Users/max/.agents/skills` is absent. No refresh, check, link, plugin, hook, cache, or durable-state mutation was run against the live installation during M1.
+- A real-environment read-only inventory parsed all current `codex plugin list` rows, confirmed the canonical three `my-codex` packages enabled at one exact cache version each with 34 catalog entries and plugin-profile closure, and confirmed `/Users/max/.agents/skills` is absent. No refresh, check, link, plugin, hook, cache, or durable-state mutation was run against the live installation during M1.
 - [PR #6](https://github.com/zzzhty/my-codex/pull/6) merged the reviewed M1 branch to `main` as `9f6e3a739c00e0c780d8c71946600ba578f1f892` after GitHub reported it mergeable with no repository CI checks configured. The merged remote and local M1 branches contained no commits absent from `main` and were deleted before M2 started from that merge.
 
 Checkpoint component: Done
@@ -531,7 +533,7 @@ Evidence to record:
 
 Execution evidence:
 
-- M3 started from merged `main` revision `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd` on `codex/universal-agent-skills-m3` after the reviewed M2 branch and remote ref were safely removed. No skill source path, skill content, callable identity, plugin manifest, updater lock, or runtime state was moved or changed.
+- M3 started from merged `main` revision `01c7f21fc58fc3d237ccd0e86eb60cb9e2c4ebcd` on `codex/universal-agent-skills-m3` after the reviewed M2 branch and remote ref were safely removed. No skill source path, skill content, catalog name, observed Codex invocation identity, plugin manifest, updater lock, or runtime state was moved or changed.
 - The repository-authoritative catalog contains 34 skills across the three existing plugin roots and 119 Git-tracked skill-tree files, with no tracked symlink inside a skill tree. A `TemporaryDirectory` universal projection created all 34 links and proved every tracked `SKILL.md`, reference, template, script, agent manifest, and supporting file resolved through the callable-name link to the same repository-contained source entry. The projected Markdown inventory contained 38 relative links; the only two non-materialized targets are the documented child-name placeholders in the long-running-goal sequence template.
 - The platform audit found one projection bug rather than a layout blocker: `Path.symlink_to()` had relied on its default file-target interpretation. M3 now declares `target_is_directory=True`; local Python documents that Windows requires this for directory targets and POSIX ignores it. A focused cross-platform contract test asserts the directory flag on every generated link, while the live macOS projection test validates the complete current tree.
 - The active repository path-consumer search found 13 current files. They classify as canonical catalog and projection tooling, current docs, Watcher source-audit configuration, tests, the updater-owned Matt mirror contract, and the managed agent-support note; none is an unmanaged or external consumer requiring a top-level skill source. The only matching live non-runtime file is the managed `/Users/max/.codex/agents/operating-principles.md`, and its owner check passes. Live hooks point to the repo-owned Watcher CLI rather than a skill directory, and `/Users/max/.agents/skills` remains absent before M5.
@@ -579,7 +581,7 @@ Completion criterion: `The current physical authority is retained and validated 
 
 ## M4 Optional Plugin Distribution Packaging
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Keep the skills-bearing plugin profile buildable as an optional compatibility and rollback distribution without making it a universal source authority.
 
@@ -614,7 +616,7 @@ Evidence to record:
 Execution evidence:
 
 - M4 started from merged `main` revision `dbf157ccad5c6171dbb24e263986aae12f5e4b72` on `codex/universal-agent-skills-m4`. The optional install manifest is now schema 2 with explicit `discoveryProfile: plugin`; every marketplace package remains `AVAILABLE`, and universal mode never installs a plugin or a zero-skill adapter.
-- The repository-authoritative catalog validates all three source packages before any Codex marketplace mutation. Each package manifest must expose `./skills/`; the package name, version, callable identities, loaded skill directories, and complete package tree must remain inside and match the validated checkout. Local distribution binds to that exact checkout; Git distribution binds to its canonical remote and exact clean HEAD revision. Explicit Git source or ref failures stop directly, while only automatic Git selection may choose the same validated local checkout.
+- The repository-authoritative catalog validates all three source packages before any Codex marketplace mutation. Each package manifest must expose `./skills/`; the package name, version, catalog names, loaded skill directories, and complete package tree must remain inside and match the validated checkout. Local distribution binds to that exact checkout; Git distribution binds to its canonical remote and exact clean HEAD revision. Explicit Git source or ref failures stop directly, while only automatic Git selection may choose the same validated local checkout.
 - Package inventory at reviewed head `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` is 34 skills across three packages: `mattpocock-skills` version `1.2.3+codex.20260812033502` with 25 skills and 80 tracked files; `watcher` version `0.1.0+codex.20260817071906` with 4 skills and 47 tracked files; and `workflow` version `0.1.0+codex.20260814091823` with 5 skills and 54 tracked files.
 - Profile transition tests prove exactly one active discovery path, rollback after partial plugin activation, universal plugin-free hook installation, package-content closure, and rejection of universal links while the plugin profile is active. Wrapper entry points now pass raw Codex selection to the canonical Python preflight, so an invalid distribution fails before Codex resolution or marketplace mutation on Unix and PowerShell contracts.
 - Explicit pruning uses a structured plan that separates config-proven plugin removals from cache-only deletion targets. Cache structure is validated before targeting; CLI enabled-state closure is checked before marketplace or cache mutation; dry-run and real execution reject an enabled CLI-only/cache-name collision without deleting the cache; and complete profile closure is restored after an actual prune.
@@ -623,15 +625,27 @@ Validation evidence:
 
 - All 91 root tests, 64 Workflow tests, and 70 Watcher tests passed; three existing Watcher platform tests were skipped on macOS. Actual Watcher and Workflow plugin validators, Matt `--validate-only`, owner-venv byte compilation, Unix shell syntax, goal readiness, Markdown links, active TODO index, managed agent-support check, and `git diff --check` passed.
 - Independent Standards and Contract review iterated over package-source binding, source-tree containment, policy closure, mutation ordering, wrapper parity, and exact prune planning. Final review of `dbf157ccad5c6171dbb24e263986aae12f5e4b72...2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386` returned clean from both reviewers on 2026-08-21 with no P0-P2 or actionable Contract findings.
-- [Draft PR #9](https://github.com/zzzhty/my-codex/pull/9) contains the reviewed M4 source at `2dcdf43a3de0545d8ce2d3f0c2e5558bf7f06386`; GitHub reports it mergeable, and this repository has no configured PR checks. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
+- [PR #9](https://github.com/zzzhty/my-codex/pull/9) merged the reviewed M4 branch to `main` as `a06b431cfaf06f1986fe3861fbed53174cad9c15` after GitHub reported it mergeable with no repository CI checks configured. The merged remote and local M4 branches contained no commits absent from `main` and were deleted before M5 started from that merge. No M4 command changed live plugins, marketplace state, universal links, hooks, agent-support files, caches, or Watcher durable state.
 
 Checkpoint evidence: `M4 commits and PR, built artifact identity, package-content checks, and coexistence or mutual-exclusion evidence.`
+
+Checkpoint component: Done
+
+Checkpoint type: git merge
+
+Revision: a06b431cfaf06f1986fe3861fbed53174cad9c15
+
+Changed files: .agents/plugins/install-manifest.json; .agents/plugins/marketplace.json; README.md; docs/todo/universal-agent-skills-migration.md; plugins/watcher/tests/test_skill_watcher.py; plugins/watcher/tests/test_watcher_runtime_cli.py; scripts/check_my_codex.py; scripts/check_skill_discovery.py; scripts/refresh_my_codex.py; scripts/upgrade_my_codex.ps1; scripts/upgrade_my_codex.sh; tests/test_check_discovery_profile.py; tests/test_check_my_codex.py; tests/test_refresh_discovery_profile.py; tests/test_refresh_profile_integration.py; tests/test_upgrade_my_codex.py
+
+Validation recorded: 91 root, 64 Workflow, and 70 Watcher tests passed with three existing Watcher platform skips; three package-owner validators, syntax, goal/docs/index, package inventory, source authority, mutual exclusion, wrapper ordering, prune safety, and final independent Standards and Contract gates passed on 2026-08-21
+
+Out-of-scope dirty changes: none observed before merge or at the M5 branch point
 
 Rollback: `Revert the packaging source PR. No real plugin is installed during M4; the current plugin profile remains the M5 rollback baseline.`
 
 Hard stops:
 
-- Universal hook operation depends on plugin cache; package build requires a second catalog; the plugin package cannot remain mutually exclusive; or optional packaging would alter callable identities.
+- Universal hook operation depends on plugin cache; package build requires a second catalog; the plugin package cannot remain mutually exclusive; or optional packaging would alter catalog names or qualified Codex invocation identities.
 
 Authorization and review: `Source and package work, commits, goal-owned branch push, Draft PR creation and updates, independent review, and merge after every gate passes are pre-approved. Real plugin-profile mutation remains part of the M5 boundary, not M4.`
 
@@ -639,7 +653,7 @@ Completion criterion: `Optional plugin packaging builds and validates independen
 
 ## M5 Controlled Universal Profile Cutover
 
-Status: `Not Started`
+Status: `Done`
 
 Objective: Move one real, rollback-capable environment from the skills-bearing plugin profile to the universal profile and prove exact-once discovery and behavior.
 
@@ -654,7 +668,9 @@ Preconditions:
 2. Real machine access, Codex CLI capabilities, repository checkout, and rollback artifacts are available.
 3. Read-only inventory records exact `pwd`, repository, HEAD, upstream and dirty state, `~/.agents/skills`, Codex config, enabled plugins, cache versions, hooks, Watcher state, and visible skill inventory.
 4. No unmanaged same-name skill or unclassified enabled my-codex plugin remains unresolved.
-5. The exact apply, backup, retained-state, and rollback boundary is frozen by the completed planning preflight.
+5. The evolved fresh-process prompt, schema, and deterministic gate derive each expected Codex invocation identity as `${plugin}:${catalog-name}`, preserve the bare catalog mapping and requested-reference-to-resolved-identity check, and verify profile-specific source locators.
+6. An independent read-only cutover review passes on the evolved artifacts, and the user explicitly requests live execution under this evolved contract after the 2026-08-21 pause.
+7. The exact apply, backup, retained-state, and rollback boundary remains frozen by the completed planning preflight and the protected evidence root.
 
 Frozen mutation boundary:
 
@@ -678,7 +694,7 @@ Comparison matrix:
 | Mode | Active skills path | Purpose | Required evidence |
 | --- | --- | --- | --- |
 | Baseline plugin | Skills-bearing plugin only | Capture current behavior and rollback baseline | Exact inventory, invocation checks, Watcher health |
-| Candidate universal | `~/.agents/skills` only; repo-owned hooks remain active | Target production behavior | Exact-once inventory, callable-identity routing, symlink and resource resolution |
+| Candidate universal | `~/.agents/skills` only; repo-owned hooks remain active | Target production behavior | Exact-once inventory, canonical qualified identities, bare catalog mapping, request resolution, routing, universal source locators, symlink and resource resolution |
 | Rollback rehearsal | Restored plugin profile on the current Mac | Prove real recovery before final cutover | Targeted restoration commands, exact-once identity inventory, no data loss or unrelated-state overwrite |
 | Final universal | `~/.agents/skills` only; retained plugin artifacts inactive | Establish the production end state | Repeated exact-once inventory, behavior comparison, protected rollback baseline |
 
@@ -700,28 +716,65 @@ Apply sequence inside the frozen M5 boundary:
 7. Remove only repository-owned universal links and restore the exact plugin profile through targeted my-codex entry restoration.
 8. Capture rollback-rehearsal evidence in a third fresh process and prove that no unrelated or durable state changed.
 9. Repeat the reviewed plugin deactivation, inactive-path verification, and repository-owned universal-link activation.
-10. Capture final-universal evidence in a fourth fresh process and validate discovery, callable-identity behavior, resource resolution, Watcher core, hooks, and rollback readiness.
+10. Capture final-universal evidence in a fourth fresh process and validate discovery, qualified-identity mapping and routing, source locators, resource resolution, Watcher core, hooks, and rollback readiness.
 11. Record the inactive retained-state inventory and leave every cleanup candidate untouched.
 
 Minimal falsifying validation:
 
 - Every canonical skill appears exactly once.
 - Removing or disabling the personal marketplace does not remove universal skills.
-- Bare callable identities and implicit routing match baseline semantics; plugin-qualified selector spelling is not required to remain literal across profiles.
+- Every model-visible skill's Codex invocation identity equals `${plugin}:${catalog-name}` from the canonical inventory in baseline, candidate, rollback, and final evidence; no duplicate bare catalog name exists.
+- Bare catalog names remain exact, the explicit bare `long-running-goal` request reference resolves to `workflow:long-running-goal`, and implicit docs-alignment and SOP routing remain `watcher:doc-alignment` and `workflow:sop`.
+- Plugin mode source locators resolve under the exact plugin cache version, while candidate and final universal locators resolve through `/Users/max/.agents/skills/${catalog-name}/SKILL.md` without depending on active plugin installation or cache.
 - Every referenced script, reference, template, asset, and harness metadata file resolves from symlink invocation.
 - Universal profile works with plugin cache absent from the validation fixture or isolated environment.
 - Watcher core functions without marketplace catalog authority.
 
 Review gate:
 
-- An independent read-only reviewer verifies inventory, sequence, backup, exact mutation set, validation commands, and rollback before apply.
+- An independent read-only reviewer verifies inventory, sequence, backup, exact mutation set, evolved identity and source-locator oracle, validation commands, and rollback before apply.
 - The post-apply comparison matrix has no critical regression or duplicate or missing identity.
 
 Evidence to record:
 
 - The protected backup path and redacted manifest; before, candidate, rollback, and final config and link inventories; `codex plugin list`; cache inventory; visible skill list; invocation scenarios; Watcher doctor and report output; hook checks; and rollback-rehearsal result. Raw backup material remains local.
 
+Runtime hard-stop evidence: `Resolved on 2026-08-21. Candidate universal discovery preserved exact-once loading but contradicted the former bare-runtime-identity contract; the plugin rollback completed successfully, and the user then explicitly accepted Codex-native plugin-qualified invocation identities while rejecting the neutral-layout direction.`
+
+Identity-contract evolution and compatibility inventory:
+
+- The canonical inventory contains 34 skills: 20 are model-visible and 14 are explicit-only. For all 20 model-visible skills, the candidate universal output exactly equals the inventory-derived `${plugin}:${catalog-name}` identity mapping, with no missing, extra, or duplicate bare catalog names.
+- The fresh candidate process accepted the bare `long-running-goal` request reference and resolved it to `workflow:long-running-goal`. The two implicit routing scenarios matched the plugin baseline exactly: docs and scripts alignment selected `watcher:doc-alignment`, and stable-workflow SOP creation selected `workflow:sop`.
+- All 34 repository attribution overlays already use the corresponding namespaced Watcher identities. Existing Watcher events and durable keys therefore require no rewrite; shared spelling does not make Watcher state a discovery authority.
+- Candidate source locators resolved through `/Users/max/.agents/skills/${catalog-name}/SKILL.md`, while baseline and rollback locators resolved through exact plugin-cache versions. Qualified invocation identity can therefore remain stable while the active discovery source changes, preserving the Git-only universal authority objective.
+- Current user-facing examples such as `$long-running-goal` are classified as skill request references, not runtime identity declarations. They remain compatible with the observed bare-request resolution and are not bulk-rewritten to an unverified colon-token syntax.
+- Official OpenAI [Build skills](https://learn.chatgpt.com/docs/build-skills) documentation establishes `$HOME/.agents/skills` as the user discovery root, support for symlinked skill folders, and plugins as the native reusable-distribution mechanism. It does not promise a particular namespace spelling, so the exact qualified-identity oracle is grounded in the recorded `codex-cli 0.148.0-alpha.21` baseline, candidate, and rollback processes and must be revalidated on every M5 phase.
+
+- M5 pre-apply source `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` added an exact canonical name-to-source transition boundary. Both directions fail before plugin mutation on mapping drift or an extra repo-target link, use no generic stale-link prune, and remove only canonical links. All 95 root tests and the exact live dry-run passed. An independent second pre-apply review returned Clean.
+- The owner-only protected backup and raw evidence root is `/Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z`; directories are mode `0700`, raw and generated evidence files are mode `0600`, and the sole executable evidence gate `qualified-identity-gate.zsh` is mode `0700`. It retains the complete pre-cutover config and hooks, three exact cache archives, metadata, all comparison outputs, and targeted rollback material. Raw content remains local and uncommitted.
+- Baseline plugin discovery produced 20 unique model-visible canonical skills with exact plugin-qualified identities and cache locators. The deterministic external gate passed. Baseline Watcher health recorded one known defect: the four managed hook commands lacked explicit `--repo-root`; this was the reviewed M2 apply item rather than a waived candidate gate.
+- Candidate universal apply removed only `mattpocock-skills@my-codex`, `watcher@my-codex`, and `workflow@my-codex`, created exactly 34 canonical links, and repaired only the four managed Watcher commands. Universal closure and Watcher doctor passed with zero warnings; all 119 tracked skill files resolved byte-identically through the links; the three package caches were inactive; unrelated config, agent support, and live Watcher durable state were unchanged.
+- The distinct candidate fresh process loaded all 20 canonical model-visible skills exactly once from `/Users/max/.agents/skills/*/SKILL.md` and reported every invocation identity as plugin-qualified. In particular, explicit `long-running-goal` resolved to `workflow:long-running-goal`, docs alignment routed to `watcher:doc-alignment`, and stable SOP routed to `workflow:sop`. The former fail-fast bare-identity gate exited `1`; that failure remains preserved as correct evidence against the old contract and is not reclassified as a false positive.
+- A follow-up read-only loader isolation used `codex-cli 0.148.0-alpha.21` and `codex debug prompt-input` with a fresh temporary HOME, an empty CODEX_HOME, and no installed-plugin configuration. Symlinks from `$HOME/.agents/skills` to the canonical `plugins/*/skills/*` targets still exposed `workflow:long-running-goal`, `watcher:doc-alignment`, and `workflow:sop`; replacing only those targets with neutral physical copies exposed the bare names, and symlinking to the neutral copies preserved the bare names. OpenAI's current [Build skills](https://learn.chatgpt.com/docs/build-skills) documentation confirms both the USER discovery root and that Codex follows symlink targets. Together these results isolate the current loader behavior to resolved target plugin provenance rather than active plugin installation or cache state. The temporary isolation root was deleted. At the time this established that no projection-only fix existed inside the frozen layout and correctly triggered formal goal evolution; the 2026-08-21 user decision resolved that stop by accepting the native qualified surface without relocating source.
+- The exact breakpoint is the universal branch of the deterministic fresh-output gate after successful candidate closure, resource, hook, and doctor checks. The final-universal phase was not attempted.
+- The reviewed rollback removed the 34 canonical links and reinstalled the same three package selectors at versions `1.2.3+codex.20260812033502`, `0.1.0+codex.20260817071906`, and `0.1.0+codex.20260814091823`. Plugin closure and isolated Watcher doctor passed with zero warnings. A third fresh process reproduced the baseline 20 identity, bare-identity, and cache-locator triples exactly, with no duplicates. Live Watcher durable-state stat inventory remained exactly unchanged, and the protected pre-cutover cache archives remain available.
+- Immediately before the resumed apply, the safe state is the single active plugin discovery profile with the repo-owned hooks repaired and healthy; `/Users/max/.agents/skills` is inactive and empty. No retained backup, Watcher state, unrelated plugin, marketplace, config, or user entry was deleted. The evolved artifacts and independent review passed, and the user explicitly resumed live execution under this contract on 2026-08-21.
+- Blocked-state evidence revision `ca23a10b4195db852b31a156b530e9ce6d484911` and completion-evidence revision `58dd5825907758b0691e49b643bcf1e15db195d4` are published in Draft [PR #10](https://github.com/zzzhty/my-codex/pull/10). All M5 gates now pass; the PR is ready for its authorized final update and merge.
+- Independent post-rollback review returned Clean: the candidate hard stop is not a prompt, schema, or oracle false positive; final universal was never executed; live rollback closure is complete; and the Draft PR/no-merge boundary is accurate. The reviewer also confirmed a non-blocking cache fact: reinstalling from current canonical source preserves the exact selectors, manifest versions, skill identities, and health gates but does not promise byte identity with the pre-cutover emergency archives, which remain protected.
+- The resumed apply used repository revision `0ef5a9440098ae1a6f967be3489809ba372305bd`; the complete diff from reviewed runtime source ancestor `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` contains only the seven declared Markdown files. The qualified prompts, schema, exact gate, and plan remained local under the protected evidence root.
+- Baseline plugin closure and isolated Watcher doctor passed with zero warnings. A fresh process exposed exactly 20 model-visible my-codex skills with exact `${plugin}:${catalog-name}` identities, plugin-cache locators, no duplicate catalog names, bare request `long-running-goal` resolving to `workflow:long-running-goal`, and the expected `watcher:doc-alignment` and `workflow:sop` implicit routes.
+- Two added assertions outside the reviewed oracle returned nonzero after otherwise successful candidate checks. The first incorrectly required marketplace selector strings to disappear instead of accepting their correct `not installed` catalog rows. Its immediate targeted rollback passed closure and doctor; the first recovery fresh output was then correctly rejected for adding a `file: ` label to exact locators. The four prompts were clarified to require unlabeled absolute paths, an independent follow-up review returned Clean, and a new recovery process passed and matched the resumed baseline triples. The second added assertion incorrectly required removed live plugin caches to remain present even though the frozen target requires cache-independent universal discovery and protects tar archives as rollback material. It also triggered an immediate targeted rollback whose closure, doctor, fresh gate, and exact baseline comparison passed. Both failures remain preserved and are not reclassified as successful product checks.
+- The reviewed candidate universal phase then passed without expanding the oracle: exact 34-link ownership and target mapping, 119 Git-tracked files resolving byte-identically through the links, target selectors `not installed`, protected archives present, hooks and agent support unchanged, live Watcher durable state unchanged, universal closure and isolated doctor at zero warnings, and the exact fresh qualified-identity/source-locator gate.
+- The formal rollback rehearsal removed exactly the 34 canonical links and restored only the three exact target selectors and versions. Plugin closure and isolated doctor passed with zero warnings, live Watcher durable state remained unchanged, the fresh plugin gate passed, and all 20 sorted identity, catalog-name, and plugin-cache-locator triples equaled the resumed baseline exactly.
+- Final universal activation repeated the reviewed transition and every candidate validation. The final fresh gate passed, and all 20 sorted identity, catalog-name, and universal-locator triples equaled the candidate exactly. The semantic config diff from the protected baseline is limited to removal of the three target plugin entries; the marketplace, four managed hooks, agent support, unrelated config and plugins, repository source, and live Watcher durable state are unchanged. The exact live plugin cache trees are absent, while all three protected cache archives and targeted rollback material remain retained.
+- Independent post-apply review returned Clean. It independently reproduced universal closure with zero warnings, exact 34-link and 119-file parity, three `not installed` selectors, empty live my-codex cache, exact hook and agent-support hashes, the three-entry-only config diff, unchanged Watcher durable-state inventory, all four official fresh gates, baseline-to-rollback and candidate-to-final triple equality, archive integrity, and owner-only protected-tree permissions.
+- Owner-only local execution evidence is summarized at `/Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z/evidence/qualified-identity-execution-summary.md`. Raw outputs, the two recovery failures, prior hard-stop evidence, protected archives, and rollback material remain local and uncommitted.
+
 Checkpoint evidence: `M5 preflight authorization record, exact commands, before and after evidence, comparison matrix, retained-state inventory, and rollback rehearsal.`
+
+Checkpoint component: Done. The runtime comparison, independent post-apply review, repository validation, final Contract review, and completion-evidence publication all passed.
+
+Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed runtime source, `0ef5a9440098ae1a6f967be3489809ba372305bd` is the exact resumed-apply repository revision, and `58dd5825907758b0691e49b643bcf1e15db195d4` records the reviewed M5 completion evidence in Draft PR #10.
 
 Rollback:
 
@@ -741,13 +794,13 @@ Hard stops:
 
 - The apply set exceeds the frozen preflight boundary; protected backup or targeted rollback cannot be proven; raw evidence cannot be kept private; intervening config drift makes restoration unsafe; an unmanaged conflict or unknown plugin exists; required CLI or machine access is missing; sequential fresh-process comparison cannot establish exact-once discovery; or the next action would remove the only active path without a preflighted replacement.
 
-Authorization and review: `Read-only inventory and the exact M5 apply and rollback operations recorded by the completed planning preflight are pre-approved after M1-M4, the inventory, and independent cutover review pass. Any broader mutation is a runtime hard stop.`
+Authorization and review: `The user authorized formal identity-contract evolution on 2026-08-21, the evolved oracle and artifacts completed independent cutover review, and the user explicitly resumed execution under this contract. The exact reviewed M5 apply, rollback rehearsal, and final universal operations are complete and passed independent post-apply review. No further live mutation is part of M5 checkpoint finalization; any broader mutation remains a runtime hard stop.`
 
-Completion criterion: `The current Mac runs universal profile with exact-once discovery, bare callable identities, working resources, repo-owned hooks, protected Watcher durable state, a retained plugin rollback baseline, and a proven rollback path.`
+Completion criterion: `The current Mac runs universal profile with exact-once discovery, the exact canonical plugin-qualified Codex invocation identities, preserved bare catalog-name mapping and request resolution, exact routing, universal source locators, working resources, repo-owned hooks, protected Watcher durable state, a retained plugin rollback baseline, and a proven rollback path.`
 
 ## Close Goal Closure and Archive
 
-Status: `Not Started`
+Status: `In Progress`
 
 Close prerequisites:
 
@@ -805,7 +858,7 @@ Continue the long-running goal at docs/todo/universal-agent-skills-migration.md.
 
 Read the newest user request first and confirm it still advances the same universal Agent Skills migration. Read the goal file, root AGENTS.md, current main, current branch or PR state, and the source and testing surfaces named by the first non-Done milestone. Do not rely on chat history, deleted prompts, archived prototypes, or unpublished patches.
 
-If the overall goal is Draft, complete M0 planning preflight, approval freezing, readiness validation, and checkpoint evidence; do not execute M1-M5. Once the goal is Ready, execute only the first non-Done implementation milestone and start its branch from current main. Preserve the Git-only source authority, bare callable identities, Watcher identities, frozen slimming baseline, one-active-discovery-path invariant, unmanaged-user-state protection, and milestone-specific authorization boundary. Use non-destructive local YOLO operations inside the frozen scope, continue through ordinary failures when the next local diagnostic is clear, and stop only at a recorded runtime hard stop.
+If the overall goal is Draft, complete M0 planning preflight, approval freezing, readiness validation, and checkpoint evidence; do not execute M1-M5. Once the goal is Ready, execute only the first non-Done implementation milestone and start its branch from current main. Preserve the Git-only source authority, bare catalog skill names, native plugin-qualified Codex invocation identities, separately owned Watcher identities, frozen slimming baseline, one-active-discovery-path invariant, unmanaged-user-state protection, and milestone-specific authorization boundary. Use non-destructive local YOLO operations inside the frozen scope, continue through ordinary failures when the next local diagnostic is clear, and stop only at a recorded runtime hard stop.
 
-Before marking the milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. Perform M5 only inside its frozen apply and rollback boundary. Do not delete retained plugin, marketplace, cache, hook-backup, or Watcher state; cleanup belongs to a later independent goal.
+Before marking a milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. M5 is Done; preserve its final universal live state while Close merges the completed Draft PR and archives this goal from updated `main`. Do not delete retained plugin, marketplace, cache archive, hook-backup, or Watcher state; cleanup belongs to a later independent goal.
 ```
