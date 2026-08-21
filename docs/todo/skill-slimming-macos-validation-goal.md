@@ -1,6 +1,6 @@
 # Skill Slimming macOS Validation Long-Running Goal
 
-Overall status: `In Progress`
+Overall status: `Ready`
 
 Updated: 2026-08-21
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Prove the frozen routing, read-only, identity, delegation, long-running-goal, universal-resource, and installed-state boundaries with independent review and behavioral sampling.
 3. Fix only proven PR #13 regressions, push fixes and durable evidence to the actual PR branch, publish a complete final report on PR #13, and stop without marking Ready or merging.
 
-Goal Status: `In Progress`
+Goal Status: `Ready`
 
 Goal Owner: `my-codex repository maintainer / executing local Codex agent`
 
@@ -166,8 +166,8 @@ Execution mode: `Loop-shaped execution`
 | M3 Deterministic, Installed-State, and Resource Audit | Done | Passed | Done |
 | M4 Independent Contract Review and Behavioral Sampling | Done | Passed | Done |
 | M5 Bounded Repair and Revalidation | Done | Passed | Done |
-| M6 PR Evidence and Final Report Handoff | In Progress | Pending | Pending |
-| Close User Merge Decision and Post-Merge Archive | Not Started | Pending | Pending |
+| M6 PR Evidence and Final Report Handoff | Done | Passed | Done |
+| Close User Merge Decision and Post-Merge Archive | Ready | Pending | Pending |
 
 ## M0 Live Main/PR State and Isolation
 
@@ -491,7 +491,7 @@ Hard stop: `A necessary fix changes frozen semantics or remains unresolved after
 
 ## M6 PR Evidence and Final Report Handoff
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Make the PR branch and PR conversation contain everything needed for the user to decide whether to merge.
 
@@ -517,9 +517,32 @@ Rollback: `Correct inaccurate evidence/reporting on the PR branch; do not change
 
 Hard stop: `PR head moves unexpectedly, main changes incompatibly, push/report authorization is unavailable, or a final Ready/merge/close decision is requested without fresh user instruction.`
 
+### Execution Evidence for M6 — 2026-08-21
+
+- Final live refresh before the M6 checkpoint: protected `origin/main` remains `4c80da5a04ce190f8a5ee17024da99628a772adc`; PR #13 remains base `main@4c80da5a04ce190f8a5ee17024da99628a772adc`, head branch `agent/skill-slimming-s0-s1`, Draft/open, `MERGEABLE/CLEAN`, auto-merge absent, and no attached status checks.
+- Validated source/evidence head: `f5103e26c3b5c0721cfec4f833ce4af7a341e870`; 20 changed paths, 17 commits, 1,253 additions, and 444 deletions before this final docs-only checkpoint. The exact final PR head is the M6 checkpoint commit containing this evidence and is maintained in the linked PR report after push.
+- Scope/frozen result: all 20 paths remain expected; root `AGENTS.md`, Watcher overlays, plugin/marketplace identity, PR #3 skill bodies, `skill-maintainer`, Matt mirror, universalization/ADR/sync source, hooks, config, cache, runtime, and installed surfaces remain zero-diff or read-only as frozen.
+- Final aggregate result: focused 18/18, root 95/95, Workflow 68/68, Watcher 72/72 with 3 expected Windows skips, changed-test compilation, goal readiness, planning tree, TODO index, changed Markdown links, Workflow/Watcher package validators, three candidate skill validators, temporary support projection, 34-skill candidate universal projection, 21-file resource audit, and `git diff --check` all passed.
+- Exact classified exceptions: candidate-vs-installed validation reports 37 expected activation drifts while the protected-main installed closure passes with 0 warnings; full Workflow link scan reports two unchanged sequence-template example placeholders reproduced on main; neither is a PR regression. No unresolved source/test/behavior blocker remains.
+- Independent review and behavior: both independent read-only reviewers returned `PASS` with no blocker after repair; candidate-loaded A-E all passed, including the repaired non-inferred Draft and same-session pause-with-unchanged-hashes behavior.
+- Repair/evidence: bounded semantic repair is `ce3bd9eafa27edea79c6fa66ef1b615e55e92171`; pushed validation checkpoints include `4e7aeaa`, `a364376`, `780229d`, `b9b2ecf`, `928dd12`, `2bfd7ee`, and `f5103e2`. No history rewrite or unrelated staging occurred.
+- PR body: stale source-only size and unavailable-checkout claims were replaced with repaired size values, complete macOS results, the final-report link, no-CI/activation boundary, and the continuing Draft/user-decision state while preserving the original useful S0-S4 summary and frozen boundary.
+- PR final report: `https://github.com/zzzhty/my-codex/pull/13#issuecomment-5367832010`; title `## macOS validation final report`; verdict `PASS`; recommendation `READY FOR MERGE REVIEW`. The comment is edited after the checkpoint push so its reported head exactly matches GitHub.
+- Installed/runtime mutation: `NONE`. Real universal links, `$CODEX_HOME/agents`, hooks, config, plugin cache, marketplace, Watcher runtime state, and installed copies were never refreshed or applied. The isolated mode-600 auth copy used only for multi-turn D was deleted; the real auth/config metadata remained unchanged.
+- Preserved temporary roots under Disabled housekeeping: owner root `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32` and its exact `worktree`, `logs`, `support-sync`, and `fixtures` children listed in the Task Temporary Cache section.
+- Residual risk: GitHub has no attached CI/status checks; candidate activation was intentionally not performed; two unchanged Workflow example-link findings remain baseline-only; size reduction is smaller after restoring required semantics. These risks are disclosed and do not block the local macOS Contract gate.
+- Final decision boundary: do not mark PR Ready, enable auto-merge, merge, close, delete the branch, activate installed state, or archive this goal. Stop after M6 and wait for the user's instruction in the originating conversation.
+- Harness evidence: final GitHub read/write reconciliation, body correction, report URL, candidate worktree head, no-installed-mutation statement, preserved-root inventory, and user-decision boundary are durable and inspectable; no runtime hard stop occurred.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: this M6 evidence commit plus PR comment `issuecomment-5367832010`
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`; `docs/todo/skill-slimming-plan.md`
+- Validation recorded: final planning/link/diff checks, push/head verification, PR body verification, comment verification, Draft/open/no-auto-merge verification, and complete PASS recommendation
+- Out-of-scope dirty changes: none
+
 ## Close User Merge Decision and Post-Merge Archive
 
-Status: `Not Started`
+Status: `Ready`
 
 This section is intentionally not executed by the macOS validation run. After M6, the user reviews the PR final report in the originating ChatGPT conversation and decides whether to request further repair, mark Ready, merge, close, or defer.
 

@@ -154,6 +154,8 @@ docs/todo/skill-slimming-macos-validation-goal.md
 
 The goal requires the local repository to be inspected from its live entry state, normally `main`. Local `main` is the protected baseline and must not become the repair branch. The actual PR #13 base/head are fetched from GitHub and validated in an isolated worktree. Bounded repairs and evidence are pushed to the actual PR branch.
 
+Current validation status (2026-08-21): `PASS`; recommendation `READY FOR MERGE REVIEW`. The validated source/evidence head before the final M6 checkpoint is `f5103e26c3b5c0721cfec4f833ce4af7a341e870`; the final report at `https://github.com/zzzhty/my-codex/pull/13#issuecomment-5367832010` tracks the resulting PR head. PR #13 remains Draft and unmerged; Ready/merge/close and post-merge archive remain user decisions outside M0-M6.
+
 The validation goal owns:
 
 - exact local main and PR base/head discovery;
