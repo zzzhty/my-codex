@@ -1,6 +1,6 @@
 # Skill Slimming macOS Validation Long-Running Goal
 
-Overall status: `Ready`
+Overall status: `In Progress`
 
 Updated: 2026-08-21
 
@@ -16,7 +16,7 @@ Goal Description:
 2. Prove the frozen routing, read-only, identity, delegation, long-running-goal, universal-resource, and installed-state boundaries with independent review and behavioral sampling.
 3. Fix only proven PR #13 regressions, push fixes and durable evidence to the actual PR branch, publish a complete final report on PR #13, and stop without marking Ready or merging.
 
-Goal Status: `Ready`
+Goal Status: `In Progress`
 
 Goal Owner: `my-codex repository maintainer / executing local Codex agent`
 
@@ -32,9 +32,9 @@ Planning preflight marker: `preflight:skill-slimming-macos-validation:20260821-m
 
 Planning preflight status: `Done`
 
-Preflight source: `2026-08-21 review of PR #13, the parent slimming plan, root instructions, current validation surfaces, and the user's corrected main-to-PR interaction contract`
+Preflight source: `grill-with-docs`
 
-Resolved decisions: `Execution begins from the live local repository, normally on main; main is never used as the repair branch; the real PR base/head are fetched before validation; validation uses a detached or dedicated worktree at the actual PR head; bounded fixes and evidence are pushed to that PR branch; the final complete report is published to PR #13; the PR remains Draft and unmerged; final Ready/merge/archive decisions return to the originating ChatGPT conversation.`
+Resolved decisions: `Execution begins from the live local repository, normally on main; main is never used as the repair branch; the real PR base/head are fetched before validation; validation uses a detached or dedicated worktree at the actual PR head; bounded fixes and evidence are pushed to that PR branch; the final complete report is published to PR #13; the PR remains Draft and unmerged; final Ready/merge/archive decisions return to the originating ChatGPT conversation. The 2026-08-21 execution refresh applied grill-with-docs to the newest user request, root instructions, parent plan, goal, live Git state, and current PR metadata; its decision frontier was empty because the user explicitly froze milestone order, mutation boundaries, external writes, runtime hard stops, and the post-M6 decision gate.`
 
 Open decisions: `The user will decide after reading the PR final report whether PR #13 should be repaired further, marked Ready, merged, or closed. That decision is outside M0-M6 and is the only planned post-validation interaction gate.`
 
@@ -42,13 +42,13 @@ Docs written: `docs/todo/skill-slimming-plan.md; docs/todo/skill-slimming-macos-
 
 ## Preflight Time Assessment
 
-Assessment target: `Ready-to-Closed`
+Assessment target: `current-milestone-to-Closed`
 
 Assessment mode: `Rough range`
 
 Rough elapsed-time estimate: `1-4 hours`
 
-Basis or blocker: `2026-08-21 estimate for live branch/PR discovery, an isolated worktree, focused and full test suites, deterministic validation, read-only installation/resource inspection, independent Contract review, five behavioral scenarios, bounded repair/retest, durable evidence push, and a final PR report. Prolonged authentication, network, unavailable reviewer, or candidate-runtime setup failures are excluded.`
+Basis or blocker: `2026-08-21 live M0 evidence: PR #13 has 9 candidate commits and 20 changed files, the base matches current main, and execution is serial except for an independent read-only review where safe. The 1-4 hour rough range includes normal local suites, validators, behavioral fixtures, GitHub reads/writes, and short external waits; prolonged authentication, unavailable reviewer, or candidate-runtime setup failures remain excluded.`
 
 Critical-path time-cost distribution: `Not required: rough range recorded.`
 
@@ -56,15 +56,21 @@ Critical-path time-cost distribution: `Not required: rough range recorded.`
 
 Close housekeeping policy: `Disabled`
 
-Housekeeping decision source: `2026-08-21 user authorized validation and PR-branch writes but did not authorize deletion of temporary worktrees, logs, support targets, or fixtures.`
+Housekeeping decision source: `2026-08-21 explicit user confirmation was provided by the current execution request to follow this goal's Disabled policy and preserve its task-owned temporary paths.`
 
-Task temporary cache root strategy: `Allocate goal-owned worktree, log, support-sync, and fixture roots beneath the macOS-resolved temporary root; record each resolved path before first use and preserve it for the final report.`
+Task temporary cache root strategy: `Resolve the host platform/runtime standard temporary root, allocate one goal-owned namespace beneath it, and bind recorded worktree, log, support-sync, and fixture children within that namespace before their producers run.`
 
-Recorded task temporary cache roots: `Resolve and record before first use.`
+Recorded task temporary cache roots:
+
+- goal-owned: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32`
+- goal-owned: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/worktree`
+- goal-owned: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/logs`
+- goal-owned: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/support-sync`
+- goal-owned: `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/fixtures`
 
 Housekeeping boundary: `Do not delete temporary roots during this goal. Never delete the shared temporary root. Report preserved paths in the PR final report and user-facing result.`
 
-## M0 Execution Baseline
+## Execution Baseline
 
 M0 design-freeze baseline:
 
@@ -79,13 +85,13 @@ M0 design-freeze baseline:
 Current source-of-truth evidence to read:
 
 1. `AGENTS.md`, `docs/todo/README.md`, `docs/todo/skill-slimming-plan.md`, and this goal.
-2. Current GitHub PR #13 metadata, changed-file inventory, comments/reviews/checks, and `origin/main...<actual-pr-head>`.
+2. Current GitHub PR #13 metadata, changed-file inventory, comments/reviews/checks, and `origin/main...ACTUAL_PR_HEAD`.
 3. Changed `orchestrate-subagents`, `doc-alignment`, and `long-running-goal` sources/references/tests.
 4. `scripts/sync_codex_agents.py`, Watcher CLI/README, ADR-0004, repository discovery tooling, and read-only installed/universal state.
 
-## Loop Blueprint / Harness Boundary
+## Loop Blueprint / Harness
 
-Execution mode: `Manual staged execution`
+Execution mode: `Loop-shaped execution`
 
 1. Trigger / heartbeat:
    - Start or resume only from an explicit user request to execute or continue this goal.
@@ -114,10 +120,10 @@ Execution mode: `Manual staged execution`
 9. Durable learning:
    - Write milestone evidence into this goal, concise status into the parent plan, bounded repairs into the PR branch, and a complete PASS/BLOCKED final report into PR #13.
 
-## Pre-Approval / YOLO Boundary
+## Pre-Approval / YOLO
 
 1. Pre-approved YOLO local operations:
-   - Git inspection/fetch; PR metadata discovery; temporary worktree creation; read-only source/runtime inventory; repository-owned tooling bootstrap; focused/full tests; compilation; link/static checks; temporary fixtures/support targets; current validators; read-only Watcher doctor; bounded source/test/doc repairs; commits, pushes, and revalidation.
+   - Non-destructive local Git inspection/fetch; PR metadata discovery; temporary worktree creation; read-only source/runtime inventory; repository-owned tooling bootstrap; focused/full tests; compilation; link/static checks; temporary fixtures/support targets; current validators; read-only Watcher doctor; bounded source/test/doc repairs; commits, pushes, and revalidation.
 2. Pre-approved external reads/writes:
    - GitHub reads; pushes to the actual PR #13 head branch; PR #13 body/comments containing validation progress and the final report.
 3. Runtime hard stops:
@@ -139,6 +145,7 @@ Execution mode: `Manual staged execution`
 10. M5 may be `Done / not needed` when no source repair is required.
 11. M6 must push durable evidence and publish a complete final PR report for both PASS and BLOCKED outcomes.
 12. After M6, keep PR #13 Draft and unmerged, preserve temporary roots, stop execution, and return the final decision to the user.
+13. Before any milestone is marked Done, apply `plugins/workflow/skills/long-running-goal/components/checkpoint.md` and record its revision evidence without creating an empty commit.
 
 ## Status Definitions
 
@@ -153,8 +160,8 @@ Execution mode: `Manual staged execution`
 
 | Milestone | Status | Review | Checkpoint |
 | --- | --- | --- | --- |
-| M0 Live Main/PR State and Isolation | Not Started | Pending | Pending |
-| M1 Diff Scope and Frozen Surface Audit | Not Started | Pending | Pending |
+| M0 Live Main/PR State and Isolation | Done | Passed | Done |
+| M1 Diff Scope and Frozen Surface Audit | In Progress | Pending | Pending |
 | M2 Test Matrix and Source Validation | Not Started | Pending | Pending |
 | M3 Deterministic, Installed-State, and Resource Audit | Not Started | Pending | Pending |
 | M4 Independent Contract Review and Behavioral Sampling | Not Started | Pending | Pending |
@@ -164,7 +171,7 @@ Execution mode: `Manual staged execution`
 
 ## M0 Live Main/PR State and Isolation
 
-Status: `Not Started`
+Status: `Done`
 
 Objective: Measure the local main checkout and current PR #13 identity, then create an isolated validation worktree at the actual PR head.
 
@@ -194,9 +201,33 @@ Rollback: `Leave local main and user work untouched. Preserve/report unusable te
 
 Hard stop: `PR identity cannot be resolved, the PR is no longer the requested candidate, required access is unavailable, or safe isolation is impossible.`
 
+### Execution Evidence for M0 — 2026-08-21
+
+- Repository entry checkout: `/Users/max/Projects/my-codex`; branch `main`; HEAD `4c80da5a04ce190f8a5ee17024da99628a772adc`; upstream `origin/main`; dirty state `none`.
+- Live fetch: `git fetch --prune origin` passed. Current `origin/main` is `4c80da5a04ce190f8a5ee17024da99628a772adc`.
+- GitHub PR #13: `open`, `Draft=true`, `mergeable=true`, `mergeable_state=clean`, URL `https://github.com/zzzhty/my-codex/pull/13`.
+- Live PR identity: base `main@4c80da5a04ce190f8a5ee17024da99628a772adc`; head `agent/skill-slimming-s0-s1@62baf32ccff91cf9a92eccd16d40edc7298e2850` in `zzzhty/my-codex`.
+- Main relationship: `origin/main...PR_HEAD` is `0 behind / 9 ahead`; the PR base SHA equals current `origin/main`, so no base update is required for changed skills, tests, or contracts.
+- GitHub inventory: 20 changed files, 9 commits, 1122 additions, 429 deletions; three prior issue comments, one `COMMENTED` review, no inline review comments, and no reported checks.
+- Isolated validation checkout: local branch `agent/skill-slimming-s0-s1`, upstream `origin/agent/skill-slimming-s0-s1`, worktree `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/worktree`, checked-out SHA `62baf32ccff91cf9a92eccd16d40edc7298e2850`.
+- Tooling: `/opt/homebrew/opt/python@3.13/bin/python3.13`; Python `3.13.14`; host `macOS-26.5.2-arm64-arm-64bit-Mach-O`.
+- Temporary policy: `Disabled`; all five concrete goal-owned paths listed above were resolved through the macOS runtime temporary root, allocated beneath one owner namespace, and are preserved.
+- Contract diagnosis: the newly added validation goal initially failed its own `check_goal_ready.py` because of non-canonical English section suffixes, a duplicate-M0 heading collision, invalid concrete-root labels, an unresolved angle-bracket token, unsynchronized execution status, and incomplete preflight/housekeeping oracle wording. The bounded goal-only repair corrected those contract surfaces without changing S0-S4 semantics.
+- Validation: `PYTHONDONTWRITEBYTECODE=1 python3 -B plugins/workflow/skills/long-running-goal/scripts/check_goal_ready.py docs/todo/skill-slimming-macos-validation-goal.md` passed after the repair.
+- Behavior impact: execution now has a checker-valid `In Progress` contract with live PR identity and isolated paths; no installed/runtime state or source skill was mutated.
+- Rollback: revert only the validation-goal evidence/contract changes; local and remote `main` remain untouched.
+- Remaining risk: full PR diff, tests, validators, installed/resource audit, independent review, and behavioral sampling remain for M1-M4.
+- Harness evidence: explicit same-goal trigger; current request/root docs/live Git/GitHub inputs; isolated worktree; authorized GitHub reads only so far; no runtime hard stop; durable evidence recorded here.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M0 checkpoint commit
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
+- Validation recorded: candidate goal readiness checker passed; local main and live PR head were reverified after worktree creation
+- Out-of-scope dirty changes: none
+
 ## M1 Diff Scope and Frozen Surface Audit
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Prove the current PR diff contains only expected S0-S4, validation-goal, evidence, and bounded repair surfaces.
 
