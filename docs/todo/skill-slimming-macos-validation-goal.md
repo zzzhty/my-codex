@@ -164,8 +164,8 @@ Execution mode: `Loop-shaped execution`
 | M1 Diff Scope and Frozen Surface Audit | Done | Passed | Done |
 | M2 Test Matrix and Source Validation | Done | Passed | Done |
 | M3 Deterministic, Installed-State, and Resource Audit | Done | Passed | Done |
-| M4 Independent Contract Review and Behavioral Sampling | In Progress | Pending | Pending |
-| M5 Bounded Repair and Revalidation | Not Started | Pending | Pending |
+| M4 Independent Contract Review and Behavioral Sampling | Done | Passed | Done |
+| M5 Bounded Repair and Revalidation | In Progress | Pending | Pending |
 | M6 PR Evidence and Final Report Handoff | Not Started | Pending | Pending |
 | Close User Merge Decision and Post-Merge Archive | Not Started | Pending | Pending |
 
@@ -375,7 +375,7 @@ Hard stop: `A required check can proceed only by mutating installed/runtime stat
 
 ## M4 Independent Contract Review and Behavioral Sampling
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Obtain an independent read-only Contract verdict and sample behavior from a context proven to load the PR candidate.
 
@@ -419,9 +419,31 @@ Rollback: `Behavior fixtures remain temporary and preserved; no installed-state 
 
 Hard stop: `No independent reviewer or no safe candidate-loaded context is available.`
 
+### Execution Evidence for M4 — 2026-08-21
+
+- Candidate-load proof: a temporary universal projection linked 34 skills directly to the isolated PR worktree. `codex debug prompt-input` resolved `orchestrate-subagents`, `doc-alignment`, and `long-running-goal` through `/private/var/folders/qt/hfd52zs53_g1yl4zhtv4ys4w0000gn/T/my-codex-skill-slimming-macos-validation-62baf32/fixtures/candidate-agents-skills`, and every behavioral session used that isolated candidate home rather than the real installed links.
+- Session boundary: candidate behavior ran with `--ignore-user-config`, an owner-bound `TMPDIR`, read-only sandboxing, and owner-bound logs. Ephemeral sessions used real auth read-only; the true multi-turn D fixture used an exact mode-600 auth copy in an isolated `CODEX_HOME`, and that sensitive copy was deleted immediately after the session. Real auth/config file metadata and installed/runtime state remained unchanged.
+- Independent review: two read-only reviewers examined the fixed `origin/main@4c80da5a04ce190f8a5ee17024da99628a772adc...ce3bd9eafa27edea79c6fa66ef1b615e55e92171` diff. Contract review verdict `PASS`; standards/spec review verdict `PASS`; blocking findings `none`. Frozen paths remained zero-diff and `git diff --check` passed. Both reviewers identified only non-blocking stale pre-repair size figures in the parent plan, to be refreshed during final evidence sync.
+- Initial independent findings: both reviewers had blocked the pre-repair candidate because Draft/Ready completion contradicted the parent plan, explicit pause/redirect supersession was no longer reachable, tests used layout/line-count proxies, and scheduling/monitoring/memory unique-owner rules had been removed. Those findings were preserved and drove bounded commit `ce3bd9eafa27edea79c6fa66ef1b615e55e92171` before re-review.
+- Scenario A — broad read-only review: trigger correctly selected `watcher:doc-alignment` and its alignment reference without invoking orchestration or spawning a worker. A non-Git status diagnostic stayed visible and the report continued. Unexpected questions: none. False stops: none. Governance-only work: report generation only. Validation/result: `PASS`; log `m4-a-final.txt`.
+- Scenario B — explicit subagent request: trigger correctly selected `workflow:orchestrate-subagents`, its recipe reference, and shared support guidance. It produced exactly two useful disjoint read-only assignments for `api.md` and `runbook.md`, preserved an initial `no thread with id` spawn failure, retried with self-contained context, completed both concurrently, and integrated their evidence in the parent. Unexpected questions: none. False stops: none. Governance-only work: bounded review assignments and integration. Validation/result: `PASS`; log `m4-b-final.txt`.
+- Scenario C — report-only doc alignment: trigger loaded `doc-alignment`, `watcher-audit`, and `alignment-reference` against temporary Git fixture commit `47a85ce`. `python3 scripts/check.py` returned `fixture-ok`; before/after Git status and target diff were unchanged. Unexpected questions: none. False stops: none. Governance-only work: report only. Validation/result: `PASS`; log `m4-c-final.txt`.
+- Scenario D — goal creation and supersession: the first pre-repair run incorrectly inferred housekeeping `Not applicable` from generic non-destructive language, proving a PR regression. After `ce3bd9e`, a fresh candidate session created a governance-only, non-executable Draft, kept both exact-command design and housekeeping choice visibly unresolved, asked no question, invented no decision, and reported the one permitted draft-validator failure exactly instead of masking it. The same Codex session then handled an unrelated `hello` translation request, paused the goal, and left both tracked fixture hashes unchanged (`README.md` `64dbc8df...`, goal `08f1b6e5...`). False stops: none. References: create/loop, planning-preflight, and template. Validation/result: `PASS` after repair; logs `m4-d1-repaired-final.txt` and `m4-d2-repaired-final.txt`.
+- Scenario E — recoverable local failure: trigger loaded `long-running-goal`, execute/close guidance, the active goal, and parent plan. A system-Python `ModuleNotFoundError: yaml` remained visible; the session found the already in-scope tooling Python with PyYAML `6.0.3`, completed the read-only YAML check, and did not ask or stop. Governance-only work: diagnostics/evidence only. Validation/result: `PASS`; log `m4-e-final.txt`.
+- Behavioral matrix: A-E all pass on the repaired candidate. No unexpected question, false stop, target mutation, installed-state mutation, or unapproved external write remains.
+- Rollback: revert bounded repair `ce3bd9e` only if a later oracle proves it weakens the contract; preserve all behavior fixtures/logs under the Disabled temporary policy.
+- Remaining risk: aggregate post-repair suites/validators and live remote-head reconciliation remain for M5.
+- Harness evidence: candidate-home routing, isolated session state, independent read-only review, A-E logs, exact auth-copy deletion, and the no-installed-mutation boundary are recorded; no runtime hard stop occurred.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M4 checkpoint commit
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
+- Validation recorded: two independent PASS verdicts and repaired candidate-loaded scenarios A-E all passed
+- Out-of-scope dirty changes: none
+
 ## M5 Bounded Repair and Revalidation
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Fix only PR #13 regressions proven by M1-M4, then rerun affected and aggregate gates.
 
