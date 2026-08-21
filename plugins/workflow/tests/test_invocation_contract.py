@@ -6,6 +6,7 @@ from pathlib import Path
 
 WORKFLOW_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = WORKFLOW_ROOT.parents[1]
+LONG_RUNNING_ROOT = WORKFLOW_ROOT / "skills" / "long-running-goal"
 ORCHESTRATE_ROOT = WORKFLOW_ROOT / "skills" / "orchestrate-subagents"
 SUMMARY_ROOT = WORKFLOW_ROOT / "skills" / "summary-in-html"
 
@@ -28,6 +29,20 @@ class InvocationContractTests(unittest.TestCase):
         self.assertIn("real entry points", description)
         self.assertIn("summaries and source-code walkthroughs", metadata)
         self.assertIn("summary or entry-first source-code walkthrough", metadata)
+
+    def test_long_running_goal_metadata_matches_lifecycle_entry_interface(self) -> None:
+        description = skill_description(LONG_RUNNING_ROOT / "SKILL.md")
+        metadata = (LONG_RUNNING_ROOT / "agents" / "openai.yaml").read_text(
+            encoding="utf-8"
+        )
+
+        for branch in ("Create", "upgrade", "execute", "resume", "evolve", "close"):
+            self.assertIn(branch.lower(), description.lower())
+            self.assertIn(branch.lower(), metadata.lower())
+        self.assertIn("Long-Running Goal Sequence", description)
+        self.assertIn("Long-Running Goal Sequence", metadata)
+        self.assertIn("continuation-ready staged goal", metadata)
+        self.assertNotIn("automatic handoffs", metadata)
 
     def test_orchestrate_trigger_is_scoped_to_user_requested_subagents(self) -> None:
         description = skill_description(ORCHESTRATE_ROOT / "SKILL.md")

@@ -1,4 +1,4 @@
 interface:
   display_name: "Long Running Goal"
-  short_description: "Create, run, or close staged goals and strict sequences"
-  default_prompt: "Use $long-running-goal to create, validate, execute, resume, evolve, or close a continuation-ready staged goal or strict serial Long-Running Goal Sequence with frozen boundaries, evidence, automatic handoffs, YOLO non-stops, runtime hard stops, and close hygiene."
+  short_description: "Run continuation-ready staged goals and strict sequences"
+  default_prompt: "Use $long-running-goal to create, upgrade, execute, resume, evolve, or close a continuation-ready staged goal or strict serial Long-Running Goal Sequence."

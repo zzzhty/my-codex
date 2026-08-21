@@ -4,7 +4,7 @@ Reusable agent workflow skills maintained from the my-codex repository.
 
 ## Skills
 
-- `long-running-goal`: continuation-ready staged goal plans and strict serial Long-Running Goal Sequences with milestones or child-goal handoffs, validation gates, checkpoint evidence, a reusable Continuation contract, frozen YOLO non-stops, runtime hard stops, and close hygiene.
+- `long-running-goal`: continuation-ready staged goals and strict serial Long-Running Goal Sequences with explicit lifecycle, branch routing, execution authority, runtime hard stops, evidence, and close.
 - `orchestrate-subagents`: user-requested subagent orchestration with bounded delegation, evidence consolidation, failure handling, and parent-owned integration.
 - `prompt-strategy-loop`: evidence-backed prompt and agent-strategy iteration with risk-proportional evaluation and bounded writeback.
 - `sop`: standard operating procedures for repeatable manual, agent-executed, or automated workflows with explicit trigger, inputs, execution harness, permissions, ordered steps, outputs, validation evidence, allowed/forbidden actions, stop conditions, escalation, failure handling, and durable writeback.
