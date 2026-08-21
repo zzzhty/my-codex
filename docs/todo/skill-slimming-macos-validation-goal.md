@@ -163,8 +163,8 @@ Execution mode: `Loop-shaped execution`
 | M0 Live Main/PR State and Isolation | Done | Passed | Done |
 | M1 Diff Scope and Frozen Surface Audit | Done | Passed | Done |
 | M2 Test Matrix and Source Validation | Done | Passed | Done |
-| M3 Deterministic, Installed-State, and Resource Audit | In Progress | Pending | Pending |
-| M4 Independent Contract Review and Behavioral Sampling | Not Started | Pending | Pending |
+| M3 Deterministic, Installed-State, and Resource Audit | Done | Passed | Done |
+| M4 Independent Contract Review and Behavioral Sampling | In Progress | Pending | Pending |
 | M5 Bounded Repair and Revalidation | Not Started | Pending | Pending |
 | M6 PR Evidence and Final Report Handoff | Not Started | Pending | Pending |
 | Close User Merge Decision and Post-Merge Archive | Not Started | Pending | Pending |
@@ -321,14 +321,14 @@ Hard stop: `A required suite remains unavailable after three distinct local appr
 - Harness evidence: final authoritative tests used the isolated candidate worktree, owner-bound logs/fixture venv, and owner-bound `TMPDIR`; the initial namespace deviation and recovery remain visible; no hard stop or external write occurred.
 - Checkpoint component: Done
 - Checkpoint type: artifact revision
-- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M2 correction checkpoint commit
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` in commit `b9b2ecfecc511a98c4948a3e63bb84dcd75523ce`
 - Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
 - Validation recorded: focused 18/18, root 95/95, Workflow 68/68, Watcher 72/72 with 3 platform skips, changed-test compilation, and diff check
 - Out-of-scope dirty changes: none
 
 ## M3 Deterministic, Installed-State, and Resource Audit
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Validate deterministic owners and resource resolution without applying installed/runtime changes.
 
@@ -349,9 +349,33 @@ Rollback: `Not applicable to read-only installed checks; preserve/report tempora
 
 Hard stop: `A required check can proceed only by mutating installed/runtime state or proves a frozen identity/runtime contract regression.`
 
+### Execution Evidence for M3 — 2026-08-21
+
+- CLI discovery: current `--help` contracts were read for `check_md_links.py`, `sync_codex_agents.py`, `sync_agents_skills.py`, Watcher root/skill doctor/skill validate, `check_planning_tree.py`, `check_my_codex.py`, and the installed plugin validator before use.
+- Markdown links: `docs/todo` and the complete Watcher skill tree passed. The broad Workflow skill-tree scan deterministically reports only the two intentional `child-a`/`child-b` example links in the unchanged sequence template; the same command reproduces the same two findings on protected `main`. This is classified as baseline `test-oracle drift`, not a PR regression. All four changed Workflow Markdown files passed individually with the same helper.
+- Planning owners: `check_planning_tree.py docs/todo` passed with 4 active Markdown files, 9 archive files, and 1 index; goal readiness and active TODO-index checks passed.
+- Support projection: candidate `sync_codex_agents.py` dry-run/apply/check passed against the recorded support-sync root. Candidate-versus-real installed `--check --prune` reports one expected drift in `/Users/max/.codex/agents/operating-principles.md`; main-versus-installed check passes exactly. No installed apply occurred.
+- Plugin validators: installed `validate_plugin.py` passed for candidate Workflow and Watcher packages. Watcher `skill validate` passed for candidate `orchestrate-subagents`, `doc-alignment`, and `long-running-goal`.
+- Watcher doctor: candidate source versus real hooks reports one expected handler-binding drift because hooks remain bound to `/Users/max/Projects/my-codex` and the installed tooling Python. Main/installed doctor passes with 0 warnings. Both doctor state dirs and internal `TMPDIR` were bound beneath the goal-owned fixtures root; real Watcher runtime state was not written.
+- Full installed-state validator: candidate `check_my_codex.py --discovery-profile universal --skip-doctor` reports 37 expected activation drifts: 34 real universal links still target main, plus hook, support-file, and aggregate exposure-layer drift. Running the current main validator against the same installed state passes with 0 warnings, including universal closure, hooks, support sync, all three plugin validators, and absence of legacy Watcher roots.
+- Real universal inventory: `~/.agents/skills/{orchestrate-subagents,doc-alignment,long-running-goal}` are direct symlinks to the protected main checkout. Their installed `SKILL.md` files byte-match main and intentionally differ from the candidate. Installed references, scripts, templates, and available `agents/openai.yaml` files are readable; the main `doc-alignment` tree correctly lacks the candidate-only direct `watcher-audit.md` reference.
+- Candidate universal proof: a temporary projection under the recorded fixtures root completed dry-run/apply/`--check --prune` for 34 skills. The three audited links resolve directly to the isolated worktree; 21 candidate resource files are readable, including `watcher-audit.md`, orchestration recipes/metadata, and long-running-goal references/components/scripts/templates/metadata. Projection/source byte comparisons passed and no internal resource symlink chain exists.
+- Mutation boundary: real `~/.agents/skills`, `$CODEX_HOME/agents`, hooks, plugin cache, marketplace, config, and Watcher runtime were read only and remain on the healthy main installation. Writes occurred only in recorded support-sync/fixtures/log roots.
+- Complete validator log inventory: 30 `m3-*.log` files, 304 lines, preserved under the recorded log root.
+- Behavior impact: candidate source, package, skill, planning, support projection, and temporary universal-resource checks pass; real installed drift is expected proof that PR #13 was not activated.
+- Rollback: none for real state; preserve the temporary projection and support target under the Disabled policy.
+- Remaining risk: independent Contract review and candidate-loaded behavioral scenarios A-E remain for M4.
+- Harness evidence: live candidate source and real installed main were compared without activation; all temp producers were owner-bound; baseline oracle drift and installed drift stayed visible; no runtime hard stop occurred.
+- Checkpoint component: Done
+- Checkpoint type: artifact revision
+- Revision: `docs/todo/skill-slimming-macos-validation-goal.md` at the M3 checkpoint commit
+- Changed files: `docs/todo/skill-slimming-macos-validation-goal.md`
+- Validation recorded: links/planning, support dry-run/apply/check, package and skill validators, candidate and main doctor, candidate and main installed-state checks, and universal resource inventories
+- Out-of-scope dirty changes: none
+
 ## M4 Independent Contract Review and Behavioral Sampling
 
-Status: `Not Started`
+Status: `In Progress`
 
 Objective: Obtain an independent read-only Contract verdict and sample behavior from a context proven to load the PR candidate.
 
