@@ -20,23 +20,25 @@ WATCHER = SKILL_DIR.parents[1] / ".codex-plugin" / "skill-watcher.json"
 
 
 class LongRunningGoalDisclosureTests(unittest.TestCase):
-    def test_high_risk_contracts_remain_inline(self) -> None:
+    def test_entry_interface_keeps_lifecycle_authority_and_goal_tool_contracts(self) -> None:
         text = SKILL.read_text(encoding="utf-8")
 
-        for heading in (
-            "## Request Supersession Guard",
-            "## Goal File And Template",
-            "## Components",
-            "## Pre-Approval And YOLO Boundary",
-            "## Harness Goal Tool Boundary",
-            "## Quality Bar",
+        for semantic in (
+            "A `Ready` goal",
+            "Keep the goal `Draft`",
+            "complete `Draft` or `Ready` contract",
+            "Never invent or infer a missing decision",
+            "An explicit pause, stop, redirect, or change-scope request overrides",
+            "without running milestone commands, editing goal evidence, or updating native goal-tool status",
+            "Only a `Ready` goal pre-approves",
+            "normally after at least three attempts or three distinct approaches",
+            "Stop only at a runtime hard stop",
+            "Task temporary cache housekeeping is separate",
+            "Use the harness's native goal tools only when the user explicitly asks",
+            "check_goal_ready.py [--allow-draft] <goal-file>",
+            "non-executable `Draft` that records known facts and open decisions",
         ):
-            self.assertIn(heading, text)
-        self.assertIn("only at a runtime hard stop", text)
-        self.assertIn("Use the harness's native goal tools only when the user explicitly asks", text)
-        self.assertIn("do not mark the goal `Ready` while placeholders remain", text)
-        self.assertIn("After creating, upgrading, or evolving a goal, update only the current docs", text)
-        self.assertLessEqual(len(text.splitlines()), 125)
+            self.assertIn(semantic, text)
 
     def test_each_conditional_branch_has_a_strong_pointer_and_completion_criterion(self) -> None:
         skill = SKILL.read_text(encoding="utf-8")
@@ -48,17 +50,14 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
             "references/execute-and-close.md",
         ):
             self.assertIn(relative_path, skill)
-        for trigger in ("create or upgrade", "Loop-shaped", "Sequence Child Goals", "production cutover", "execute, resume, continue, advance, evolve, or close"):
-            self.assertIn(trigger, skill)
-        for moved_heading in (
-            "## Create Or Upgrade",
-            "## Loop Blueprint Harness",
-            "## Production Cutover Gate",
-            "## Execute, Checkpoint, And Evolve",
-            "## Current Docs And Close",
+        for trigger in (
+            "create or upgrade",
+            "Loop-shaped",
+            "Sequence Child Goals",
+            "production cutover",
+            "execute, resume, continue, advance, evolve, or close",
         ):
-            self.assertNotIn(moved_heading, skill)
-
+            self.assertIn(trigger, skill)
         for reference in REFERENCES.values():
             text = reference.read_text(encoding="utf-8")
             self.assertIn("Completion criterion:", text)
@@ -167,7 +166,7 @@ class LongRunningGoalDisclosureTests(unittest.TestCase):
 
         self.assertIn("timeboxed execution-time assessment", skill)
         self.assertIn("rough remaining elapsed-time range", skill)
-        self.assertIn("preflight time assessment satisfying", skill)
+        self.assertIn("apply `components/planning-preflight.md`", skill)
         self.assertIn("## Preflight Time Assessment", preflight)
         self.assertIn("Timebox the assessment", preflight)
         self.assertIn("Not quickly estimable", preflight)

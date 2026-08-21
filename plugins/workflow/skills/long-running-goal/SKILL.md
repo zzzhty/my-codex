@@ -1,121 +1,90 @@
 ---
 name: long-running-goal
-description: Use when creating, upgrading, executing, resuming, continuing, evolving, or closing a continuation-ready long-running goal plan or strict serial Long-Running Goal Sequence for a project, especially when work needs ordered milestones or child goals, validation/review gates, checkpoint evidence, Loop Blueprint/harness boundaries, frozen YOLO non-stops, runtime hard stops, current-doc synchronization, strategy/plan evolution, close/archive hygiene, or request-supersession decisions for an active goal context.
+description: Create, upgrade, execute, resume, evolve, or close a continuation-ready staged goal or strict serial Long-Running Goal Sequence with explicit milestones, gates, evidence, execution authority, runtime hard stops, and close lifecycle.
 ---
 
 # Long Running Goal
 
-Use this skill when a task should become an executable, continuation-ready goal plan in the project's planning area, or when an existing checklist/TODO needs to become a staged goal contract.
+## Trigger And Ready Contract
 
-Do not use it for short one-off implementation plans. A long-running goal is appropriate when work needs ordered milestones, gates, evidence, a reusable continuation contract, and a close step that leaves active docs clean.
+Use this skill for durable multi-milestone work that must continue without chat history. Do not use it for a short one-off implementation plan.
 
-A `Ready` goal means the plan is complete enough for the same or another agent to continue without chat history: current state, next milestone, gates, evidence requirements, pre-approved execution scope, and runtime hard stops are all explicit.
+A `Ready` goal records current truth, ordered work, the next milestone, gates, validation and checkpoint evidence, frozen local and external authority, runtime hard stops, close handling, and a reusable continuation prompt. Keep the goal `Draft` while required design, approval, permission, input, or placeholder work remains unresolved.
 
-## Request Supersession Guard
+Use `templates/long_running_goal_template.md` for one goal and `templates/long_running_goal_sequence_template.md` for a strict sequence unless the repository has a stronger local convention. Prefer the user-specified path, then an existing active goal/TODO directory or index, and use `docs/todo/<goal_slug>_long_running_goal_plan.md` only as a fallback. Do not create a parallel planning tree or append `/todo` to a directory that already serves as the goal directory. Templates and readiness checkers own field shape and structural completeness.
 
-When an active or compacted goal context exists, classify the newest user request before doing goal work.
+Before goal creation or conversion, or before first implementation when the goal lacks a completed marker, apply `components/planning-preflight.md`. Its timeboxed execution-time assessment must report a rough remaining elapsed-time range or a bounded critical-path breakdown, and its explicit task-temporary-cache housekeeping choice is required even when the user skips `grill-with-docs`.
 
-Continue the active goal only when the request asks to execute, resume, continue, close, or advance that goal, or asks for status/evidence/clarification/progress about the same goal. Answer or record same-goal context and continue unless the user explicitly says to pause, stop, redirect, or change scope.
+Explicit goal creation may produce a complete `Draft` or `Ready` contract. Keep unresolved design, approval, permission, input, and housekeeping choices visible in a `Draft`; validate that lifecycle with `check_goal_ready.py --allow-draft`. Never invent or infer a missing decision merely to satisfy a checker, and never treat generic no-cleanup or non-destructive language as the user's explicit housekeeping choice.
 
-Pause the old goal when the newest request is unrelated planning, explanation, alignment, skill editing, review-only analysis, git maintenance, or another bounded task. Do not run milestone commands, edit old goal evidence, or update goal-tool status for a paused goal.
+## Request Supersession
 
-If the request changes the goal plan itself, update the planning document and indexes only unless the user also asks for execution. If ambiguous, inspect or answer the bounded surface first instead of continuing stale implementation work.
+Re-read the newest request before goal work.
 
-## Goal File And Template
+- An explicit pause, stop, redirect, or change-scope request overrides every continue case, including same-goal status, evidence, clarification, or progress.
+- Continue the active goal for execution, resume, advancement, close, or same-goal status, evidence, clarification, or progress.
+- Pause it for unrelated planning, explanation, alignment, skill editing, review-only analysis, Git maintenance, or another bounded task.
+- When the request changes the plan, update the goal and current indexes only unless execution is also requested.
+- When scope is ambiguous, inspect or answer the bounded request before resuming stale milestone work.
 
-Use `templates/long_running_goal_template.md` for one goal and `templates/long_running_goal_sequence_template.md` for a `Sequence Child Goals` branch unless the repo has a stronger local convention. Copy it into the active goal directory, replace all `<...>` placeholders, and do not mark the goal `Ready` while placeholders remain. The readiness checker also scans fenced commands and evidence; only documentation-only examples whose opening fence contains the exact `placeholder-example` token are exempt.
-
-Find the planning area in this order: user-specified path, existing active goal/TODO directories such as `docs/todo/`, current-doc indexes that already reference active work, then `docs/todo/<goal_slug>_long_running_goal_plan.md` as a fallback. Do not create a parallel planning tree when a live one already exists, and do not append `/todo` to a directory that is already the goal directory.
-
-If preserving a compact local goal style, the copied or handwritten goal must still include:
-
-1. Current baseline and source-of-truth evidence.
-2. Owner boundaries, default behavior, compatibility surface, non-goals.
-3. Ordered milestones with scope, gates, validation, evidence, checkpoints.
-4. Loop Blueprint / harness boundaries when recurring, automated, parallelized, connector-backed, or subagent-orchestrated.
-5. Frozen YOLO non-stop boundary and runtime hard-stop boundary.
-6. Failure breakpoints and rollback/disable path.
-7. Current-doc/TODO sync requirements.
-8. A preflight time assessment satisfying `components/planning-preflight.md`.
-9. Close/archive procedure, explicit task-temporary-cache housekeeping policy, and reusable continuation prompt.
-
-## Components
-
-Use bundled components as internal workflow steps, not as standalone user-facing skills:
-
-1. `components/planning-preflight.md`: before goal creation/conversion or first implementation without a completed marker, run `grill-with-docs`, record its timeboxed execution-time assessment, obtain the user's explicit task-temporary-cache housekeeping choice, and satisfy every component completion criterion; skipping the grill does not skip timing or imply cleanup consent.
-2. `components/checkpoint.md`: before any milestone or close step is `Done`, record revision evidence without default empty commits.
+For a paused goal, answer the bounded request without running milestone commands, editing goal evidence, or updating native goal-tool status.
 
 ## Branch Routing
 
-- Before you create or upgrade a goal, or define a Loop-shaped execution harness, read `references/create-and-loop.md` and satisfy every matching completion criterion before marking the goal `Ready`.
-- For `Sequence Child Goals` (formal artifact: `Long-Running Goal Sequence`; `umbrella` is only an alias), read `references/sequence-child-goals.md` before creation, authorization, promotion, resume, or close. The sequence parent and every child require a non-skip `Done` preflight from `grill-with-docs`.
-- For a production cutover that compares a new implementation with an authoritative old path, read `references/production-cutover.md` before freezing modes or claiming speedup.
-- Before you execute, resume, continue, advance, evolve, or close a goal, read `references/execute-and-close.md`; follow the goal file and finish its matching execution or close criterion.
+Read every reference whose condition matches:
 
-Load every reference whose condition matches a combined task. These pointers disclose branch detail only; the inline supersession, `Ready`, pre-approval/YOLO, runtime hard-stop, and harness goal-tool contracts always apply.
+- create or upgrade a goal, or define a Loop-shaped harness: `references/create-and-loop.md`;
+- create, authorize, promote, resume, or close `Sequence Child Goals` as a `Long-Running Goal Sequence`: `references/sequence-child-goals.md`;
+- perform a production cutover against an authoritative old path: `references/production-cutover.md`;
+- execute, resume, continue, advance, evolve, or close a goal: `references/execute-and-close.md`.
 
-After creating, upgrading, or evolving a goal, update only the current docs that need concise pointers; keep detailed milestone plans in the goal file.
+Each reference owns its branch detail and completion criterion. The inline `Ready`, supersession, execution-authority, runtime-hard-stop, and goal-tool contracts always apply.
 
-## Pre-Approval And YOLO Boundary
+After creating, upgrading, or evolving a goal, update only the current docs that need concise pointers; keep milestone detail in the goal file.
 
-Long-running goals preserve momentum across milestones. A milestone boundary, review gate, checkpoint, routine uncertainty, rebuild, refresh, reinstall, validation command, docs sync, project-owned generated-artifact cleanup, or other planned non-destructive local operation is not a permission prompt. Task temporary cache housekeeping is separate: never infer it from YOLO scope, a grill skip, or generic cleanup wording; use only the explicit preflight choice recorded in the goal.
+## Execution Authority
 
-Before marking a goal `Ready`, freeze:
+Only a `Ready` goal pre-approves its frozen non-destructive local work. A `Draft` goal does not.
 
-1. Pre-approved YOLO local operations: non-destructive local actions needed by the plan, including code/docs/source-skill edits, rebuilds, refreshes, reinstalls, workspace dependency restores, tests, lint, formatting, link checks, plugin/cache refreshes, and project-owned generated-artifact cleanup outside separately governed task temporary cache roots.
-2. Pre-approved external reads/writes: every connector, API, issue, PR, CI, automation, hook, or messaging surface that may be read or written. Foreseeable unapproved external writes keep the goal `Draft`.
-3. Runtime hard stops: only the conditions that may stop execution after the goal is `Ready`.
+Before `Ready`, freeze:
 
-During execution, use YOLO mode inside the frozen scope:
+1. allowed local operations needed by the plan;
+2. allowed connector, API, issue, PR, CI, automation, hook, messaging, and other external reads or writes;
+3. runtime hard stops, rollback, and the explicit task-temporary-cache policy.
 
-1. Continue after validations and review gates pass.
-2. Run planned non-destructive local operations without asking.
-3. Diagnose and fix ordinary failures when the next useful step is clear and in scope.
-4. Retry or vary local diagnostics before stopping; a single failed command, stale cache, missing build artifact, failed rebuild, or failed validation with a clear local next step is not a stop condition.
-5. Record assumptions, risk, validation evidence, checkpoint evidence, and YOLO actions in the goal document.
-6. Ask the user only at a runtime hard stop:
-   - technical progress is impossible after repeated local diagnostics or fixes, normally at least three attempts or three distinct approaches unless immediately decisive
-   - required credentials, files, tools, or source-of-truth inputs are missing and cannot be obtained locally
-   - the next step is destructive, irreversible, privacy-sensitive, externally visible, or an unapproved external write
-   - evidence contradicts frozen goal semantics and continuing would change scope or product behavior
-   - a required subagent, connector, worktree, or verifier failed and no meaningful local fallback exists inside the frozen plan
+Milestone boundaries, reviews, checkpoints, rebuilds, refreshes, dependency restores, code or documentation edits, tests, formatting, link checks, and other planned non-destructive local operations are non-stops. Run them and continue when their gates pass.
 
-Runtime hard stops are true technical stop conditions, not status checkpoints. If the plan says report, record evidence, rebuild, refresh, validate, or sync docs, do that and continue unless a hard stop applies.
+Diagnose and fix ordinary failures while the next useful step is clear and in scope. Ask the user only at a runtime hard stop:
+
+- repeated technical impossibility, normally after at least three attempts or three distinct approaches unless the failure is immediately decisive;
+- required credentials, files, tools, or source-of-truth inputs are unavailable locally;
+- the next step is destructive, irreversible, privacy-sensitive, externally visible, or an unapproved external write;
+- evidence contradicts frozen semantics and continuing would change scope or product behavior;
+- a required subagent, connector, worktree, or verifier failed and no meaningful in-plan local fallback remains.
+
+Stop only at a runtime hard stop, not at a status checkpoint. Record assumptions, actions, validation, risk, and checkpoint evidence in the goal.
+
+Task temporary cache housekeeping is separate from execution authority. Use only the policy and owner paths recorded by planning preflight; never infer cleanup consent from YOLO scope, a skipped grill, or generic cleanup language.
 
 ## Harness Goal Tool Boundary
 
 Use the harness's native goal tools only when the user explicitly asks to create, execute, resume, or close a long-running goal in the active conversation. A planning document alone is not an active harness goal.
 
-When creating an active harness goal, set the objective to the project outcome, set a token budget only if requested, avoid nested active goals, and do not mark it `complete` until no required work remains. Do not mark it `blocked` unless the same blocker has repeated for the required threshold and no meaningful progress is possible.
+Set an active harness goal to the project outcome, set a token budget only when requested, avoid nested active goals, and mark it complete only when no required work remains. Mark it blocked only when the recorded hard-stop threshold is met and no meaningful progress remains.
 
-During ordinary milestone execution, update the goal document and project evidence. Do not use goal completion as a substitute for milestone status, gates, commits, validation logs, or final reporting.
+The goal document, milestone states, validation, commits or equivalent revisions, and final report remain the durable execution authority; native goal status does not replace them.
 
-## Bundled Helpers
+## Completion
 
-Use these scripts when they match the project surface:
+Use the deterministic owners for the affected lifecycle:
 
 ```bash
-python <skill-folder>/scripts/check_goal_ready.py <goal-file>
+python <skill-folder>/scripts/check_goal_ready.py [--allow-draft] <goal-file>
 python <skill-folder>/scripts/check_goal_sequence.py <sequence-file> [--allow-draft]
 python <skill-folder>/scripts/check_md_links.py <planning-root>
 python <skill-folder>/scripts/check_todo_index.py [--mode active|closed|absent] [--archived-goal <archive-path>] <goal-file> <index-file> [<index-file> ...]
 ```
 
-`check_goal_ready.py` validates one goal's written contract. `check_goal_sequence.py` composes that check with mandatory non-skip preflights and cross-child ordering, state, milestone, handoff, and close consistency; `--allow-draft` relaxes lifecycle only. `check_md_links.py` checks relative Markdown links. `check_todo_index.py` defaults to exact-link `active` validation; use `closed` with `--archived-goal` after archiving, or `absent` after deletion without an archive.
+Creation or upgrade completes with either a non-executable `Draft` that records known facts and open decisions and passes applicable draft validation, or a `Ready` contract whose planning preflight and every triggered branch criterion pass; current navigation must point to either active contract. Execution advances only after milestone scope, validation, review, rollback, risk, and checkpoint evidence are recorded. Close completes only after all milestones pass, durable current docs are synchronized, the recorded temporary-cache outcome is honored, active navigation is clean, archive or deletion follows local convention, and close evidence is recorded.
 
-## Quality Bar
-
-A useful long-running goal must answer:
-
-1. What source of truth was read?
-2. What semantics and owner boundaries are frozen?
-3. What is explicitly out of scope?
-4. What milestones must happen in order?
-5. What commands prove each milestone?
-6. What is the rough remaining elapsed-time range, or which critical-path costs dominate when it cannot be estimated quickly?
-7. What counts as blocked?
-8. Which actions are frozen as YOLO non-stops, and which runtime hard stops actually require the user?
-9. How does the work close, leave active docs clean, and honor the user's explicit task-temporary-cache housekeeping choice?
-10. If Loop-shaped, what harness constrains triggers, inputs, orchestration, worktrees, connectors, verification, runtime hard stops, and durable learning?
-11. If a sequence, are every child boundary and required grill preflight frozen, one child current, handoffs consistent, and authorization no broader than the children?
+Report the goal path, lifecycle state, current or next milestone, triggered branches, authority and hard-stop boundary, evidence and validation, blockers, and residual risk.

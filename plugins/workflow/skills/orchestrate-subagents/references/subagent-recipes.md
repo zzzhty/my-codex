@@ -14,9 +14,46 @@ Before spawning, check every assignment:
 - evidence requirements do not become a second task; a worker can run tests for its slice, but test strategy or cross-slice validation is separate
 - if the assignment needs "and then", split it
 
-Every subagent should return assignment label, single-task statement, status (`done`, `partial`, `blocked`), paths inspected/changed, commands and results, evidence-tied findings, blockers, unknowns, and stop-condition status.
+Every subagent should return assignment label, single-task statement, status (`done`, `partial`, `blocked`), paths inspected or changed, commands and results, evidence-tied findings, blockers, unknowns, and stop-condition status.
 
-Parent prompt skeletons below describe the whole orchestration request. When spawning a specific subagent, expand it with the full prompt template from `../SKILL.md`: assignment label, single task, context, ownership, expected output, stop condition, and boundaries.
+## Assignment Contract
+
+Every spawn prompt must make the assignment self-contained. Use this shape:
+
+```text
+Task:
+<specific assignment, not the whole parent task>
+
+Assignment label:
+<role plus purpose, such as default as test-verifier>
+
+Single task:
+<one primary verb, one bounded scope, one expected output>
+
+Context:
+<files, commands, branch/base, goal path, constraints, relevant facts>
+
+Ownership:
+<read-only scope or exact disjoint write scope>
+
+Expected output:
+- findings or implementation summary
+- paths inspected or changed
+- commands run and results
+- evidence for each claim
+- blockers and unknowns
+- stop-condition status
+
+Stop condition:
+<maximum scope or exact completion/blocking signal>
+
+Boundaries:
+- Do not work outside <scope>.
+- Do not revert edits made by others.
+- Do not fabricate success if tools or evidence are missing.
+```
+
+For a worker, state that concurrent or parent edits may exist, list every owned path, and keep shared files, generated artifacts, integration, and cross-slice validation parent-owned.
 
 Reusable parent prompt spine:
 
