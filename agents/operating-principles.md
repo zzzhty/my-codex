@@ -1,168 +1,85 @@
-# Agent Operating Principles
+# Agent Operating Principles — Repository Map
 
-This document maps the root agent operating principles to this repository's actual workflows, files, reports, automations, and review boundaries. It is the second layer of guidance: `AGENTS.md` defines the rules, this document explains how to apply them here, and each plugin or workflow README defines its own contract.
+This is the repository-managed support note installed at `$CODEX_HOME/agents/operating-principles.md`. Root `AGENTS.md` owns global authority, safety, failure handling, verification, delegation, and subagent-failure policy. This file maps those rules to `my-codex` paths and reusable workflow surfaces; it does not expand their authority.
 
-## Core Loop
+## Managed Source And Target
 
 ```text
-Capture -> Persist -> Act -> Review -> Monitor -> Remember
+source: agents/operating-principles.md
+target: $CODEX_HOME/agents/operating-principles.md
 ```
 
-## Capture
+Edit the repository source, not the installed target. `scripts/sync_codex_agents.py` writes a managed header and refuses to overwrite an unmanaged same-name target unless a reviewed `--force` operation is explicitly chosen.
 
-Capture rough intent and real context before compressing work into a final task shape.
+## Durable Owner Map
 
-Local inputs:
+| Concern | Repository owner |
+| --- | --- |
+| Global agent behavior, mutation boundaries, failure handling, test policy, and delegation authority | `AGENTS.md` |
+| Repository-specific support paths and role-label mapping | this file |
+| Reusable workflow behavior | `plugins/*/skills/*/SKILL.md` and the skill's direct references |
+| Plugin/runtime architecture and commands | the owning plugin `README.md`, scripts, and validators |
+| Active multi-turn work | `docs/todo/README.md` and the named active plan or goal |
+| Watcher evidence and proposals | `$CODEX_HOME/watcher/` runtime state |
+| Generated reports or automation memory | the owning tool's documented report or memory root |
 
-- the current user request or pinned thread context
-- linked notes, transcripts, issue text, reports, or artifacts
-- root and plugin README files
-- existing TODO, planning, and runtime report files
-- recent command output or failure evidence
+Choose the narrowest owner that future agents can inspect. Do not duplicate a global rule in a skill or support note merely to make it more visible; point to the owner and state only the local workflow delta.
 
-Do not force early prompt polishing when the task is still exploratory. Preserve enough source context to let later steps verify assumptions.
+## Delegation Routing
 
-## Persist
+Keep capability, authority, and workflow invocation separate:
 
-Long-running work should be anchored outside chat history.
+- The harness exposes subagent capability.
+- Root `AGENTS.md` or an active plan authorizes delegation and write scope.
+- `$orchestrate-subagents` defines the detailed workflow only after the user explicitly requests that skill, subagents, parallel agents, or multi-agent delegation.
+- Broad read-only review authorization comes from root `AGENTS.md`; it does not invoke `$orchestrate-subagents` by itself.
 
-Local durable homes:
+For an invoked orchestration workflow, read:
 
-- root `AGENTS.md` for global agent behavior
-- `agents/operating-principles.md` for the managed subagent support note
-- plugin `README.md` files for product and workflow contracts
-- skill `SKILL.md` files for reusable agent procedures
-- `$CODEX_HOME/<tool>/reports/` for generated reports
-- `$CODEX_HOME/automations/<automation-id>/memory.md` for automation state
-- TODO or planning files for active open loops
-
-Choose the narrowest durable home that future agents and humans can inspect. If the information only matters for the current turn, keep it in the thread instead of creating documentation churn.
-
-## Act
-
-Agents should use the narrowest tool that can produce real evidence.
-
-Default posture:
-
-- read-only inspection before mutation
-- scripts, checkers, and validators before impression-based conclusions
-- Browser, Chrome, or Computer Use only when the surface itself matters
-- repo-local helpers before new ad hoc implementations
-- root-cause repair before adding new patches, wrappers, shims, fallback paths, alternate backends, compatibility layers, or parallel abstractions
-- system planning for ordinary complex tasks; custom `long-running-goal` planning only after explicit user request or confirmation
-- no destructive, privacy-sensitive, external-send, or irreversible action without explicit user intent
-- for a `Ready` long-running-goal continuation contract, execute planned non-destructive local mutation directly inside the frozen goal scope; local rebuilds, refreshes, reinstalls, tests, lint, formatting, docs sync, code edits, source skill edits, and generated-artifact cleanup are YOLO non-stops and should not become mid-run approval prompts
-
-When implementation is requested, act directly after enough context is known. When the root cause is unclear, collect minimal diagnostics and report the concrete blocker instead of routing around it. Add a new layer only when evidence shows the existing owner or contract cannot carry the behavior safely. If a task looks too large for ordinary planning, suggest `long-running-goal` as an option and wait for user confirmation before creating a custom contract or running its preflight.
-
-## Subagent Delegation
-
-Subagent work has one current workflow layer in this repository.
-
-Keep capability, authority, and workflow invocation separate: `multi_agent` exposes the capability; the active environment, applicable `AGENTS.md`, or an active plan authorizes visible local delegation; `$orchestrate-subagents` defines the orchestration workflow only after a user-requested trigger. Server-side Ultra orchestration is outside this local observable surface unless an explicit runtime contract proves otherwise; do not infer visible local `spawn_agent` behavior from model names or capability metadata.
-
-Current runtime workflow:
-
-- Use the `workflow` plugin's `$orchestrate-subagents` skill when the user explicitly asks for bounded subagent work.
-- Broad read-only review requests, including PR, branch, diff, architecture, skill, prompt, docs, contract, security, or regression review, authorize read-only subagent review. This authorization does not invoke `$orchestrate-subagents` by itself. Spawn only read-only explorer/default reviewers; do not use workers or edit files. Consolidate evidence-backed findings and mark partial coverage or subagent failures explicitly.
-- When `$orchestrate-subagents` is invoked, treat `plugins/workflow/skills/orchestrate-subagents/SKILL.md` and its recipes as the current contract for spawning, assignment labels, evidence, failure handling, and consolidation.
-- Use the currently available Codex roles such as `explorer`, `worker`, and `default`, with task-local labels like `code-mapper` or `test-verifier`.
-- Keep the parent agent responsible for planning, write-scope decisions, integration, final validation, and the user-facing conclusion.
-
-Agent support note:
-
-- Use built-in roles and assignment labels by default for `$orchestrate-subagents`.
-- Keep this support note under `agents/` and sync managed copies into `$CODEX_HOME/agents/` with `scripts/sync_codex_agents.py`.
-- Do not make orchestration recipes depend on custom-agent names, pinned models, or custom-agent runtime selector proof.
-- Do not maintain local custom-agent preset TOML in this repository.
-
-Current role labels:
-
-- Use `explorer as code-mapper`, `explorer as schema-mapper`, or `explorer as doc-inventory-mapper` for read-only mapping and evidence collection.
-- Use `default as implementation-reviewer`, `default as docs-verifier`, `default as test-verifier`, or `default as doc-drift-reviewer` for review, verification, triage, and planning.
-- Use `worker as slice-a-implementer` or `worker as slice-b-implementer` only when the user authorized implementation and the write scope is disjoint.
-
-Future custom agents:
-
-- Add custom-agent TOML only when built-in roles plus assignment labels are not enough for a repeated workflow.
-- Before adding one, create an active plan that defines the agent's purpose, model and sandbox policy, fallback behavior, sync validation, rollback path, and parent integration boundary.
-- Keep write-capable custom agents out of scope until ownership, conflict handling, generated artifacts, and final validation are explicitly covered.
-
-## Review
-
-Every meaningful output should be inspectable.
-
-Review surfaces:
-
-- Git diff
-- Markdown reports
-- command output
-- generated artifacts
-- screenshots when UI is involved
-- validation logs
-- automation memory files
-
-Reports should state what was checked, where the evidence lives, what failed, what changed, and whether implementation was performed. Do not imply success without command output, a file path, a diff, or another concrete artifact.
-
-## Monitor
-
-Scheduled or repeated workflows should observe and summarize first.
-
-A monitor must define:
-
-- schedule or trigger
-- exact command, script, or tool path
-- working directory
-- output contract
-- stop condition when applicable; for `long-running-goal`, use the narrower runtime hard-stop boundary
-- allowed actions
-- forbidden actions
-- report or memory location
-- validation or freshness checks
-
-For wall-clock schedules, preserve the user-visible local time unless the user explicitly requests UTC. Verify the written automation state before reporting the schedule back.
-
-## Remember
-
-Only durable, reusable knowledge should be written back.
-
-Remember:
-
-- user preferences that affect future work
-- validated commands
-- recurring failure modes
-- workflow contracts
-- open loops and close criteria
-- privacy and mutation boundaries
-
-Do not remember:
-
-- full private prompts
-- secrets
-- full tool responses
-- unverified assumptions
-- one-off noise
-- implementation details that can be cheaply rediscovered from source
-
-Memory updates should be reviewable through file paths, diffs, or report artifacts.
-
-## Workflow Contract Template
-
-Use this template when a repeated workflow becomes important enough to document in a plugin README, skill, automation memory, or planning file.
-
-```md
-## Workflow Contract
-
-- Trigger:
-- Working directory:
-- Command or tool:
-- Inputs:
-- Outputs:
-- Report or memory location:
-- Allowed actions:
-- Forbidden actions:
-- Validation:
-- Stop condition or runtime hard stop:
+```text
+plugins/workflow/skills/orchestrate-subagents/SKILL.md
+plugins/workflow/skills/orchestrate-subagents/references/subagent-recipes.md
 ```
 
-Workflow contracts should stay small and operational. They are not product strategy documents; they define how an agent should run the workflow without expanding scope.
+The skill owns slicing, assignment contracts, disjoint worker ownership, waiting, partial coverage, and consolidation. Root `AGENTS.md` remains the authority for whether delegation or mutation is allowed and for how failures affect integration.
+
+## Built-In Roles And Labels
+
+Use built-in roles with task-local labels unless a separately approved plan proves that a custom agent is necessary.
+
+| Role | Default use | Example labels |
+| --- | --- | --- |
+| `explorer` | Read-only mapping and evidence collection | `code-mapper`, `schema-mapper`, `doc-inventory-mapper` |
+| `default` | Review, triage, planning, validation, or evaluation | `implementation-reviewer`, `test-verifier`, `doc-drift-reviewer` |
+| `worker` | Authorized implementation in an exact disjoint write scope | `slice-a-implementer`, `api-adapter` |
+
+Labels describe the assignment; they are not custom-agent identities. Shared files, cross-slice integration, final validation, and user-facing conclusions remain parent-owned under the root policy and the invoked skill.
+
+## Custom-Agent Boundary
+
+This repository does not maintain or install custom-agent preset TOML. Add one only through a separate active plan that records:
+
+- the repeated workflow that built-in roles plus labels cannot express;
+- model, sandbox, fallback, and availability behavior;
+- ownership and parent-integration boundaries;
+- sync validation and rollback;
+- conflict handling for write-capable agents.
+
+Custom-agent work must not broaden read-only review authorization into implicit mutation.
+
+## Sync And Validation
+
+Preview and apply the managed support-file projection:
+
+```bash
+python3 scripts/sync_codex_agents.py --dry-run --prune
+python3 scripts/sync_codex_agents.py --prune
+```
+
+Validate an installed copy without changing it:
+
+```bash
+python3 scripts/sync_codex_agents.py --check --prune
+```
+
+When `$CODEX_HOME` is unset, the script targets `~/.codex/agents/`. Preserve unrelated files; prune removes only files carrying the script's managed header.

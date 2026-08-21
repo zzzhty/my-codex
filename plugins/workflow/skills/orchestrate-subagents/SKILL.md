@@ -1,78 +1,32 @@
 ---
 name: orchestrate-subagents
-description: Use only when the user invokes `$orchestrate-subagents` or explicitly asks the harness to use subagents, parallel agents, or multi-agent delegation; tool availability, environment authorization, and task parallelizability alone are not triggers.
+description: Use when the user explicitly asks for `$orchestrate-subagents`, subagents, parallel agents, or multi-agent delegation; tool availability and task parallelism alone are not triggers.
 ---
 
 # Orchestrate Subagents
 
-This skill defines the detailed workflow after a user-requested trigger. Tool availability, environment authorization, or task parallelizability alone do not trigger it, and invoking it does not expand the active environment's delegation authority.
+Use this skill only after the user-requested trigger. Delegation and mutation authority come from root instructions or an approved plan; this skill does not expand them.
 
-## Core Contract
+## Contract
 
-1. Spawn only when the task is genuinely parallelizable and materially useful.
-2. Keep the parent agent responsible for planning, final decisions, integration, verification, and user-facing conclusions.
-3. Give each subagent one task: one primary verb, one bounded scope, one expected output. Split mapping, review, implementation, validation, and docs checks when they are separate jobs.
-4. Give every subagent explicit task-local instructions, ownership, expected output, stop condition, and file/write boundaries. Do not rely on inherited context or unstated requirements.
-5. Use `worker` only for implementation with disjoint write ownership and clear authorization to edit; otherwise prefer read-only `explorer` or `default`.
-6. Continue only non-overlapping parent work while subagents run.
-7. Wait for selected subagents, or record exactly which one did not return and why.
-8. Treat policy-blocked spawning, timeout, missing tools, inaccessible required context, incomplete findings, conflicting results, unsafe file overlap, and missing validation evidence as first-class failures.
-9. Consolidate evidence before acting; subagent output does not replace parent review.
+1. Spawn the minimum useful set only when independent work can proceed in parallel.
+2. Keep the parent agent responsible for planning, final decisions, integration, cross-slice validation, and the user-facing conclusion.
+3. Give each subagent one primary verb, one bounded scope, one expected output, one ownership block, and one stop condition.
+4. Use `explorer` or `default` for read-only work. Use `worker` only when implementation is authorized and write ownership is exact and disjoint.
+5. Keep shared files, generated artifacts, conflicts and final integration parent-owned. Continue only non-overlapping parent work while subagents run.
+6. Wait for the selected agents. Preserve policy-blocked spawning, timeout, missing tools or required context, unsafe overlap, conflicting, incomplete, or missing-evidence results as `partial` or `blocked`; do not silently replace them with assumptions.
+7. Treat subagent output as evidence for parent review, not as the final decision or validation result.
 
-## Roles And Recipes
+## Workflow
 
-- `explorer`: read-only mapping, impact analysis, test discovery, schema inspection, evidence collection.
-- `worker`: implementation slices with disjoint write scope and explicit edit authorization.
-- `default`: review, triage, planning, validation, and evaluator work when no narrower role fits.
+1. Freeze the parent task, success criteria, non-goals, shared artifacts, and parent-owned integration.
+2. Read `references/subagent-recipes.md`, choose the narrowest recipe, and write complete assignment prompts from its Assignment Contract.
+3. Spawn only materially useful assignments with non-overlapping ownership.
+4. Wait for selected results and record each assignment's status, evidence, blockers, unknowns, and stop-condition outcome.
+5. Consolidate findings into decisions, risks, validation gaps, conflicts, residual unknowns, and the next parent-owned action.
 
-When using multiple subagents with the same role, add assignment labels such as `default as test-verifier` or `worker as api-adapter`. Do not request custom-agent names in recipes; encode behavior in the prompt, label, ownership block, expected output, and stop condition.
+## Completion
 
-Read `references/subagent-recipes.md` for PR/branch review, debugging, implementation planning, bounded parallel implementation, API/schema inspection, and documentation alignment patterns.
+Report assignment labels and statuses, paths inspected or changed, commands and results, evidence-backed findings, blockers, unknowns, partial coverage, and parent validation. For implementation, also report behavior impact, rollback, and residual risk.
 
-## Parent Workflow
-
-1. Restate the task, success criteria, non-goals, shared artifacts, and parent-owned integration.
-2. Slice the work and spawn the minimum useful agents with the prompt template; do not delegate tiny tasks or tightly coupled sequential debugging, and continue only non-overlapping parent work.
-3. Wait for selected results and mark coverage partial when paths, commands, evidence, blockers, or stop-condition status are missing.
-4. Consolidate role/status/path/command evidence into blockers, risks, validation gaps, unknowns, and the next action.
-
-## Subagent Prompt Template
-
-```text
-Task:
-<specific assignment, not the whole parent task>
-
-Assignment label:
-<role plus purpose, such as default as test-verifier>
-
-Single task:
-<one primary verb, one bounded scope, one expected output>
-
-Context:
-<files, commands, branch/base, goal path, constraints, relevant facts>
-
-Ownership:
-<read-only scope or exact disjoint write scope>
-
-Expected output:
-- findings or implementation summary
-- paths inspected or changed
-- commands run and results
-- evidence for each claim
-- blockers and unknowns
-- stop-condition status
-
-Stop condition:
-<when to stop, including max scope or exact completion signal>
-
-Boundaries:
-- Do not work outside <scope>.
-- Do not revert edits made by others.
-- Do not fabricate success if tools or evidence are missing.
-```
-
-For workers, also state that they are not alone in the codebase and must accommodate concurrent or parent edits.
-
-## Consolidation And Failure
-
-For implementation, also report changed files, behavior impact, validation, rollback, and residual risk. Stop or report partial coverage on any Core Contract failure; parent diagnostics may narrow it but must not hide the original failure.
+Completion requires that every selected assignment is accounted for, write scopes remained disjoint, failures stayed visible, and the parent independently reviewed and integrated the result.

@@ -53,17 +53,17 @@ class InvocationContractTests(unittest.TestCase):
         self.assertIn("does not invoke `orchestrate-subagents`", prompt_strategy)
         self.assertNotIn("current environment exposes subagent tools", prompt_strategy)
 
-    def test_broad_review_delegation_does_not_cross_invoke_orchestrate(self) -> None:
-        guidance_files = (
-            REPO_ROOT / "AGENTS.md",
-            REPO_ROOT / "agents" / "operating-principles.md",
+    def test_broad_review_authority_and_orchestration_invocation_are_separate(self) -> None:
+        root_guidance = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        support_note = (REPO_ROOT / "agents" / "operating-principles.md").read_text(
+            encoding="utf-8"
         )
-        old_prompt = "Use $orchestrate-subagents for this read-only review"
-        for path in guidance_files:
-            with self.subTest(path=path):
-                text = path.read_text(encoding="utf-8")
-                self.assertNotIn(old_prompt, text)
-                self.assertIn("does not invoke `$orchestrate-subagents`", text)
+
+        self.assertIn("Broad read-only review requests", root_guidance)
+        self.assertIn("does not invoke `$orchestrate-subagents`", root_guidance)
+        self.assertIn("Root `AGENTS.md` owns global authority", support_note)
+        self.assertIn("does not invoke `$orchestrate-subagents` by itself", support_note)
+        self.assertIn("references/subagent-recipes.md", support_note)
 
 
 if __name__ == "__main__":
