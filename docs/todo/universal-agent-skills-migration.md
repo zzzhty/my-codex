@@ -4,7 +4,7 @@ Overall status: `In Progress`
 
 Updated: 2026-08-21
 
-This file is the single active planning authority for completing the universal Agent Skills migration after the completed M0 contract freeze. M1 through M4 are merged, and the M5 controlled cutover has established the final universal live profile; M5 remains `In Progress` only while its repository evidence, Contract review, and merge checkpoint complete before Close. Work starts each milestone from current `main` and does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
+This file is the single active planning authority for completing the universal Agent Skills migration after the completed M0 contract freeze. M1 through M5 are `Done` after the controlled cutover established the final universal live profile and every runtime, repository, and Contract review gate passed. Close is `In Progress`; its first serial operation is the authorized Draft PR #10 merge, followed by archive and index finalization from updated `main`. Work does not rely on chat history, a separate Phase 1b prompt, an archived prototype branch, or an unpublished patch.
 
 ## Goal Summary
 
@@ -26,7 +26,7 @@ Planning root: `docs/todo`
 
 Goal directory: `docs/todo`
 
-Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active M5 branch or PR, and the newest user request before acting. M0 through M4 are complete, and the independently reviewed M5 candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac now has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final live state while completing only the M5 repository evidence, validation, Contract review, Draft PR merge, and then Close. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
+Continuation contract: Read this file, root `AGENTS.md`, current `main`, the active M5 branch or PR, and the newest user request before acting. M0 through M5 are Done; M5 implementation, validation, runtime review, Contract review, and checkpoint evidence are complete. The independently reviewed candidate, rollback rehearsal, and final-universal sequence completed on 2026-08-21 under the evolved native-qualified identity contract. The current Mac has exactly 34 repository-owned universal links as its only active my-codex skills path; the three skills-bearing my-codex plugins are not installed, repo-owned hooks remain healthy, protected rollback material is retained, and live Watcher durable state is unchanged. Preserve that final live state. Close is In Progress: merge the completed M5 Draft PR, update local `main`, then execute only the declared archive, index, validation, and closure sequence. Do not depend on prior chat, deleted prompts, temporary branches, or unpublished artifacts.
 
 Planning preflight marker: `preflight:universal-agent-skills:20260820-grill3`
 
@@ -206,8 +206,8 @@ Ready activation: The following pre-approvals became active when the planning pr
 | M2 Watcher Metadata and Shared-Runtime Decoupling | Done | Passed | Done |
 | M3 Physical Layout Verification — No Move | Done | Passed | Done |
 | M4 Optional Plugin Distribution Packaging | Done | Passed | Done |
-| M5 Controlled Universal Profile Cutover | In Progress | Pending | Pending |
-| Close Goal Closure and Archive | Not Started | Pending | Pending |
+| M5 Controlled Universal Profile Cutover | Done | Passed | Done |
+| Close Goal Closure and Archive | In Progress | Pending | Pending |
 
 ## M0 Contract, Plan, and Baseline Freeze
 
@@ -653,7 +653,7 @@ Completion criterion: `Optional plugin packaging builds and validates independen
 
 ## M5 Controlled Universal Profile Cutover
 
-Status: `In Progress`
+Status: `Done`
 
 Objective: Move one real, rollback-capable environment from the skills-bearing plugin profile to the universal profile and prove exact-once discovery and behavior.
 
@@ -759,7 +759,7 @@ Identity-contract evolution and compatibility inventory:
 - The exact breakpoint is the universal branch of the deterministic fresh-output gate after successful candidate closure, resource, hook, and doctor checks. The final-universal phase was not attempted.
 - The reviewed rollback removed the 34 canonical links and reinstalled the same three package selectors at versions `1.2.3+codex.20260812033502`, `0.1.0+codex.20260817071906`, and `0.1.0+codex.20260814091823`. Plugin closure and isolated Watcher doctor passed with zero warnings. A third fresh process reproduced the baseline 20 identity, bare-identity, and cache-locator triples exactly, with no duplicates. Live Watcher durable-state stat inventory remained exactly unchanged, and the protected pre-cutover cache archives remain available.
 - Immediately before the resumed apply, the safe state is the single active plugin discovery profile with the repo-owned hooks repaired and healthy; `/Users/max/.agents/skills` is inactive and empty. No retained backup, Watcher state, unrelated plugin, marketplace, config, or user entry was deleted. The evolved artifacts and independent review passed, and the user explicitly resumed live execution under this contract on 2026-08-21.
-- Blocked-state evidence revision `ca23a10b4195db852b31a156b530e9ce6d484911` is published in Draft [PR #10](https://github.com/zzzhty/my-codex/pull/10). The PR remains Draft while the identity evolution is reviewed and until M5 completion evidence exists.
+- Blocked-state evidence revision `ca23a10b4195db852b31a156b530e9ce6d484911` and completion-evidence revision `58dd5825907758b0691e49b643bcf1e15db195d4` are published in Draft [PR #10](https://github.com/zzzhty/my-codex/pull/10). All M5 gates now pass; the PR is ready for its authorized final update and merge.
 - Independent post-rollback review returned Clean: the candidate hard stop is not a prompt, schema, or oracle false positive; final universal was never executed; live rollback closure is complete; and the Draft PR/no-merge boundary is accurate. The reviewer also confirmed a non-blocking cache fact: reinstalling from current canonical source preserves the exact selectors, manifest versions, skill identities, and health gates but does not promise byte identity with the pre-cutover emergency archives, which remain protected.
 - The resumed apply used repository revision `0ef5a9440098ae1a6f967be3489809ba372305bd`; the complete diff from reviewed runtime source ancestor `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` contains only the seven declared Markdown files. The qualified prompts, schema, exact gate, and plan remained local under the protected evidence root.
 - Baseline plugin closure and isolated Watcher doctor passed with zero warnings. A fresh process exposed exactly 20 model-visible my-codex skills with exact `${plugin}:${catalog-name}` identities, plugin-cache locators, no duplicate catalog names, bare request `long-running-goal` resolving to `workflow:long-running-goal`, and the expected `watcher:doc-alignment` and `workflow:sop` implicit routes.
@@ -772,9 +772,9 @@ Identity-contract evolution and compatibility inventory:
 
 Checkpoint evidence: `M5 preflight authorization record, exact commands, before and after evidence, comparison matrix, retained-state inventory, and rollback rehearsal.`
 
-Checkpoint component: Pending only until this completed runtime evidence receives the final repository Contract review and is committed and merged through Draft PR #10.
+Checkpoint component: Done. The runtime comparison, independent post-apply review, repository validation, final Contract review, and completion-evidence publication all passed.
 
-Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed runtime source and `0ef5a9440098ae1a6f967be3489809ba372305bd` is the exact resumed-apply repository revision. The completion-evidence revision remains Pending until this section is reviewed and committed in Draft PR #10.
+Checkpoint revision: `625e3bdcbfe64085c7ddbeec2601c5c5e0077ff1` is the reviewed runtime source, `0ef5a9440098ae1a6f967be3489809ba372305bd` is the exact resumed-apply repository revision, and `58dd5825907758b0691e49b643bcf1e15db195d4` records the reviewed M5 completion evidence in Draft PR #10.
 
 Rollback:
 
@@ -800,7 +800,7 @@ Completion criterion: `The current Mac runs universal profile with exact-once di
 
 ## Close Goal Closure and Archive
 
-Status: `Not Started`
+Status: `In Progress`
 
 Close prerequisites:
 
@@ -860,5 +860,5 @@ Read the newest user request first and confirm it still advances the same univer
 
 If the overall goal is Draft, complete M0 planning preflight, approval freezing, readiness validation, and checkpoint evidence; do not execute M1-M5. Once the goal is Ready, execute only the first non-Done implementation milestone and start its branch from current main. Preserve the Git-only source authority, bare catalog skill names, native plugin-qualified Codex invocation identities, separately owned Watcher identities, frozen slimming baseline, one-active-discovery-path invariant, unmanaged-user-state protection, and milestone-specific authorization boundary. Use non-destructive local YOLO operations inside the frozen scope, continue through ordinary failures when the next local diagnostic is clear, and stop only at a recorded runtime hard stop.
 
-Before marking the milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. M5's evolved identity/source-locator oracle, apply, rollback rehearsal, final universal phase, and independent post-apply review have passed; preserve that live state while finalizing its repository checkpoint. Do not delete retained plugin, marketplace, cache archive, hook-backup, or Watcher state; cleanup belongs to a later independent goal.
+Before marking a milestone Done, run its minimal falsifying checks, required broader validation, independent read-only Contract review, docs synchronization, and checkpoint evidence. M5 is Done; preserve its final universal live state while Close merges the completed Draft PR and archives this goal from updated `main`. Do not delete retained plugin, marketplace, cache archive, hook-backup, or Watcher state; cleanup belongs to a later independent goal.
 ```
