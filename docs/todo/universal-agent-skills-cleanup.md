@@ -468,11 +468,11 @@ Validation:
 git diff --check
 ```
 
-Execution evidence: `Pending M1 apply and post-apply validation.`
+Execution evidence: `2026-08-21 the committed frozen oracle ran once and returned M1 exact cleanup oracle=PASS. The CLI removed only the my-codex marketplace registration, and canonical config SHA-256 after removal was 5783be69c8778981c11ade709c0c8f1c58b984494b32a7fdfb05a0d55ca35dc1. After every reversible gate passed, /bin/rm -R permanently removed only /Users/max/.codex/backups/my-codex/universal-agent-skills/20260820T184942Z and non-recursive rmdir removed only the empty /Users/max/.codex/plugins/cache/my-codex. Both exact targets are absent; all backup parents and the openai-bundled, openai-curated, openai-curated-remote, and openai-primary-runtime cache namespaces remain real directories. The three my-codex selectors remain not installed; universal discovery remains 34 symlinks and zero nonlinks. Hooks SHA-256 remains f24da46573b7130a0684213dc096dbae1413d27a6ea48392fc7db152cc1f0520, agent support remains 66aa398bca3cf1793914613b943a611ee11b5461f3e99562ba443a251d3f0d5e, and the immediate pre/post Watcher stat SHA-256 remained 76fa1304b7842334ac37b626e5a98922a81f895b586d27a3c9b4e9348b8f5291. Universal closure completed with zero warnings; Matt, Watcher, and Workflow validators, stale-active-doc scan, readiness, links, indexes, planning tree, and git diff checks passed. Independent post-apply runtime review returned Clean with no apply-time drift evidence.`
 
-Checkpoint component: `Pending until the M1 review gate passes.`
+Checkpoint component: `M1 Exact Local Cleanup and Validation`
 
-Checkpoint evidence: `Pending M1 Git commit and Draft PR update.`
+Checkpoint evidence: `Pending the M1 evidence commit and Draft PR update.`
 
 ## Close Goal Closure and Archive
 
