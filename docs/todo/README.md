@@ -13,12 +13,11 @@ archive index exists.
 
 ## Active Long-Running Goals
 
-- [Universal Agent Skills Migration](universal-agent-skills-migration.md): In-progress long-running goal; M5 now accepts Codex-native plugin-qualified invocation identities while preserving bare catalog-name mapping, universal source locators, exact routing, and the healthy plugin rollback profile. Live retry remains paused until the evolved cutover contract is reviewed and explicitly resumed.
-
-No closed long-running goal index is currently tracked.
+No active long-running goals are currently tracked.
 
 ## Archive
 
+- [Universal Agent Skills Migration](archive/universal-agent-skills-migration.md): closed migration contract, controlled universal cutover evidence, qualified-identity decision, rollback rehearsal, retained-state boundary, and Close record.
 - [Skill Prompt Optimization Report](archive/skill-prompt-optimization.md): historical report from the pre-consolidation `doc-watcher` and `skill-watcher` source layout.
 - [Doc Alignment Progressive Disclosure Record](archive/doc-alignment-progressive-disclosure-proposal.md): accepted oracle, implementation map, and semantic-review evidence for the disclosed Watcher skill reference.
 - [Long-Running Goal Skill Compression Record](archive/long-running-goal-skill-compression-proposal.md): accepted compression inventory plus the lifecycle/index validation hardening follow-up.
