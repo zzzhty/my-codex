@@ -1,6 +1,6 @@
 # Skill Instruction Slimming Plan
 
-Status: **Active — source implementation complete; full-checkout validation, merge, and archive pending**
+Status: **Active — source implementation complete; macOS validation delegated to active long-running goal; merge/archive pending**
 
 Updated: 2026-08-21
 
@@ -8,7 +8,9 @@ Baseline: `main@4c80da5a04ce190f8a5ee17024da99628a772adc`
 
 Candidate: `agent/skill-slimming-s0-s1` / PR #13
 
-This document is the single active authority for repository-owned instruction slimming. S0-S4 are implemented in the candidate branch. The plan remains active because the current environment cannot run the complete root, Workflow, and Watcher suites from a full checkout; merge and archive are therefore still gated.
+Execution handoff: `docs/todo/skill-slimming-macos-validation-goal.md`
+
+This document is the single active design and semantic authority for repository-owned instruction slimming. S0-S4 source implementation is complete in the candidate branch. The companion macOS validation goal owns checkout isolation, full validation, bounded repair, independent review, behavioral sampling, evidence writeback, and the PR #13 Draft-to-Ready transition. PR merge and this parent plan's archive remain outside that validation goal.
 
 ## Objective
 
@@ -89,7 +91,7 @@ Tests protect semantic reachability and owner boundaries rather than historical 
 | S1 | Global delegation ownership and `orchestrate-subagents` | Source implemented; focused validation passed |
 | S2 | `doc-alignment` entry interface and conditional operations disclosure | Source implemented; focused validation passed |
 | S3 | `long-running-goal` high-risk entry-interface reduction | Source implemented; focused semantic validation passed |
-| S4 | Metadata/docs alignment, aggregate validation, and close preparation | Source implemented; full-checkout validation and archive pending |
+| S4 | Metadata/docs alignment, aggregate validation, and close preparation | Source implemented; macOS validation goal pending |
 
 ## S0 — Rebaseline And Oracle
 
@@ -193,28 +195,29 @@ Also completed:
 - whitespace validation equivalent to `git diff --check`;
 - a separate read-only Standards/Contract pass by the same agent.
 
-Reviewer-independence limitation: no independent subagent runtime was used. This limitation and the lack of a complete checkout prevent final closure.
+Reviewer-independence limitation: no independent subagent runtime was used. This limitation is owned by the companion macOS validation goal.
 
-## Required Full-Checkout Validation
+## macOS Validation Execution Handoff
 
-Before PR #13 becomes Ready or merges:
+Execute:
 
-```bash
-python3 -m unittest -v \
-  plugins.workflow.tests.test_invocation_contract \
-  plugins.workflow.tests.test_instruction_ownership \
-  plugins.workflow.tests.test_long_running_goal_disclosure \
-  plugins.watcher.tests.test_doc_alignment_disclosure
-
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/workflow/tests -p 'test_*.py' -v
-python3 -m unittest discover -s plugins/watcher/tests -p 'test_*.py' -v
-
-python3 scripts/sync_codex_agents.py --check --prune
-git diff --check origin/main...HEAD
+```text
+docs/todo/skill-slimming-macos-validation-goal.md
 ```
 
-Also run the repository's current plugin/skill validators when available. Separate environment/tool failures from source regressions.
+That Ready long-running goal owns:
+
+- live macOS checkout/worktree isolation;
+- exact PR scope and frozen-surface audit;
+- focused/root/Workflow/Watcher tests;
+- deterministic/link/support/Watcher/plugin/skill validation;
+- installed-state and universal-resource read-only classification;
+- independent Contract review;
+- five behavior scenarios in a proven candidate-loaded context;
+- minimal PR-introduced repair and full revalidation;
+- durable validation evidence, validation-goal archive, and PR #13 Draft-to-Ready.
+
+It explicitly does not own PR merge, main mutation, installed/runtime activation, identity changes, universalization changes, or PR #3 skill-body edits.
 
 ## Behavioral Matrix
 
@@ -231,19 +234,12 @@ Also run the repository's current plugin/skill validators when available. Separa
 | Universal-profile invocation | Preserves qualified identity, bare request resolution, and implicit routing |
 | Symlink-invoked resource | Resolves references, scripts, templates, assets, and metadata |
 
-The full-checkout reviewer should record trigger correctness, unnecessary questions, false stops, governance-only work, loaded entry footprint, references used, validation value, and residual risk.
-
 ## Rollback
 
-The candidate is source-only. Revert the S0-S4 commits; no installed, hook, cache, or runtime rollback is required because activation is outside this PR.
+The candidate is source-only. Revert the S0-S4 commits; no installed, hook, cache, or runtime rollback is required because activation is outside PR #13.
 
 ## Close Gate
 
-Keep this plan active and PR #13 Draft until:
+Keep this parent plan active while the companion validation goal is active.
 
-- focused and complete suites pass in a full checkout;
-- an independent read-only Contract review passes;
-- invocation/routing and report-only behavior are sampled from the behavioral matrix;
-- the PR is authorized and merged.
-
-After merge and validation, move this file to `docs/todo/archive/skill-slimming-plan.md`, replace the active TODO entry with an archive entry, and record the merged revision and validation evidence. Do not archive early or claim S4 closed from isolated source reconstruction alone.
+After the validation goal closes successfully, PR #13 may be Ready but remains unmerged. Merge requires a separate user decision. After PR #13 is merged and `main` is verified, move this parent file to `docs/todo/archive/skill-slimming-plan.md`, replace the active TODO entry with an archive entry, and record the merged revision and final validation evidence.
