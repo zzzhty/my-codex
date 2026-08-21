@@ -1,6 +1,6 @@
 # Skill Instruction Slimming Plan
 
-Status: **Active — source implementation complete; macOS validation delegated to active long-running goal; merge/archive pending**
+Status: **Active — S0-S4 source candidate complete; macOS validation and PR report pending; merge/archive require later user decision**
 
 Updated: 2026-08-21
 
@@ -10,7 +10,7 @@ Candidate: `agent/skill-slimming-s0-s1` / PR #13
 
 Execution handoff: `docs/todo/skill-slimming-macos-validation-goal.md`
 
-This document is the single active design and semantic authority for repository-owned instruction slimming. S0-S4 source implementation is complete in the candidate branch. The companion macOS validation goal owns checkout isolation, full validation, bounded repair, independent review, behavioral sampling, evidence writeback, and the PR #13 Draft-to-Ready transition. PR merge and this parent plan's archive remain outside that validation goal.
+This document is the single design and semantic authority for repository-owned instruction slimming. The companion validation goal owns live macOS branch/PR discovery, isolated validation, bounded repair, independent review, behavioral sampling, evidence push, and the final PR #13 report. It does not mark the PR Ready, merge, close, or archive either plan. Those decisions return to the user after the report is published.
 
 ## Objective
 
@@ -36,7 +36,7 @@ PR #3 remains the accepted low-risk baseline for:
 - `prompt-strategy-loop`;
 - `skill-compressor`.
 
-Those bodies remain unchanged in this candidate. `skill-maintainer` remains the no-change baseline.
+Those bodies remain unchanged. `skill-maintainer` remains the no-change baseline.
 
 The completed universal Agent Skills migration remains authoritative:
 
@@ -47,7 +47,7 @@ The completed universal Agent Skills migration remains authoritative:
 - Watcher overlays own durable attribution identity and aliases;
 - marketplace and plugin cache are not source authority.
 
-No identity, invocation mode, universal discovery, hook, cache, installed state, or Matt Pocock mirror content changes in this plan.
+No identity, invocation mode, universal discovery, hook, cache, installed state, or Matt Pocock mirror content changes belong to this plan.
 
 ## Instruction Ownership
 
@@ -91,113 +91,60 @@ Tests protect semantic reachability and owner boundaries rather than historical 
 | S1 | Global delegation ownership and `orchestrate-subagents` | Source implemented; focused validation passed |
 | S2 | `doc-alignment` entry interface and conditional operations disclosure | Source implemented; focused validation passed |
 | S3 | `long-running-goal` high-risk entry-interface reduction | Source implemented; focused semantic validation passed |
-| S4 | Metadata/docs alignment, aggregate validation, and close preparation | Source implemented; macOS validation goal pending |
+| S4 | Metadata/docs alignment, aggregate validation, and close preparation | Source implemented; macOS validation/report pending |
 
-## S0 — Rebaseline And Oracle
+## S0-S4 Result
 
-Implemented:
+### S0 — Rebaseline And Oracle
 
-- replaced the pre-universalization active review with this stable-named plan;
-- archived the historical second-pass review and PR #3 handoff without rewriting them;
-- updated active and archive indexes;
-- added semantic ownership tests;
-- froze PR #3 skill bodies and `skill-maintainer`.
+- Replaced the pre-universalization active review with this stable-named plan.
+- Archived the historical second-pass review and PR #3 handoff without rewriting them.
+- Added semantic ownership tests and froze PR #3 skill bodies plus `skill-maintainer`.
 
-## S1 — Delegation Ownership And Orchestration
+### S1 — Delegation Ownership And Orchestration
 
-Implemented:
+- `agents/operating-principles.md` is a repository map instead of a duplicate global policy.
+- Root `AGENTS.md` remains the authority for delegation, mutation, failure, and parent accountability.
+- `orchestrate-subagents/SKILL.md` keeps the explicit trigger, minimum-useful parallelism, local invariants, one reference pointer, and completion.
+- The full assignment contract lives in `references/subagent-recipes.md`.
 
-- `agents/operating-principles.md` is now a repository map rather than a duplicate global policy;
-- root `AGENTS.md` remains the authority for delegation, mutation, failure, and parent accountability;
-- `orchestrate-subagents/SKILL.md` keeps only the explicit trigger, minimum-useful parallelism, local invariants, one reference pointer, and completion;
-- the full assignment contract lives in `references/subagent-recipes.md`;
-- invocation and failure semantics are protected by semantic tests.
+### S2 — `doc-alignment` Deep Interface
 
-Size:
+- The entry interface owns source-of-truth, mode, scheduled read-only safety, common workflow, pointers, and completion.
+- `references/watcher-audit.md` owns deterministic Watcher audit commands, profile-set behavior, trust boundaries, change-alignment, due/skip accounting, existing-report routing, and report review.
+- `references/alignment-reference.md` owns inventory, file roles, recursive organization, severity, report shape, surface alignment, and validation.
+
+### S3 — `long-running-goal` High-Risk Reduction
+
+- The entry interface retains lifecycle trigger and Ready/Draft, exact planning fallback, request supersession, branch routing, execution authority, runtime hard stops, task-temp boundary, native goal-tool boundary, deterministic validation entry points, and completion.
+- Templates/checkers own field shape and readiness; one-level references own create/Loop, sequence, cutover, execute/evolve/checkpoint, and close detail.
+
+### S4 — Metadata And Documentation Alignment
+
+- `long-running-goal/agents/openai.yaml` and Workflow README match the compact lifecycle interface.
+- Root `AGENTS.md`, Watcher README, Watcher overlays, identities, and invocation modes remained unchanged after review.
+- Invocation tests bind frontmatter descriptions to interface metadata.
+
+## Size Result
 
 | Surface | Before | Candidate | Change |
 | --- | ---: | ---: | ---: |
 | `agents/operating-principles.md` | 8,429 | 4,359 | -48.3% |
 | `orchestrate-subagents/SKILL.md` | 4,296 | 2,490 | -42.0% |
-| `subagent-recipes.md` | 8,627 | 9,400 | +9.0% conditional detail |
-
-## S2 — `doc-alignment` Deep Interface
-
-Implemented:
-
-- entry interface now owns source-of-truth, mode, scheduled read-only safety, common workflow, two one-hop pointers, and completion;
-- new `references/watcher-audit.md` owns deterministic Watcher audit commands, profile-set behavior, trust boundary, change-alignment semantics, due/skip accounting, existing-report routing, and report review;
-- `references/alignment-reference.md` owns inventory, file roles, recursive organization, severity, report shape, script/tree/TODO/skill alignment, and validation;
-- disclosure tests now verify reachability, one-level ownership, report-only safety, and unchanged identities rather than historical headings.
-
-Size:
-
-| Surface | Before | Candidate | Change |
-| --- | ---: | ---: | ---: |
 | `doc-alignment/SKILL.md` | 6,938 | 3,399 | -51.0% |
-| `alignment-reference.md` | 6,475 | 8,921 | +37.8% conditional detail |
-| `watcher-audit.md` | — | 3,155 | new conditional branch |
-
-## S3 — `long-running-goal` High-Risk Reduction
-
-Implemented:
-
-- entry interface now contains the lifecycle trigger and Ready contract, exact planning-area fallback, request supersession, branch routing, execution authority, runtime hard stops, task-temporary-cache boundary, native goal-tool boundary, deterministic validation entry points, and completion;
-- templates and checkers remain the field and structural owners;
-- existing branch references remain the detailed owners for create/Loop, sequence, production cutover, execute/evolve/checkpoint, and close;
-- duplicated field checklists, component explanations, detailed operation catalogs, helper explanations, and the 11-question Quality Bar were removed from the entry interface;
-- semantic tests retain the three-attempt hard-stop threshold, preflight timing, housekeeping, sequence aliases and registers, branch completion, planning-path constraints, goal-tool token-budget rule, and identity behavior.
-
-Size:
-
-| Surface | Before | Candidate | Change |
-| --- | ---: | ---: | ---: |
 | `long-running-goal/SKILL.md` | 11,148 | 6,723 | -39.7% |
 
-## S4 — Final Alignment And Validation Boundary
+Primary entry surfaces fall from 30,811 bytes to 16,971 bytes (-44.9%). The nine repository-owned `SKILL.md` bodies fall by about 9.8 KB, from about 37.9 KB to about 28.1 KB. Conditional references grow where branch completeness requires it; they load only after a matching trigger.
 
-Implemented:
+## Source-Review Validation Already Completed
 
-- root `AGENTS.md` was re-read and remains unchanged; its global guardrails have no proven residual duplication requiring mutation;
-- `long-running-goal/agents/openai.yaml` now matches the compact lifecycle interface;
-- Workflow README describes the current lifecycle without repeating field-heavy implementation detail;
-- Watcher README and both attribution overlays were inspected and remain semantically aligned; no identity or alias edit is required;
-- invocation tests now bind `long-running-goal` frontmatter description to its interface metadata;
-- this plan and TODO navigation record the complete candidate and the remaining validation/close gate.
+- Isolated semantic/invocation tests for S0-S4 passed against published candidate content.
+- Changed Python tests compiled.
+- `sync_codex_agents.py` passed temporary-target dry-run, apply, and `--check --prune`.
+- Changed Markdown links and whitespace were inspected.
+- A same-agent Standards/Contract review found no blocker, but it does not satisfy independent review.
 
-Aggregate primary-entry result:
-
-```text
-agents/operating-principles.md
-+ orchestrate-subagents/SKILL.md
-+ doc-alignment/SKILL.md
-+ long-running-goal/SKILL.md
-
-30,811 bytes -> 16,971 bytes (-44.9%)
-```
-
-The nine repository-owned `SKILL.md` bodies fall by approximately 9.8 KB, from about 37.9 KB to about 28.1 KB. Conditional references grow where branch completeness requires it; this is intentional because they are loaded only after a matching trigger.
-
-## Validation Completed In The Source-Review Environment
-
-The exact candidate text passed isolated semantic tests for:
-
-- S0/S1 invocation and ownership;
-- `doc-alignment` entry, Watcher operations reference, classification reference, and identity;
-- `long-running-goal` lifecycle entry, branch pointers, exact planning-area fallback, sequence identity/aliases, planning preflight timing, temporary-cache policy, goal-tool behavior, and branch completion;
-- `long-running-goal` metadata alignment.
-
-Also completed:
-
-- Python syntax compilation for changed tests;
-- support-note sync dry-run, apply, and `--check --prune` against a temporary target;
-- changed Markdown relative-link inspection;
-- whitespace validation equivalent to `git diff --check`;
-- a separate read-only Standards/Contract pass by the same agent.
-
-Reviewer-independence limitation: no independent subagent runtime was used. This limitation is owned by the companion macOS validation goal.
-
-## macOS Validation Execution Handoff
+## macOS Validation And PR Report Handoff
 
 Execute:
 
@@ -205,19 +152,32 @@ Execute:
 docs/todo/skill-slimming-macos-validation-goal.md
 ```
 
-That Ready long-running goal owns:
+The goal requires the local repository to be inspected from its live entry state, normally `main`. Local `main` is the protected baseline and must not become the repair branch. The actual PR #13 base/head are fetched from GitHub and validated in an isolated worktree. Bounded repairs and evidence are pushed to the actual PR branch.
 
-- live macOS checkout/worktree isolation;
-- exact PR scope and frozen-surface audit;
-- focused/root/Workflow/Watcher tests;
+The validation goal owns:
+
+- exact local main and PR base/head discovery;
+- isolated worktree validation;
+- diff scope and frozen-surface audit;
+- focused/root/Workflow/Watcher suites;
 - deterministic/link/support/Watcher/plugin/skill validation;
 - installed-state and universal-resource read-only classification;
 - independent Contract review;
-- five behavior scenarios in a proven candidate-loaded context;
-- minimal PR-introduced repair and full revalidation;
-- durable validation evidence, validation-goal archive, and PR #13 Draft-to-Ready.
+- behavioral scenarios A-E in a proven candidate-loaded context;
+- bounded PR-introduced repair and revalidation;
+- durable evidence push and a complete PASS/BLOCKED final report on PR #13.
 
-It explicitly does not own PR merge, main mutation, installed/runtime activation, identity changes, universalization changes, or PR #3 skill-body edits.
+It explicitly does not own:
+
+- modifying local or remote `main`;
+- marking PR #13 Ready;
+- enabling auto-merge, merging, closing, or deleting the PR/branch;
+- installed/runtime activation;
+- identity or universalization changes;
+- PR #3 skill-body edits;
+- parent-plan or validation-goal archive before the user's decision.
+
+After the final PR report is published, execution stops and the user decides in the originating ChatGPT conversation whether to repair further, mark Ready, merge, close, or defer.
 
 ## Behavioral Matrix
 
@@ -236,10 +196,10 @@ It explicitly does not own PR merge, main mutation, installed/runtime activation
 
 ## Rollback
 
-The candidate is source-only. Revert the S0-S4 commits; no installed, hook, cache, or runtime rollback is required because activation is outside PR #13.
+The candidate is source-only. Revert the S0-S4 and validation-evidence commits; no installed, hook, cache, or runtime rollback is required because activation is outside PR #13.
 
-## Close Gate
+## Decision And Archive Gate
 
-Keep this parent plan active while the companion validation goal is active.
+Keep this parent plan and the validation goal active while PR #13 awaits the user's decision.
 
-After the validation goal closes successfully, PR #13 may be Ready but remains unmerged. Merge requires a separate user decision. After PR #13 is merged and `main` is verified, move this parent file to `docs/todo/archive/skill-slimming-plan.md`, replace the active TODO entry with an archive entry, and record the merged revision and final validation evidence.
+A later explicit instruction may authorize further repair, Draft-to-Ready, merge, close, or defer. Only after PR #13 is merged and merged `main` is verified should this parent plan and the validation goal move to `docs/todo/archive/` and active TODO navigation be replaced with archive entries.
